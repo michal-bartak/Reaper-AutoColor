@@ -24,6 +24,13 @@ How a folder's colour reaches its children. See
 | **force** | The folder colour overrides its children. |
 | **off** | Folders do not colour their children. |
 
+**Subfolder splits the parent's colour range** — on by default. Only affects rules that
+[spread a gradient across **folders**](/Reaper-AutoColor/usage/colours/#gradients): a nested
+folder ends the range around it, so the tracks after it start the ramp again instead of
+resuming it. A folder at the top level does the same to the tracks around it. Off gives one
+ramp per folder however deeply it is nested. Careful in a folder made mostly of subfolders —
+a stretch of one track shows the first colour only.
+
 ## Scope
 
 **Reset to the default colour when no rule matches**, one checkbox per kind — Tracks, Items, Regions,

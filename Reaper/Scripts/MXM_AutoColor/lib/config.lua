@@ -40,16 +40,20 @@ function M.badpath() return M.dir() .. '/config.bad.json' end
 
 ------------------------------------------------------------------- defaults
 local OPTION_SPEC = {
-  propagate_folders = { default = 'fill_unmatched',
-                        enum = { off = true, fill_unmatched = true, force = true } },
-  auto_undo         = { default = false, kind = 'boolean' },
-  tick_interval     = { default = 0.20, kind = 'number', min = 0.05, max = 2.0 },
-  cold_budget_ms    = { default = 4,    kind = 'number', min = 1,    max = 50 },
+  propagate_folders      = { default = 'fill_unmatched',
+                             enum = { off = true, fill_unmatched = true, force = true } },
+  -- Default ON: a nested folder is a visible break in the track panel, so a
+  -- gradient ramp running straight through one reads as a bug. Off is the older
+  -- behaviour, one ramp per folder however deeply it is nested.
+  subfolder_splits_range = { default = true, kind = 'boolean' },
+  auto_undo              = { default = false, kind = 'boolean' },
+  tick_interval          = { default = 0.20, kind = 'number', min = 0.05, max = 2.0 },
+  cold_budget_ms         = { default = 4,    kind = 'number', min = 1,    max = 50 },
   -- How long the background loop may put off a full items-and-markers sweep
   -- when nothing cheap suggests one is needed. 0 sweeps on every project
   -- change, which is what it did before the gate existed.
-  cold_interval     = { default = 5,    kind = 'number', min = 0,    max = 60 },
-  font_size         = { default = 14,   kind = 'number', min = 8,    max = 32 },
+  cold_interval          = { default = 5,    kind = 'number', min = 0,    max = 60 },
+  font_size              = { default = 14,   kind = 'number', min = 8,    max = 32 },
 }
 
 --- Which kinds have their unmatched objects reset to the default colour.
@@ -126,7 +130,12 @@ local function normalize_options(o)
     if spec.enum then
       out[k] = spec.enum[v] and v or spec.default
     elseif spec.kind == 'boolean' then
-      out[k] = (v == true)
+      -- Fall back on ANY non-boolean, as the enum and number branches do. A
+      -- plain `v == true` would quietly hand every default-TRUE option a false
+      -- the moment its key is missing -- which is every config written before
+      -- that option existed.
+      if type(v) ~= 'boolean' then v = spec.default end
+      out[k] = v
     elseif spec.kind == 'number' then
       v = tonumber(v)
       if v == nil then v = spec.default end

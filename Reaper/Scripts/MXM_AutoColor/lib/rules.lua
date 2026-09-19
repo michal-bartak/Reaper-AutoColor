@@ -210,16 +210,14 @@ function M.warnings(r, options)
                 'slow on very large projects'
   end
 
-  -- Two combinations quietly flatten a gradient to a single colour.
-  if r.color2 and by_folder and r.only == 'folder' then
-    w[#w + 1] = 'grouped by folder, but this rule only matches folder parents -- ' ..
-                'each one is alone in its group, so every match gets the first colour'
-  end
-
-  if r.color2 and by_folder and options and options.propagate_folders == 'force' then
-    w[#w + 1] = 'grouped by folder while folder colours are set to "force" -- ' ..
-                'each parent overwrites its children, so the whole gradient ' ..
-                'collapses to the first colour'
+  -- Only when nothing reaches the children. With folder colours on, the rule
+  -- is handed down to them and they join the parent's group, so the ramp has
+  -- something to spread over after all.
+  if r.color2 and by_folder and r.only == 'folder' and
+     options and options.propagate_folders == 'off' then
+    w[#w + 1] = 'grouped by folder, but this rule only matches folder parents ' ..
+                'and folder colours are off -- each one is alone in its group, ' ..
+                'so every match gets the first colour'
   end
 
   if r.cascade_items and r.color2 then

@@ -188,6 +188,7 @@ do
   w('reset when unmatched  : %s', #on > 0 and table.concat(on, ', ') or 'nothing')
 end
 w('folder propagation    : %s', tostring(cfg.options.propagate_folders))
+w('subfolder splits ramp : %s', tostring(cfg.options.subfolder_splits_range))
 w('')
 
 reaper.ShowConsoleMsg(table.concat(out, '\n') .. '\n')

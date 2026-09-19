@@ -149,7 +149,7 @@ function M.recompute_preview()
   -- way means it can disagree with Apply -- which it did: gradients were shown
   -- as the rule's primary colour, and tracks coloured by folder inheritance did
   -- not appear at all.
-  local _, _, desired, winner, from_track =
+  local _, _, desired, winner, from_track, _, direct =
     apply.plan(st.entries, st.cfg.rules, st.cfg.options)
 
   -- Bucketed by kind so the list can follow the selected tab. The 500 cap is
@@ -173,10 +173,12 @@ function M.recompute_preview()
           name       = e.name,
           entry      = e,
           color      = desired[i],          -- what will actually be written
-          rule       = winner[i],           -- nil when it was not matched directly
+          -- the rule RESPONSIBLE for the colour, which for a folder child is
+          -- the one it inherited; `direct` is what it matched on its own name
+          rule       = winner[i],
           from_track = from_track[i] == true,
           track_name = e.track_guid and track_name[e.track_guid] or nil,
-          inherited  = (winner[i] == nil),
+          inherited  = (direct[i] == nil),
         }
       end
     end

@@ -106,6 +106,7 @@ local function options_popup(FS)
 
   if not visible then return end
   local o = st.cfg.options
+  local rv, v
 
   theme.section('Folders')
   ImGui.SetNextItemWidth(ctx, FS * 26)
@@ -118,8 +119,22 @@ local function options_popup(FS)
     ImGui.EndCombo(ctx)
   end
 
+  rv, v = theme.checkbox('Subfolder splits the parent\'s colour range',
+                         o.subfolder_splits_range)
+  if rv then app.snapshot(); o.subfolder_splits_range = v; app.mark_dirty() end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Only affects rules that spread their gradient across "folders".\n\n' ..
+      'On: a nested folder ends the range around it, so the tracks after it\n' ..
+      'start the ramp again and each stretch gets the full range. A folder at\n' ..
+      'the top level does the same to the tracks around it.\n\n' ..
+      'Off: one ramp for the whole folder -- the tracks after a nested folder\n' ..
+      'carry on from where the ones before it left off.\n\n' ..
+      'A stretch with only one track in it shows the FIRST colour, so a folder\n' ..
+      'made mostly of subfolders ends up flat.')
+  end
+
   theme.section('Scope', true)
-  local rv, v
   ImGui.Text(ctx, 'Reset to the default colour when no rule matches:')
   if ImGui.IsItemHovered(ctx) then
     ImGui.SetTooltip(ctx,

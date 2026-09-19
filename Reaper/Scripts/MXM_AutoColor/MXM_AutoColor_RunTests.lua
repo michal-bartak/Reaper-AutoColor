@@ -609,6 +609,8 @@ do
   local d = CF.defaults()
   check(d.version == CF.VERSION, 'defaults carry the current version')
   check(d.options.propagate_folders == 'fill_unmatched', 'default folder policy')
+  check(d.options.subfolder_splits_range == true,
+        'subfolders split the parent range by default')
   for _, k in ipairs(RU.KINDS) do
     check(type(d.rules[k]) == 'table' and #d.rules[k] == 0,
           'defaults have an empty ' .. k .. ' list')
@@ -624,6 +626,17 @@ do -- option coercion
   check(c.options.font_size == 8, 'font size clamps to min')
   check(c.options.clear_unmatched.track == false, 'non-boolean coerces to false per kind')
   check(type(c.options.clear_unmatched) == 'table', 'clear_unmatched is a per-kind table')
+end
+
+do -- a boolean that defaults TRUE must survive a config written before it existed
+  local old = CF.normalize{ options = { propagate_folders = 'off' } }
+  check(old.options.subfolder_splits_range == true,
+        'a missing boolean takes its DEFAULT, not false')
+  check(old.options.auto_undo == false, 'and a default-false boolean is unchanged')
+  check(CF.normalize{ options = { subfolder_splits_range = false } }
+          .options.subfolder_splits_range == false, 'an explicit false is kept')
+  check(CF.normalize{ options = { subfolder_splits_range = 'yes' } }
+          .options.subfolder_splits_range == true, 'junk falls back to the default')
 end
 
 do -- ids must be unique ACROSS kinds; they key GUI widgets and the undo stack
@@ -686,12 +699,17 @@ end
 if not IN_REAPER and os.getenv('NC_TEST_DIR') then
   local cfg = CF.starter()
   cfg.options.font_size = 17
+  -- A default-TRUE boolean turned off is the case that used to be lost: it
+  -- has to survive the write AND the normalize on the way back in.
+  cfg.options.subfolder_splits_range = false
   local ok, err = CF.save(cfg)
   check(ok, 'config saves', tostring(err))
 
   local loaded, info = CF.load()
   check(not info.created, 'second load is not a first run')
   check(loaded.options.font_size == 17, 'options survive a round trip')
+  check(loaded.options.subfolder_splits_range == false,
+        'and a default-true boolean turned OFF stays off')
   check(#loaded.rules.track == #cfg.rules.track, 'track rules survive a round trip')
   check(#loaded.rules.region == #cfg.rules.region, 'region rules survive a round trip')
   check(loaded.rules.track[1].pattern == cfg.rules.track[1].pattern,
@@ -1081,14 +1099,22 @@ do -- with no folders at all, folder scope behaves like 'all'
   check(m['String3'] == BLU, 'tracks outside any folder share one group')
 end
 
-do -- the root group spans a folder: structure decides, not adjacency
+do -- a top-level folder ends the range around it, like any other
   local rs = ruleset{ track = { grad_rule{ mode = 'substring', pattern = 'A',
                                            gradient_scope = 'folder' } } }
-  local m = planmap({ tr('A1'), tr('F', { fd = 1 }),
-                      tr('Kid', { depth = 1, fd = -1 }), tr('A2') }, rs,
-                    { propagate_folders = 'off' })
-  check(m['A1'] == RED and m['A2'] == BLU,
-        'top-level matches stay one group across an intervening folder')
+  local entries = { tr('A1'), tr('F', { fd = 1 }),
+                    tr('Kid', { depth = 1, fd = -1 }), tr('A2') }
+
+  -- Each is then a group of ONE, and colors.gradient gives a lone member the
+  -- first colour -- the flattening the option's tooltip warns about.
+  local on = planmap(entries, rs, { propagate_folders = 'off' })
+  check(on['A1'] == RED and on['A2'] == RED,
+        'top-level matches split across an intervening folder')
+
+  local off = planmap(entries, rs, { propagate_folders = 'off',
+                                     subfolder_splits_range = false })
+  check(off['A1'] == RED and off['A2'] == BLU,
+        'but with the split off they stay one group: structure, not adjacency')
 end
 
 do -- a nested folder starts its own group
@@ -1101,6 +1127,187 @@ do -- a nested folder starts its own group
   check(m['Vln1'] == RED, 'the outer folder ramp starts')
   check(m['Vln2'] == RED, 'and the inner folder starts a fresh one')
   check(m['Vln3'] == BLU, 'which runs to the end of the inner folder')
+end
+
+--------------------------------------------- subfolder_splits_range
+-- The option is ON by default: a nested folder ends the range of the level it
+-- sits in, so the tracks after it ramp again from the start. OFF is the older
+-- behaviour, one ramp for the whole folder however deeply it is nested.
+-- Only 'folder' scope can see it; 'run' never builds the container map at all
+-- and 'both' already broke at a folder edge.
+
+local vrule = ruleset{ track = { grad_rule{ mode = 'substring', pattern = 'V',
+                                            gradient_scope = 'folder' } } }
+
+do -- the headline case: a subfolder in the middle of a coloured folder
+  -- Nothing but the V tracks contains a "v", so Bus/Sub/S1 never match.
+  local entries = {
+    tr('Bus', { fd = 1 }), tr('V1', { depth = 1 }), tr('V2', { depth = 1 }),
+    tr('Sub', { fd = 1, depth = 1 }), tr('S1', { fd = -1, depth = 2 }),
+    tr('V3', { depth = 1 }), tr('V4', { fd = -1, depth = 1 }),
+  }
+
+  local on = planmap(entries, vrule, { propagate_folders = 'off',
+                                       subfolder_splits_range = true })
+  check(on['V1'] == RED and on['V2'] == BLU, 'the ramp before the subfolder is whole')
+  check(on['V3'] == RED and on['V4'] == BLU, 'and the tracks after it start it again')
+
+  local off = planmap(entries, vrule, { propagate_folders = 'off',
+                                        subfolder_splits_range = false })
+  check(off['V1'] == RED and off['V4'] == BLU, 'off, the whole folder is one ramp')
+  check(off['V2'] ~= BLU and off['V3'] ~= RED, 'which runs straight through the subfolder')
+
+  -- The pin on "absent means on": a caller that predates the option, and every
+  -- other test in this file, must get the shipping behaviour.
+  local dflt = planmap(entries, vrule, { propagate_folders = 'off' })
+  check(dflt['V3'] == on['V3'] and dflt['V4'] == on['V4'],
+        'and a caller that omits the option gets the split')
+end
+
+do -- a subfolder with nothing after it costs nothing either way
+  local entries = { tr('Bus', { fd = 1 }), tr('V1', { depth = 1 }),
+                    tr('V2', { depth = 1 }), tr('Sub', { fd = 1, depth = 1 }),
+                    tr('S1', { fd = -2, depth = 2 }) }
+  local on  = planmap(entries, vrule, { propagate_folders = 'off',
+                                        subfolder_splits_range = true })
+  local off = planmap(entries, vrule, { propagate_folders = 'off',
+                                        subfolder_splits_range = false })
+  check(on['V1'] == RED and on['V2'] == BLU, 'the parent ramps in full')
+  check(on['V1'] == off['V1'] and on['V2'] == off['V2'],
+        'and a trailing subfolder changes nothing')
+end
+
+do -- a -2 that lands back INSIDE a folder still restarts that folder
+  local entries = { tr('Top', { fd = 1 }), tr('V1', { depth = 1 }),
+                    tr('Mid', { fd = 1, depth = 1 }),
+                    tr('Deep', { fd = 1, depth = 2 }),
+                    tr('D1', { fd = -2, depth = 3 }),
+                    tr('V2', { depth = 1 }), tr('V3', { fd = -1, depth = 1 }) }
+
+  local on = planmap(entries, vrule, { propagate_folders = 'off',
+                                       subfolder_splits_range = true })
+  check(on['V1'] == RED, 'alone before the nest, so it gets the first colour')
+  check(on['V2'] == RED and on['V3'] == BLU, 'and the tail of Top ramps in full')
+
+  local off = planmap(entries, vrule, { propagate_folders = 'off',
+                                        subfolder_splits_range = false })
+  check(off['V1'] == RED and off['V3'] == BLU and off['V2'] ~= RED,
+        'off, all three of Top\'s own tracks are one ramp')
+end
+
+do -- sibling subfolders leave groups of one, which show the FIRST colour
+  local entries = { tr('Bus', { fd = 1 }), tr('V1', { depth = 1 }),
+                    tr('SubA', { fd = 1, depth = 1 }), tr('a', { fd = -1, depth = 2 }),
+                    tr('V2', { depth = 1 }),
+                    tr('SubB', { fd = 1, depth = 1 }), tr('b', { fd = -1, depth = 2 }),
+                    tr('V3', { fd = -1, depth = 1 }) }
+
+  local on = planmap(entries, vrule, { propagate_folders = 'off',
+                                       subfolder_splits_range = true })
+  check(on['V1'] == RED and on['V2'] == RED and on['V3'] == RED,
+        'every stretch has one member, so every one is the first colour')
+
+  local off = planmap(entries, vrule, { propagate_folders = 'off',
+                                        subfolder_splits_range = false })
+  check(off['V1'] == RED and off['V3'] == BLU, 'off, the three are one ramp')
+end
+
+do -- the other scopes cannot see the option
+  local entries = {
+    tr('Bus', { fd = 1 }), tr('V1', { depth = 1 }), tr('V2', { depth = 1 }),
+    tr('Sub', { fd = 1, depth = 1 }), tr('S1', { fd = -1, depth = 2 }),
+    tr('V3', { depth = 1 }), tr('V4', { fd = -1, depth = 1 }),
+  }
+  for _, scope in ipairs({ 'both', 'run', 'all' }) do
+    local rs = ruleset{ track = { grad_rule{ mode = 'substring', pattern = 'V',
+                                             gradient_scope = scope } } }
+    local on  = planmap(entries, rs, { propagate_folders = 'off',
+                                       subfolder_splits_range = true })
+    local off = planmap(entries, rs, { propagate_folders = 'off',
+                                       subfolder_splits_range = false })
+    local same = true
+    for _, n in ipairs({ 'V1', 'V2', 'V3', 'V4' }) do
+      if on[n] ~= off[n] then same = false end
+    end
+    check(same, scope .. ' scope is untouched by the split')
+  end
+end
+
+--------------------------------- a folder rule ramps over what it INHERITS to
+-- The rule names the folder; folder colours hand it down to the children; the
+-- whole set is then one gradient group. Before this, propagation copied a
+-- finished colour, so a two-colour folder rule came out flat.
+
+do -- fill gaps: the parent plus its unmatched children are one ramp
+  local rs = ruleset{ track = { grad_rule{ mode = 'substring', pattern = 'green',
+                                           gradient_scope = 'folder' } } }
+  local entries = { tr('green folder', { fd = 1 }),
+                    tr('Track A', { depth = 1 }), tr('Track B', { depth = 1 }),
+                    tr('Track C', { depth = 1, fd = -1 }) }
+
+  local m = planmap(entries, rs, { propagate_folders = 'fill_unmatched' })
+  check(m['green folder'] == RED, 'the folder itself is the first step')
+  check(m['Track C'] == BLU, 'and the last child is the last')
+  check(m['Track A'] ~= RED and m['Track A'] ~= BLU, 'with the middle ones between')
+  check(m['Track A'] ~= m['Track B'], 'and no two children share a shade')
+
+  -- the old behaviour, for contrast: nothing reaches the children at all
+  local off = planmap(entries, rs, { propagate_folders = 'off' })
+  check(off['green folder'] == RED, 'with folder colours off the parent is alone')
+  check(off['Track A'] == nil, 'and the children get no colour')
+end
+
+do -- a child with a rule of its own keeps it, and leaves the parent's ramp
+  local rs = ruleset{ track = {
+    grad_rule{ mode = 'substring', pattern = 'green', gradient_scope = 'folder' },
+    { mode = 'substring', pattern = 'Solo', color = GRN },
+  } }
+  local m = planmap({ tr('green folder', { fd = 1 }),
+                      tr('Track A', { depth = 1 }), tr('Solo', { depth = 1 }),
+                      tr('Track B', { depth = 1, fd = -1 }) }, rs,
+                    { propagate_folders = 'fill_unmatched' })
+  check(m['Solo'] == GRN, 'the child keeps the colour it matched')
+  check(m['green folder'] == RED and m['Track B'] == BLU,
+        'and the other three still ramp end to end')
+end
+
+do -- two folders, two independent ramps
+  local rs = ruleset{ track = { grad_rule{ mode = 'regex', pattern = '^(green|blue)',
+                                           gradient_scope = 'folder' } } }
+  local m = planmap({ tr('green folder', { fd = 1 }),
+                      tr('A', { depth = 1 }), tr('B', { depth = 1, fd = -1 }),
+                      tr('blue folder', { fd = 1 }),
+                      tr('C', { depth = 1 }), tr('D', { depth = 1, fd = -1 }) }, rs,
+                    { propagate_folders = 'fill_unmatched' })
+  check(m['green folder'] == RED and m['B'] == BLU, 'the first folder ramps in full')
+  check(m['blue folder'] == RED and m['D'] == BLU, 'and the second does its own')
+end
+
+do -- the cascade flag travels with the inherited rule, as the colour used to
+  local rs = ruleset{ track = { grad_rule{ mode = 'substring', pattern = 'green',
+                                           gradient_scope = 'folder',
+                                           cascade_items = true } },
+                      item = {} }
+  local m = planmap({ tr('green folder', { fd = 1 }),
+                      tr('Kid', { depth = 1, fd = -1 }),
+                      item('part', { on = 'Kid' }) }, rs,
+                    { propagate_folders = 'fill_unmatched' })
+  check(m['Kid'] == BLU, 'the child takes its step of the ramp')
+  check(m['part'] == m['Kid'], 'and its items take that same shade')
+end
+
+do -- container identity, straight from folder_groups
+  local e = { tr('Bus', { fd = 1 }), tr('V1'), tr('Sub', { fd = 1 }),
+              tr('S1', { fd = -1 }), tr('V2'), tr('V3', { fd = -1 }) }
+
+  local off = AP.folder_groups(e, false)
+  check(off[2] == off[5], 'without the split the level resumes its own container')
+
+  local on = AP.folder_groups(e, true)
+  check(on[2] ~= on[5], 'with it, coming out of a subfolder starts a new one')
+  check(on[5] == on[6], 'shared by everything after it')
+  check(on[3] == on[4] and on[3] ~= on[2] and on[3] ~= on[5],
+        'and the subfolder itself stays a third, distinct container')
 end
 
 do -- the parent need not match for its children to be grouped by it
@@ -1148,12 +1355,21 @@ do -- 'both' breaks on a gap AND on a folder edge
 end
 
 do -- a -2 close pops both levels of the container stack
-  local fg = AP.folder_groups({ tr('Outer', { fd = 1 }), tr('Inner', { fd = 1 }),
-                                tr('Leaf', { fd = -2 }), tr('After') })
+  local e = { tr('Outer', { fd = 1 }), tr('Inner', { fd = 1 }),
+              tr('Leaf', { fd = -2 }), tr('After') }
+
+  local fg = AP.folder_groups(e, false)
   check(fg[1] ~= 0 and fg[2] ~= 0, 'the two folders have containers')
   check(fg[1] ~= fg[2], 'and they are different ones')
   check(fg[3] == fg[2], 'the leaf belongs to the inner folder')
   check(fg[4] == 0, 'and a -2 close returns to the root')
+
+  -- With the split on the root is re-issued rather than reused, so 'After'
+  -- shares a container with nothing before it.
+  local sp = AP.folder_groups(e, true)
+  check(sp[3] == sp[2], 'the leaf still belongs to the inner folder')
+  check(sp[4] ~= 0, 'and the root it returns to is a fresh container')
+  check(sp[4] ~= sp[1] and sp[4] ~= sp[2], 'shared with neither folder')
 end
 
 do -- items: a change of track ends the run
@@ -1220,34 +1436,41 @@ do -- scope is coerced to what each kind can actually use
   check(RU.new('track', {}).gradient_scope == 'run', 'and so does a missing one')
 end
 
-do -- the two combinations that quietly flatten a gradient
+do -- a folder-parents-only rule flattens ONLY when nothing reaches the children
   local r1 = RU.new('track', { pattern = 'drum', color2 = BLU,
                                gradient_scope = 'folder', only = 'folder' })
-  local found = false
-  for _, w in ipairs(RU.warnings(r1)) do
-    if w:find('alone in its group', 1, true) then found = true end
+  local function warned(opts)
+    for _, w in ipairs(RU.warnings(r1, opts)) do
+      if w:find('alone in its group', 1, true) then return true end
+    end
+    return false
   end
-  check(found, 'warns when folder scope meets a folder-parents-only rule')
+  check(warned{ propagate_folders = 'off' },
+        'warns when folder colours are off, so each parent really is alone')
+  check(not warned{ propagate_folders = 'fill_unmatched' },
+        'but not when the children inherit the rule and join its group')
+  check(not warned{ propagate_folders = 'force' }, 'nor under force')
 
+  -- 'force' used to collapse a folder gradient, because propagation copied a
+  -- finished colour. It propagates the RULE now, so there is nothing to warn
+  -- about and the warning is gone.
   local r2 = RU.new('track', { pattern = 'str', color2 = BLU,
                                gradient_scope = 'folder' })
-  found = false
-  for _, w in ipairs(RU.warnings(r2, { propagate_folders = 'force' })) do
-    if w:find('collapses', 1, true) then found = true end
-  end
-  check(found, 'warns when folder scope meets forced folder colours')
+  check(#RU.warnings(r2, { propagate_folders = 'force' }) == 0,
+        'and forced folder colours no longer flatten a gradient')
   check(#RU.warnings(r2, { propagate_folders = 'fill_unmatched' }) == 0,
-        'and says nothing under the default folder policy')
+        'nor does the default folder policy')
 end
 
-do -- forcing folder colours really does flatten it, as the warning says
+do -- forcing folder colours ramps across the folder instead of flattening it
   local rs = ruleset{ track = { grad_rule{ mode = 'substring', pattern = 'Str',
                                            gradient_scope = 'folder' } } }
   local m = planmap({ tr('Str1', { fd = 1 }), tr('Str2', { depth = 1 }),
                       tr('Str3', { fd = -1, depth = 1 }) }, rs,
                     { propagate_folders = 'force' })
-  check(m['Str1'] == RED and m['Str2'] == RED and m['Str3'] == RED,
-        'the parent overwrites its children with colour 1')
+  check(m['Str1'] == RED and m['Str3'] == BLU,
+        'the parent and its children are one ramp, not one colour')
+  check(m['Str2'] ~= RED and m['Str2'] ~= BLU, 'with the middle track between them')
 end
 
 do -- plan() reports where each match sits, for "why is it this colour?"

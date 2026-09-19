@@ -270,11 +270,50 @@ member and the gradient invisible. Contiguous blocks are the norm for tracks and
 the exception for regions, so the default follows the reality rather than
 consistency for its own sake.
 
-The folder container map mirrors the propagation stack in pass 3 exactly,
-multi-level close included, so the two can never disagree about where a folder
-ends. `groups` is a nested table rather than a concatenated string key: pass 1
+The folder container map decides where a folder ENDS exactly as the ownership
+stack in pass 1b does, multi-level close included, so the two can never disagree
+about that. What they differ on is container IDENTITY — see the subfolder split
+below. `groups` is a nested table rather than a concatenated string key: pass 1
 runs over every track on every auto-loop tick, and per-entry string garbage
 there is not free.
+
+### A subfolder splits the range around it
+
+`subfolder_splits_range`, a global option in **Options → Folders**, default on.
+Coming back out of a nested folder gives the level returned to a fresh container
+id, so under `folder` scope the tracks after a subfolder start a new ramp rather
+than resuming the one before it. It lives in `folder_groups` alone: every id is
+opaque, so nothing downstream — `rank`, `groupsize`, `colors.gradient` — needed
+to change.
+
+The project root splits the same way, so a top-level folder ends the top-level
+range too. The alternative was to exempt it, on the grounds that the root is
+"in no folder" rather than a parent with a range of its own. Symmetry won: a
+folder is a visible break in the track panel wherever it sits, and one rule is
+easier to hold than one rule with a depth-0 exception. The price is real and
+accepted — a stretch of one track gets the first colour, so a folder made mostly
+of subfolders comes out flat. The tooltip and the docs say so.
+
+`gradient_scope = 'both'` is untouched by the option, and provably so: it starts
+a new group whenever the container id changes, and re-issuing an id at a close
+lands on exactly the boundaries the old id already crossed. `run` never builds
+the container map at all. Only `folder` scope can see the setting.
+
+Ownership propagation (pass 1b) must not grow the same notion. A folder rule
+reaches the whole folder either way; splitting identity there would change
+inheritance, which is a different question from where a ramp restarts.
+
+No config version bump, as above — but note this one is a **default-on change of
+appearance** for anyone upgrading, not just a new default for new installs. It
+was chosen over grandfathering existing configs onto the old behaviour, which
+would have left the option off for exactly the people most likely to want it.
+
+It also exposed a latent bug worth recording: `normalize_options` coerced
+booleans with `out[k] = (v == true)`, ignoring `spec.default`. With no
+default-true boolean in the schema that had never mattered; the first one would
+have shipped OFF for every existing user, because their file has no such key.
+Booleans now fall back to `spec.default` on any non-boolean, which is what the
+enum and number branches already did.
 
 No config version bump. A missing `gradient_scope` defaults to `run`, and
 because rule edits do not repaint the project, any change of appearance waits
@@ -287,6 +326,39 @@ flips on a single structural edit, with nothing in the UI explaining why.
 The real fix for gradient instability is a fixed denominator (a per-rule
 `gradient_steps`, 0 = use the group size) so adding a member does not move the
 existing ones. That is orthogonal to grouping and not done here.
+
+### Folders propagate a RULE, not a colour
+
+Folder inheritance used to run *after* the gradient was computed: pass 1 ranked
+each rule's direct matches, pass 2 turned rank into a colour, and pass 3 copied
+that finished colour down to the children. A colour is one value, so a gradient
+could not survive the copy — a folder rule with two colours painted the whole
+folder its first shade, however many tracks it reached. There was no way to say
+"ramp down this folder" with one rule, because the only rule that matched was
+the parent, and a group of one is flat by definition.
+
+The fix inverts it. Propagation moved *before* ranking and now hands down the
+**rule** (pass 1b); the ranking loop then groups on that effective owner rather
+than on the direct match. Children land in the same gradient group as their
+parent, so the ramp spreads over everything the rule ends up owning, in project
+order, with the folder as its first step. Nothing downstream changed: `rank`,
+`groupsize` and `colors.gradient` never knew where a winner came from.
+
+`force` therefore no longer flattens a gradient — it *widens* it, because the
+folder's rule takes every descendant including ones with rules of their own.
+The warning that used to predict the collapse is gone. The "folder-parents-only
+filter" warning survives but is now conditional on `propagate_folders = 'off'`,
+which is the only case left where each parent really is alone in its group.
+
+`plan()` returns `direct` alongside `winner` for this reason: `winner` is who
+COLOURS an entry, `direct` is what it matched by name, and the preview needs
+both — it flags a track as inherited from `direct`, and names the responsible
+rule from `winner`. Before, an inherited track had no rule to name at all.
+
+Cost: three passes over the entries where there was one, since ownership has to
+be settled before ranking can start. All O(n), no per-entry allocation, and the
+one that was removed (pass 3's colour copy) was the same shape. The auto-loop
+budget is unaffected.
 
 ## Config
 

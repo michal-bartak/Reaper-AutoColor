@@ -35,6 +35,17 @@ than ten identical swatches.
 | **folders** | One ramp inside each folder. Tracks only. |
 | **runs & folders** | A new ramp at a gap or a folder edge, whichever comes first. |
 
+A **nested folder ends the range around it**, so the tracks after it start their ramp again
+rather than resuming the one before. That is **Options → Folders → subfolder splits the
+parent's colour range**, on by default; turn it off for one ramp per folder however deeply it
+is nested. A folder at the top level does the same to the tracks around it.
+
+:::caution[It can flatten a folder]
+A stretch with only one track in it gets the **first** colour — there is nothing for a ramp to
+spread across. A folder that is mostly subfolders, with a single track between each, therefore
+comes out all one colour. Switch the option off for those.
+:::
+
 Tracks and items default to **runs**. Regions and markers default to **all matches**: a song's
 regions are normally interleaved — `Verse, Chorus, Verse, Chorus` — so a rule matching one of them
 rarely wins two in a row, and grouping would leave every group with a single member and no visible
@@ -82,11 +93,22 @@ track rules only — nothing else has folder structure.
 - They cannot be computed incrementally, so a gradient rule aimed at **items** is expensive on very
   large projects.
 
-:::caution[Two combinations flatten a gradient]
-The rule warns about both, because each leaves every group with one member and so one colour:
+### A folder rule ramps over the tracks it reaches
 
-- grouping by **folder** with an *is a folder track* filter;
-- grouping by **folder** while folder colours are set to [force](/Reaper-AutoColor/usage/items-and-folders/#folder-colours).
+A gradient spreads across every track the rule ends up **owning**, not just the ones whose names
+it matched. So a single rule naming a folder — with
+[folder colours](/Reaper-AutoColor/usage/items-and-folders/#folder-colours) on — ramps across the
+folder's contents: the folder is the first step and its last child the last. That is usually the
+easiest way to get a gradient down a folder, since the children need no rule and no naming
+convention of their own.
+
+Under `fill gaps` a child that matched its own rule keeps that colour and drops out of the ramp;
+under `force` the folder's rule takes the whole folder.
+
+:::caution[One combination still flattens a gradient]
+Grouping by **folder** with an *is a folder track* filter, **and folder colours off** — nothing
+then reaches the children, so every parent is alone in its group and gets the first colour. The
+rule warns about it.
 :::
 
 ## Where to go next

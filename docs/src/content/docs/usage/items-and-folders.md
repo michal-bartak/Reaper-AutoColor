@@ -55,14 +55,18 @@ Whether a folder's colour flows to its children is one setting for the whole rul
 | **force** | The folder's colour overrides matched children too. |
 | **off** | No inheritance. |
 
+The same dialog section carries **subfolder splits the parent's colour range**, which is about
+gradients rather than inheritance — see
+[Colours and gradients](/Reaper-AutoColor/usage/colours/#gradients).
+
 `fill gaps` is the setting that lets you write one rule per folder and a handful of specific rules
 for the tracks that need to stand out. `force` is for when the folder *is* the statement — every
 track in the Drums folder the same colour, no exceptions.
 
-:::caution
-`force` flattens any gradient inside the folder: each parent overwrites its children, so a
-rule grouping by folder ends up with one colour per folder. The rule warns when both are set.
-:::
+A folder rule hands its **rule** down, not a finished colour, so a rule with two colours
+[ramps across the folder](/Reaper-AutoColor/usage/colours/#a-folder-rule-ramps-over-the-tracks-it-reaches)
+rather than painting it one flat shade. Under `force` that ramp covers the whole folder, children
+with rules of their own included.
 
 ## Takes are not coloured
 

@@ -37,6 +37,7 @@ destroy your rules.
   "version": 2,
   "options": {
     "propagate_folders": "fill_unmatched",
+    "subfolder_splits_range": true,
     "clear_unmatched": { "track": false, "item": true, "region": false, "marker": false },
     "auto_undo": false,
     "tick_interval": 0.2,

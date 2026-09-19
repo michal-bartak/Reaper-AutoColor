@@ -154,7 +154,7 @@ in a row, and grouping would leave every group with a single member and no
 visible gradient. Switch them to `runs` when your regions really do come in
 blocks.
 
-Two things to know about gradients:
+Things to know about gradients:
 
 * They are **position dependent** — inserting an object into a group reshuffles
   that group. Grouping shrinks the blast radius (one group rather than every
@@ -163,10 +163,19 @@ Two things to know about gradients:
   merges two groups and recolours both.
 * They cannot be computed incrementally, so a gradient rule aimed at *items* is
   expensive on very large projects.
-* Two combinations quietly flatten a gradient to one colour, and the rule warns
-  about both: grouping by folder with an *is a folder track* filter (every group
-  has one member), and grouping by folder while folder colours are set to
-  *force* (each parent overwrites its children).
+* Grouping by folder, a **nested folder ends the range around it**: the tracks
+  after it start the ramp again rather than resuming it, and a folder at the top
+  level does the same to the tracks around it. That is
+  `subfolder_splits_range`, on by default. Off gives one ramp per folder however
+  deeply it is nested. A stretch of one track shows the first colour, so a folder
+  made mostly of subfolders comes out flat.
+* A gradient spreads over every track the rule ends up **owning**, not just the
+  ones it matched by name. A folder gets its rule handed down to its children
+  (see folder colours below), so one rule naming a folder ramps across the
+  folder's contents — the folder first, its last child last.
+* One combination still flattens a gradient, and the rule warns about it:
+  grouping by folder with an *is a folder track* filter **and folder colours
+  off**, which leaves every parent alone in its group.
 
 ### Folder colours
 
@@ -176,6 +185,12 @@ Two things to know about gradients:
   colour; only unmatched children inherit.
 * `force` — the folder's colour overrides matched children too.
 * `off` — no inheritance.
+
+What flows down is the **rule**, not a finished colour, so a folder rule with two
+colours ramps across everything it reaches instead of painting it one flat shade.
+
+`subfolder_splits_range` (default `true`) is in the same Options section but is
+about gradients, not inheritance — see the folder-grouping bullet above.
 
 ## Auto-apply
 

@@ -562,6 +562,35 @@ do
   check(rec.labels['Options'], 'the popup name is used verbatim')
 end
 
+do -- the Folders section, with the popup actually OPEN
+  -- BeginPopup returns false in the mock by default, so the dialog body had
+  -- never been drawn here at all -- only the call that opens it was checked.
+  -- Hovering everything at once is not a real frame, but it is the only way to
+  -- make the tooltip branches execute at all.
+  local ok, err, rec = frame{ BeginPopup     = function() return true end,
+                              IsItemHovered  = function() return true end }
+  check(ok, 'the options body draws without error', tostring(err))
+  check(rec.labels['Subfolder splits the parent\'s colour range'],
+        'the Folders section offers the subfolder split checkbox')
+  check(rec.seen.SetTooltip, 'and the dialog explains itself')
+end
+
+do -- the split checkbox is wired to the option, and repaints the preview
+  local src = pathlib_read('lib/gui/window.lua')
+  check(src:find('o.subfolder_splits_range = v', 1, true) ~= nil,
+        'ticking it writes the option')
+  -- It changes colours, so it must NOT take the mark_dirty(true) shortcut that
+  -- the timing sliders use to skip the preview recompute.
+  local i = src:find('o.subfolder_splits_range = v', 1, true)
+  local tail = src:sub(i, i + 120)
+  check(tail:find('app.mark_dirty()', 1, true) ~= nil,
+        'and recomputes the preview, rather than skipping it')
+  check(tail:find('app.mark_dirty(true)', 1, true) == nil,
+        'not the skip-preview variant')
+  check(src:find('app.snapshot(); o.subfolder_splits_range', 1, true) ~= nil,
+        'with an undo snapshot taken first')
+end
+
 do -- dimming is done with the GLOBAL alpha, not a veil
   local src = pathlib_read('lib/gui/window.lua')
   -- the CODE form, so the comment explaining why it is avoided does not trip it

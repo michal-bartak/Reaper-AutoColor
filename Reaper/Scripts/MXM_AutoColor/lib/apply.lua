@@ -54,11 +54,19 @@ M.resolve = resolve
 --- A folder PARENT belongs to the folder it opens, together with its children,
 --- which is what "group by folder" means when you look at the track panel.
 ---
---- This mirrors the propagation stack in pass 3 exactly, multi-level close
---- (folderdepth can be -2) included, so the two can never disagree about where
---- a folder ends.
-local function folder_groups(entries)
+--- Where a folder ENDS is decided exactly as the ownership stack in 1b decides
+--- it, multi-level close (folderdepth can be -2) included, so the two can never
+--- disagree about that. What they differ on is IDENTITY. With `split`, coming
+--- back out of a nested folder gives the level we return to a fresh id, so the
+--- tracks after a subfolder start a new gradient group instead of resuming the
+--- one before it. The project root restarts the same way. Ownership has no such
+--- notion and must not grow one: a folder rule reaches the whole folder either
+--- way.
+---
+--- The ids are opaque -- comparing them is the only thing a caller may do.
+local function folder_groups(entries, split)
   local fg, stack, next_id = {}, {}, 0
+  local root = 0              -- the "in no folder" level, which restarts too
   for i = 1, #entries do
     local e = entries[i]
     if e.kind == 'track' then
@@ -68,11 +76,30 @@ local function folder_groups(entries)
         fg[i] = next_id
         for _ = 1, fd do stack[#stack + 1] = next_id end
       else
-        fg[i] = stack[#stack] or 0
+        fg[i] = stack[#stack] or root
         if fd < 0 then
+          local inner = stack[#stack]
           for _ = 1, -fd do
             if #stack == 0 then break end
             stack[#stack] = nil
+          end
+          if split then
+            local outer = stack[#stack]   -- nil once we are back at the root
+            if outer ~= inner then
+              next_id = next_id + 1
+              if outer == nil then
+                root = next_id
+              else
+                -- Renumber every slot this folder holds, not just the top one:
+                -- a defensive multi-level open (fd >= 2) pushes one id several
+                -- times, and a half-renumbered folder would later read as two
+                -- containers and split again for nothing.
+                for j = #stack, 1, -1 do
+                  if stack[j] ~= outer then break end
+                  stack[j] = next_id
+                end
+              end
+            end
           end
         end
       end
@@ -97,18 +124,23 @@ M.prepare_all = prepare_all
 --- Work out what every entry's colour should be.
 --
 -- Order of resolution:
---   1. each object against the rule list for its OWN kind, first match wins
---   2. gradients, over each rule's own matches
---   3. folder colours flow down to child tracks (propagate_folders)
---   4. track colours flow onto the ITEMS sitting on them, for track rules with
---      "also colour items" -- but only where no item rule already claimed them,
---      so an item rule always overrides its track
+--   1a. each object against the rule list for its OWN kind, first match wins
+--   1b. folders hand their RULE down to their children (propagate_folders)
+--   1c. gradients, over every match each rule now OWNS -- so a folder rule with
+--       two colours ramps across the folder rather than painting it one shade
+--   2.  rank and group size become a colour
+--   4.  track colours flow onto the ITEMS sitting on them, for track rules with
+--       "also colour items" -- but only where no item rule already claimed them,
+--       so an item rule always overrides its track
 --
--- Entries flagged `context = true` take part in steps 3 and 4 but are never
--- written to. That is how "apply to selection" still gets folder inheritance
--- and track cascade right: the unselected parent tracks are present as context.
+-- Entries flagged `context = true` take part in 1b and 4 but are never written
+-- to. That is how "apply to selection" still gets folder inheritance and track
+-- cascade right: the unselected parent tracks are present as context.
 --
--- @return ops, stats, desired, winner
+-- @return ops, stats, desired, winner, from_track, grad, direct
+--   `winner` is the rule that COLOURS an entry, which for a track inside a
+--   folder may be one it inherited. `direct` is the rule it matched by its
+--   own name, so a caller can still tell the two apart.
 function M.plan(entries, rules, options)
   options = options or {}
   rules = rules or {}
@@ -125,7 +157,7 @@ function M.plan(entries, rules, options)
 
   prepare_all(rules)
 
-  -- 1. winner per entry, plus each entry's rank within its gradient group
+  -- 1. who owns each entry, plus its rank within its gradient group
   --    (a gradient needs the group size before any colour can be chosen)
   --
   -- A group is a rule's matches that belong together. `gradient_scope` decides
@@ -140,7 +172,11 @@ function M.plan(entries, rules, options)
       break
     end
   end
-  local fg = needs_folders and folder_groups(entries) or nil
+  -- Absent means ON. plan() is reached with a bare {} from the tests and from
+  -- anything that predates the option, and that must mean the same thing there
+  -- as it does through the config, or a preview and an Apply could disagree.
+  local split = options.subfolder_splits_range ~= false
+  local fg = needs_folders and folder_groups(entries, split) or nil
 
   local winner, rank, groupsize, gid = {}, {}, {}, {}
   local groups = {}   -- rule id -> { [group id] = count }. Nested rather than a
@@ -170,11 +206,75 @@ function M.plan(entries, rules, options)
   end
   local matched, scanned = 0, 0
 
+  -- 1a. the rule each entry matches on its OWN name.
+  local direct = {}
+  for i = 1, #entries do
+    local e = entries[i]
+    if not e.context then scanned = scanned + 1 end
+    local r = resolve(e, rules[e.kind] or {})
+    if r then
+      if not e.context then matched = matched + 1 end
+      direct[i] = r
+    end
+  end
+
+  -- 1b. a folder hands its RULE down to its children, before any gradient is
+  --     ranked. This used to run after the colours were chosen, and it copied a
+  --     finished colour -- a single value, which a gradient cannot survive. A
+  --     folder rule with two colours therefore came out flat across the whole
+  --     folder, however many tracks it reached. Propagating the rule instead
+  --     puts the children in the SAME gradient group as the parent, so the ramp
+  --     spreads over everything the rule ends up owning.
+  --
+  --     Order within a folder is project order, and the parent is the first
+  --     step of its own ramp.
+  local cascade = {}
+  if policy ~= 'off' then
+    local ownstack = {}
+    for i = 1, #entries do
+      local e = entries[i]
+      if e.kind == 'track' then
+        local own = direct[i]
+        local inh = ownstack[#ownstack]
+        local fr
+        -- 'force' keeps the OUTERMOST coloured ancestor, as the colour-copying
+        -- version did: each level pushed the colour it had itself just been
+        -- given, so the outer one travelled all the way down.
+        if policy == 'force' and inh ~= nil then fr = inh
+        elseif own ~= nil                    then fr = own
+        else                                      fr = inh end
+
+        winner[i]  = fr
+        cascade[i] = (fr and fr.cascade_items) == true
+
+        local fd = e.folderdepth or 0
+        if fd >= 1 then
+          for _ = 1, fd do ownstack[#ownstack + 1] = fr end
+        elseif fd < 0 then
+          for _ = 1, -fd do
+            if #ownstack == 0 then break end
+            ownstack[#ownstack] = nil
+          end
+        end
+      else
+        winner[i] = direct[i]
+      end
+    end
+  else
+    for i = 1, #entries do
+      winner[i] = direct[i]
+      if entries[i].kind == 'track' then
+        cascade[i] = (direct[i] and direct[i].cascade_items) == true
+      end
+    end
+  end
+
+  -- 1c. gradient grouping, over the EFFECTIVE owner rather than the direct
+  --     match, so an inherited track takes part in its folder's ramp.
   for i = 1, #entries do
     local e = entries[i]
     local k = e.kind
-    if not e.context then scanned = scanned + 1 end
-    local r = resolve(e, rules[k] or {})
+    local r = winner[i]
 
     -- Run bookkeeping happens for EVERY entry, won or not -- an entry this rule
     -- does not win is precisely what ends a run. Context entries take part in
@@ -199,9 +299,6 @@ function M.plan(entries, rules, options)
     last_fold[k]  = fold
 
     if r then
-      if not e.context then matched = matched + 1 end
-      winner[i] = r
-
       local scope = r.color2 and r.gradient_scope or 'all'
       local g = 0
       if     scope == 'run'    then g = run_seq[k]
@@ -239,52 +336,6 @@ function M.plan(entries, rules, options)
         desired[i] = colors.gradient(r.color, r.color2, rank[i], groupsize[i])
       else
         desired[i] = r.color
-      end
-    end
-  end
-
-  -- 3. folder propagation, carrying the "also colour items" flag with the
-  --    colour so items under a cascading folder inherit too
-  local cascade = {}
-  if policy ~= 'off' then
-    local stack = {}
-    for i = 1, #entries do
-      local e = entries[i]
-      if e.kind == 'track' then
-        local own_c = desired[i]
-        local own_x = (winner[i] and winner[i].cascade_items) == true
-        local top   = stack[#stack]
-        local inh_c = top and top.color or nil
-        local inh_x = top and top.cascade or false
-
-        local fc, fx
-        if policy == 'force' and inh_c ~= nil then
-          fc, fx = inh_c, inh_x
-        elseif own_c ~= nil then
-          fc, fx = own_c, own_x
-        else
-          fc, fx = inh_c, inh_x
-        end
-
-        desired[i], cascade[i] = fc, fx
-
-        local fd = e.folderdepth or 0
-        if fd >= 1 then
-          for _ = 1, fd do
-            stack[#stack + 1] = { color = fc, cascade = fx }
-          end
-        elseif fd < 0 then
-          for _ = 1, -fd do
-            if #stack == 0 then break end
-            stack[#stack] = nil
-          end
-        end
-      end
-    end
-  else
-    for i = 1, #entries do
-      if entries[i].kind == 'track' then
-        cascade[i] = (winner[i] and winner[i].cascade_items) == true
       end
     end
   end
@@ -347,7 +398,7 @@ function M.plan(entries, rules, options)
   -- loop needs `desired` to tell "the user recoloured this" from "we set it";
   -- the GUI preview needs all three so it can show what Apply will ACTUALLY do
   -- rather than re-deriving a guess.
-  return ops, stats, desired, winner, from_track, grad
+  return ops, stats, desired, winner, from_track, grad, direct
 end
 
 --- Per-rule match counts under true first-match-wins, plus how many objects
