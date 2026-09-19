@@ -14,6 +14,7 @@ local app      = require 'gui.app'
 local ruletbl  = require 'gui.rule_table'
 local preview  = require 'gui.preview'
 local theme    = require 'gui.theme'
+local aboutmod = require 'about'
 
 local M = {}
 
@@ -71,45 +72,89 @@ local function status_line(y)
   end
 end
 
--- One name, used by both OpenPopup and BeginPopupModal.
-local OPTIONS_POPUP = 'Options'
+-- The dialogs' window names.
+local OPTIONS_TITLE = 'Options'
+local ABOUT_TITLE   = 'About'
 
-local function options_popup(FS)
+-- The text size while the slider is being dragged. Every dimension in the
+-- window is a multiple of the font size, INCLUDING this slider, so applying the
+-- value live moved the slider out from under the cursor and the drag chased
+-- itself. The number under the handle follows the drag; the layout waits.
+local pending_font = nil
+
+-- The main window's geometry, remembered by M.draw. The dialog centres on it
+-- but is drawn after End(), where GetWindowPos has no window left to report.
+-- Seeded with the first-use size from MXM_AutoColor_GUI.lua.
+local main_x, main_y, main_w, main_h = 0, 0, 78 * 14, 44 * 14
+
+--- The Options dialog.
+---
+--- A borderless, fixed, always-on-top WINDOW that looks exactly like the popup
+--- it replaced -- and is one for a reason. See the note on the Begin call.
+function M.draw_options(FS)
   local st = app.st
+  if not st.options_open then return end
 
   -- Centre on the app window (not the screen) and dim what is behind it.
   -- Cond_Appearing so a window the user has since dragged stays put.
-  local wx, wy = ImGui.GetWindowPos(ctx)
-  local ww, wh = ImGui.GetWindowSize(ctx)
-  ImGui.SetNextWindowPos(ctx, wx + ww * 0.5, wy + wh * 0.5,
-                         ImGui.Cond_Appearing, 0.5, 0.5)
+  -- Cond_Always, not Cond_Appearing: the window is NoMove, so it simply tracks
+  -- the centre of the app window the way the popup did.
+  ImGui.SetNextWindowPos(ctx, main_x + main_w * 0.5, main_y + main_h * 0.5,
+                         ImGui.Cond_Always, 0.5, 0.5)
 
-  -- Fixed width, automatic height (0 on an axis means auto-fit).
-  ImGui.SetNextWindowSize(ctx, FS * 34, 0, ImGui.Cond_Appearing)
+  -- Fixed width, automatic height (0 on an axis means auto-fit). Wide enough
+  -- for the longest fixed line in here -- the Scope question -- with the four
+  -- checkboxes under it rather than beside it. The rules-file path is the one
+  -- thing with no bound on its length, so it wraps instead (see below).
+  ImGui.SetNextWindowSize(ctx, FS * 42, 0, ImGui.Cond_Always)
 
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding,
                      FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
 
-  -- A plain popup, not a modal. Two reasons:
-  --   * Its dim overlay could not be controlled. ImGui paints
-  --     Col_ModalWindowDimBg during Render(), long after any PushStyleColor
-  --     here has been popped, so it always used the style default -- which in
-  --     the dark style is (0.8, 0.8, 0.8, 0.35), i.e. WHITE. That is why the
-  --     window appeared to brighten. The overlay is drawn by hand instead
-  --     (see M.draw), which also means any colour is possible.
-  --   * Escape closes a popup on its own; the modal was swallowing it.
-  -- The name must be the SAME STRING OpenPopup was given: the popup is found
-  -- by hashing it.
-  local visible = ImGui.BeginPopup(ctx, OPTIONS_POPUP)
+  -- Not a MODAL: its dim overlay cannot be controlled. ImGui paints
+  -- Col_ModalWindowDimBg during Render(), long after any PushStyleColor here
+  -- has been popped, so it always uses the style default -- which in the dark
+  -- style is (0.8, 0.8, 0.8, 0.35), i.e. WHITE, and the window appeared to
+  -- BRIGHTEN. The dim is drawn by hand instead (theme.push_content_dim), which
+  -- also means any colour is possible. A modal was swallowing Escape too.
+  --
+  -- Not a POPUP either, though it was one for a long time and these flags are
+  -- chosen to look identical to it. ImGui owns a popup's visibility and closes
+  -- it on a click outside, on Escape, and on losing focus -- so the dialog
+  -- vanished across an alt-tab. Holding the state here and re-opening the popup
+  -- every frame fixed that but not the flicker it caused: on the first click
+  -- elsewhere in REAPER the popup is closed and re-opened, and it is not drawn
+  -- again for several frames. That gap is inside ImGui's reopen and there is no
+  -- reaching it from a script. An ordinary window is never closed behind our
+  -- back, so there is nothing to re-open and nothing to blink.
+  --
+  -- What the popup gave away free and this has to ask for:
+  --   * TopMost, or the dimmed main window could be raised ABOVE the dialog.
+  --   * theme.push_content_dim's BeginDisabled, or the faded rule table behind
+  --     would still be clickable.
+  --   * Escape, and dismissal by a click on the window behind -- both below.
+  local visible = ImGui.Begin(ctx, OPTIONS_TITLE, nil,
+                              ImGui.WindowFlags_NoTitleBar
+                              | ImGui.WindowFlags_NoResize
+                              | ImGui.WindowFlags_NoMove
+                              | ImGui.WindowFlags_NoCollapse
+                              | ImGui.WindowFlags_NoDocking
+                              | ImGui.WindowFlags_NoSavedSettings
+                              | ImGui.WindowFlags_TopMost)
 
   ImGui.PopStyleVar(ctx)      -- window style is read at Begin
 
-  if not visible then return end
+  if not visible then return end      -- End() only when Begin returned true
+
+  -- Taken before the body, so a click that lands on a widget still counts as
+  -- inside the dialog.
+  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows)
+
   local o = st.cfg.options
   local rv, v
 
   theme.section('Folders')
-  ImGui.SetNextItemWidth(ctx, FS * 26)
+  ImGui.SetNextItemWidth(ctx, FS * 34)
   if ImGui.BeginCombo(ctx, '##folders', FOLDER_LABEL[o.propagate_folders]) then
     for _, k in ipairs({ 'off', 'fill_unmatched', 'force' }) do
       if ImGui.Selectable(ctx, FOLDER_LABEL[k], o.propagate_folders == k) then
@@ -141,8 +186,10 @@ local function options_popup(FS)
       'Makes the rules the single source of truth for that kind.\n\n' ..
       'Careful: it also strips colours you set by hand.')
   end
-  for _, k in ipairs(rulesmod.KINDS) do
-    ImGui.SameLine(ctx)
+  -- On their own line, under the question: the four of them beside a sentence
+  -- that long overflowed the dialog.
+  for i, k in ipairs(rulesmod.KINDS) do
+    if i > 1 then ImGui.SameLine(ctx) end
     local rvc, vc = theme.checkbox(rulesmod.KIND_LABEL[k] .. '##cu' .. k,
                                    o.clear_unmatched[k])
     if rvc then app.snapshot(); o.clear_unmatched[k] = vc; app.mark_dirty() end
@@ -191,14 +238,31 @@ local function options_popup(FS)
 
   theme.section('Window', true)
   ImGui.SetNextItemWidth(ctx, FS * 10)
-  rv, v = ImGui.SliderInt(ctx, 'Text size', math.floor(o.font_size), 8, 32)
-  if rv then o.font_size = v; app.mark_dirty(true) end
+  rv, v = ImGui.SliderInt(ctx, 'Text size',
+                          math.floor(pending_font or o.font_size), 8, 20)
+  if rv then pending_font = v end
+  -- Committed on RELEASE, not on change: see pending_font above. This also
+  -- covers a ctrl-click typed value, which deactivates the same way.
+  if ImGui.IsItemDeactivatedAfterEdit(ctx) and pending_font then
+    o.font_size = pending_font
+    app.mark_dirty(true)
+  end
+  if ImGui.IsItemDeactivated(ctx) then pending_font = nil end
 
   theme.section('Rules file', true)
-  ImGui.TextColored(ctx, rgba(COL_DIM), config.path())
-  if theme.button('Replace with the starter rules...') then
+  -- WRAPPED, not TextColored: a path has no bound on its length, and the one
+  -- thing asked of this line is that it always shows the whole thing. Wrapping
+  -- costs a second line on a long path; truncation costs the part you needed.
+  -- TextWrapped has no colour argument, hence the push.
+  ImGui.PushStyleColor(ctx, ImGui.Col_Text, rgba(COL_DIM))
+  ImGui.TextWrapped(ctx, config.path())
+  ImGui.PopStyleColor(ctx)
+  -- Both replace the WHOLE rule set, so both are one confirm and one snapshot.
+  -- Equal explicit widths: two auto-sized buttons on one row come out ragged.
+  local rw = FS * 13
+  if theme.button('Example rules', rw) then
     local ans = reaper.ShowMessageBox(
-      'Replace your current rules with the built-in starter set?\n\n' ..
+      'Replace your current rules with the built-in example set?\n\n' ..
       'Your existing rules will be gone. This can be undone with the ' ..
       'Undo button while the window is open.',
       'AutoColor', 4)
@@ -206,7 +270,23 @@ local function options_popup(FS)
       app.snapshot()
       app.st.cfg.rules = config.starter().rules
       app.mark_dirty()
-      app.toast('Loaded the starter rules.')
+      app.toast('Loaded the example rules.')
+    end
+  end
+
+  ImGui.SameLine(ctx)
+  if theme.button('Remove Rules', rw) then
+    local ans = reaper.ShowMessageBox(
+      'Remove every rule, on all four tabs?\n\n' ..
+      'This can be undone with the Undo button while the window is open.',
+      'AutoColor', 4)
+    if ans == 6 then
+      app.snapshot()
+      app.st.cfg.rules = config.empty_rules()
+      -- the selection can only be pointing at a rule that no longer exists
+      app.st.sel_id = nil
+      app.mark_dirty()
+      app.toast('Removed every rule.')
     end
   end
 
@@ -215,9 +295,86 @@ local function options_popup(FS)
   ImGui.Spacing(ctx)
   local bw = FS * 8
   theme.center(bw)
-  if theme.button('Close', bw) then ImGui.CloseCurrentPopup(ctx) end
+  if theme.button('Close', bw) then st.options_open = false end
 
-  ImGui.EndPopup(ctx)
+  -- Escape. The popup used to do this for us.
+  if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then st.options_open = false end
+
+  -- A click on the AutoColor window behind dismisses it, as a click outside a
+  -- popup did. The focus test is what keeps a click somewhere else in REAPER
+  -- from counting: when the arrange takes the click, no ImGui window is
+  -- focused, and the dialog stays exactly where it is.
+  if ImGui.IsMouseClicked(ctx, 0) and not inside
+     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
+    st.options_open = false
+  end
+
+  ImGui.End(ctx)
+end
+
+-- The About dialog. Same shape as the Options one, and for the same reasons:
+-- borderless, fixed, TopMost, state held here rather than by ImGui.
+function M.draw_about(FS)
+  local st = app.st
+  if not st.about_open then return end
+
+  ImGui.SetNextWindowPos(ctx, main_x + main_w * 0.5, main_y + main_h * 0.5,
+                         ImGui.Cond_Always, 0.5, 0.5)
+  ImGui.SetNextWindowSize(ctx, FS * 32, 0, ImGui.Cond_Always)
+
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding,
+                     FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
+
+  local visible = ImGui.Begin(ctx, ABOUT_TITLE, nil,
+                              ImGui.WindowFlags_NoTitleBar
+                              | ImGui.WindowFlags_NoResize
+                              | ImGui.WindowFlags_NoMove
+                              | ImGui.WindowFlags_NoCollapse
+                              | ImGui.WindowFlags_NoDocking
+                              | ImGui.WindowFlags_NoSavedSettings
+                              | ImGui.WindowFlags_TopMost)
+
+  ImGui.PopStyleVar(ctx)
+
+  if not visible then return end
+
+  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows)
+
+  ImGui.PushFont(ctx, nil, FS * theme.SECTION_SCALE)
+  ImGui.Text(ctx, aboutmod.NAME)
+  ImGui.PopFont(ctx)
+  ImGui.SameLine(ctx)
+  ImGui.TextColored(ctx, rgba(COL_DIM), aboutmod.VERSION)
+
+  ImGui.Spacing(ctx)
+  ImGui.TextWrapped(ctx, aboutmod.TAGLINE)
+
+  theme.section('Links', true)
+  -- TextLinkOpenURL opens the browser itself, so this needs no SWS and no
+  -- shell-out of our own.
+  ImGui.TextLinkOpenURL(ctx, 'Source code on GitHub', aboutmod.URL_REPO)
+  ImGui.TextLinkOpenURL(ctx, 'Documentation', aboutmod.URL_DOCS)
+
+  theme.section('Author', true)
+  ImGui.Text(ctx, aboutmod.AUTHOR)
+
+  theme.section('Licence', true)
+  ImGui.TextWrapped(ctx, aboutmod.LICENCE .. '. ' .. aboutmod.COPYRIGHT .. '.')
+
+  ImGui.Spacing(ctx)
+  ImGui.Separator(ctx)
+  ImGui.Spacing(ctx)
+  local bw = FS * 8
+  theme.center(bw)
+  if theme.button('Close##about', bw) then st.about_open = false end
+
+  if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then st.about_open = false end
+  if ImGui.IsMouseClicked(ctx, 0) and not inside
+     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
+    st.about_open = false
+  end
+
+  ImGui.End(ctx)
 end
 
 local function clear_popup()
@@ -339,23 +496,36 @@ local function action_bar(FS)
     ImGui.TextColored(ctx, rgba(COL_DIM), 'saving...')
   end
 
-  -- Auto and Options live on the right-hand end of the bar.
+  -- Auto, Options and About live on the right-hand end of the bar.
   local wauto, wopts, gap = FS * 9, FS * 6.5, FS * 0.5
-  ImGui.SameLine(ctx, startx + availw - (wauto + gap + wopts))
+  local winfo = theme.icon_size()
+  ImGui.SameLine(ctx, startx + availw - (wauto + gap + wopts + gap + winfo))
   auto_button(FS, wauto)
 
   ImGui.SameLine(ctx, 0, gap)
-  -- Only opens it. The dialog itself is drawn at the end of M.draw, outside
-  -- the dimmed region, so it does not fade along with the window behind it.
-  if theme.button('Options', wopts) then ImGui.OpenPopup(ctx, OPTIONS_POPUP) end
+  -- Only raises the flag. The dialogs are top-level windows drawn from the
+  -- frame loop after this one has ended, so they sit outside the dim at full
+  -- opacity.
+  if theme.button('Options', wopts) then app.st.options_open = true end
+
+  ImGui.SameLine(ctx, 0, gap)
+  if theme.info_button('about') then app.st.about_open = true end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, 'About ' .. aboutmod.NAME .. ' -- version, links, licence.')
+  end
 end
 
 ------------------------------------------------------------------- the body
 function M.draw(FS)
   local st = app.st
 
-  -- Everything below fades while the Options dialog is open.
-  local dimmed = ImGui.IsPopupOpen(ctx, OPTIONS_POPUP)
+  -- Taken while we are still inside this window's Begin/End, for the Options
+  -- dialog to centre on afterwards -- by then GetWindowPos has nothing to say.
+  main_x, main_y = ImGui.GetWindowPos(ctx)
+  main_w, main_h = ImGui.GetWindowSize(ctx)
+
+  -- Everything below fades, and stops taking clicks, while either dialog is up.
+  local dimmed = st.options_open or st.about_open
   if dimmed then theme.push_content_dim() end
 
   banners(FS)
@@ -458,9 +628,6 @@ function M.draw(FS)
   status_line(statusy)
 
   if dimmed then theme.pop_content_dim() end
-
-  -- Drawn last and at full opacity, after the dim has been lifted.
-  options_popup(FS)
 end
 
 return M

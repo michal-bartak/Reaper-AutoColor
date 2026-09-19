@@ -103,6 +103,19 @@ actually see", not "what is set". Zero means no colour, not black.
   informational — multiplying by it double-scales the UI.
 * There is no style preset API (`StyleColorsDark/Light`) and no `SetStyleColor`;
   only `GetStyleColor` and push/pop. ReaImGui does not follow REAPER's theme.
+* **Popup visibility is ImGui's, not yours, and cannot be pinned.** The doc says
+  so outright (line 1496: "Their visibility state is held internally instead of
+  being held by the programmer … popups may be closed at any time") and names a
+  click outside and Escape (1494, 1530); losing focus does it too, which the doc
+  does not mention. The complete `PopupFlags_*` (1539-1562), `WindowFlags_*`
+  (2779-2838), `FocusedFlags_*` (2914-2927), `ConfigFlags_*` (335-347) and
+  `ConfigVar_*` (377-444) sets contain no switch for any of it. Hold the flag
+  yourself and re-`OpenPopup` from it each frame; `PopupFlags_NoReopen` (1560)
+  makes that free of repositioning. **But it is not enough** — ImGui does not
+  redraw a re-opened popup for several frames, which is visible as a blink, and
+  that gap is not reachable from a script. A dialog that must not vanish has to
+  be a `Begin` window with `WindowFlags_TopMost`. See DECISIONS, "Bugs worth
+  remembering".
 
 The full API reference ships locally with the extension:
 `<resource path>/Data/reaper_imgui_doc.html`.

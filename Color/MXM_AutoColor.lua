@@ -1,6 +1,6 @@
 --[[
 Description: AutoColor
-Version: 1.0.0
+Version: 0.9.0
 Author: Michal MaXyM Bartak
 Links:
   GitHub https://github.com/michal-bartak/Reaper-AutoColor

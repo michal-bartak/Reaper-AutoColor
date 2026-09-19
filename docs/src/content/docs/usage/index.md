@@ -109,6 +109,7 @@ Nothing you type here is saved, and nothing it does reaches the project.
 | **Clear…** | Three clearing scopes — see [Clearing colours](/Reaper-AutoColor/usage/clearing/). |
 | **Auto: off / on / paused** | The state of the background loop, and a Pause button once it runs. See [Auto-apply](/Reaper-AutoColor/usage/auto-apply/). |
 | **Options** | Folders, scope, the background loop's timing, text size, rules file. See [Options](/Reaper-AutoColor/configuration/). |
+| **ⓘ** | About — the version you are running, links to the source and these docs, the author, and the licence. |
 
 The foot of the window keeps one line for status messages — what an Apply coloured, why a clear did
 nothing, whether a save failed. It is always there, whether or not it has anything to say, so the

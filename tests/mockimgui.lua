@@ -100,6 +100,13 @@ function M.new(opts)
         return v
       end
       return function(...)
+        -- Every ReaImGui function takes a context (or a draw list) as its first
+        -- argument, and the real one raises "expected 1 arguments minimum" when
+        -- it does not get one. The mock used to accept anything, so a dropped
+        -- ctx sailed through every test and only failed inside REAPER.
+        if select('#', ...) == 0 then
+          error("'" .. name .. "': expected 1 arguments minimum", 2)
+        end
         calls[#calls + 1] = name
         seen[name] = true
         for i = 1, select('#', ...) do

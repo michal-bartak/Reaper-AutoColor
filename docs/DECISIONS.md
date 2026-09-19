@@ -401,6 +401,12 @@ Things that cannot be done, each discovered the hard way:
   an explicit `SetNextItemWidth` to match square icon buttons.
 * `DragDropFlags_SourceNoPreviewTooltip` makes anything drawn inside the source
   block land **inline in the window** instead of following the cursor.
+* **A popup cannot be told to stay open.** ImGui owns the visibility state and
+  closes it on a click outside, on Escape, and on losing focus; no
+  `PopupFlags_*`, `WindowFlags_*`, `ConfigFlags_*` or `ConfigVar_*` value in
+  0.10 changes that — all four sets were read end to end. The way out is not to
+  stop using a popup but to stop trusting its state: keep the flag yourself and
+  re-`OpenPopup` from it every frame.
 
 DPI needs no work: ReaImGui reports logical units and rasterises at device
 resolution. Every dimension is a multiple of `GetFontSize`. Multiplying by
@@ -443,6 +449,46 @@ Each of these was silent, and each now has a test named after its failure mode.
 10. **The cache grew for the life of the session.** Nothing dropped entries for
    deleted objects, and the position-based marker key added one per region
    moved. The cold sweep is the one pass that sees every object, so it prunes.
+12. **The Options dialog closed itself on alt-tab, then blinked.** It was an
+   ImGui popup. ImGui owns a popup's visibility — the doc says so outright, and
+   names a click outside and Escape; losing focus does it too, which is what
+   lost the dialog across an alt-tab. Nothing switches that off: the complete
+   `PopupFlags_*`, `WindowFlags_*`, `FocusedFlags_*`, `ConfigFlags_*` and
+   `ConfigVar_*` sets were read for a lever and there is none.
+
+   Holding the state in `app.st.options_open` and re-`OpenPopup`-ing from it
+   every frame (with `PopupFlags_NoReopen`) fixed the disappearance but not the
+   **flicker it exposed**: on the first click elsewhere in REAPER the popup is
+   closed and re-opened, and is not drawn again for several frames. That gap is
+   inside ImGui's own reopen and a script cannot reach it. Two attempts to
+   explain it by reasoning — a one-frame gap, then the `IsPopupOpen` gate — were
+   both wrong, which is the lesson: this file's own rule is to measure, and the
+   answer in the end was to delete the mechanism rather than time it.
+
+   It is a `Begin` window now, with `NoTitleBar | NoResize | NoMove |
+   NoCollapse | NoDocking | NoSavedSettings | TopMost`, which looks exactly like
+   the popup did. Nothing closes a window behind your back, so there is nothing
+   to re-open and nothing to blink. What the popup gave away free now has to be
+   asked for, and each has a test:
+
+   * **`TopMost`.** An earlier window version left it out, and the *dimmed* main
+     window could be raised above the dialog, which reads as broken. This was
+     the reason the window approach was rejected the first time round.
+   * **`BeginDisabled` in `theme.push_content_dim`**, or the faded rule table
+     behind stays clickable. `StyleVar_DisabledAlpha` is pinned to 1.0 there, or
+     it multiplies into `StyleVar_Alpha` and the content fades to 0.18 instead
+     of `DIM_CONTENT`.
+   * **Escape**, by hand.
+   * **Dismissal by a click on the window behind**, by hand: a left click, not
+     over the dialog, while some ImGui window has focus. That last test is what
+     keeps a click in REAPER's arrange from counting — it takes the click, no
+     ImGui window is focused, and the dialog stays put.
+
+   The dialog is drawn from the frame loop *after* `ImGui.End`, so it sits
+   outside the dim at full opacity. That means `GetWindowPos` has no window left
+   to report, so `M.draw` memoizes the main window's geometry for it to centre
+   on.
+
 11. **A rule edit repainted the project on the next mouse click.** "Editing
    rules does not repaint the project" was true only until you clicked
    something: selection is project state, so a click on empty space moves the

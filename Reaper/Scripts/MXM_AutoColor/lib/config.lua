@@ -53,7 +53,7 @@ local OPTION_SPEC = {
   -- when nothing cheap suggests one is needed. 0 sweeps on every project
   -- change, which is what it did before the gate existed.
   cold_interval          = { default = 5,    kind = 'number', min = 0,    max = 60 },
-  font_size              = { default = 14,   kind = 'number', min = 8,    max = 32 },
+  font_size              = { default = 14,   kind = 'number', min = 8,    max = 20 },
 }
 
 --- Which kinds have their unmatched objects reset to the default colour.

@@ -624,6 +624,8 @@ do -- option coercion
   check(c.options.propagate_folders == 'fill_unmatched', 'bad enum falls back')
   check(c.options.tick_interval == 2.0, 'tick interval clamps to max')
   check(c.options.font_size == 8, 'font size clamps to min')
+  check(CF.normalize{ options = { font_size = 99 } }.options.font_size == 20,
+        'and to max, so a config written before the cap is brought down')
   check(c.options.clear_unmatched.track == false, 'non-boolean coerces to false per kind')
   check(type(c.options.clear_unmatched) == 'table', 'clear_unmatched is a per-kind table')
 end
@@ -762,6 +764,45 @@ do
   check(back and #back.rules.track == #cfg2.rules.track, 'the cleaned copy keeps every rule')
   check(back and back.rules.track[1].pattern == cfg2.rules.track[1].pattern,
         'patterns survive cleaning')
+end
+
+--=================================================================== about
+-- The version exists twice: ReaPack reads it from the header of
+-- Color/MXM_AutoColor.lua, which never ships to Scripts/, and lib/about.lua
+-- carries the copy the About dialog shows. Nothing stops them drifting except
+-- this.
+do
+  local AB = require 'about'
+  check(AB.VERSION:match('^%d+%.%d+%.%d+$') ~= nil,
+        'the shipped version is three numbers', tostring(AB.VERSION))
+  for _, k in ipairs({ 'NAME', 'AUTHOR', 'LICENCE', 'COPYRIGHT', 'TAGLINE',
+                       'URL_REPO', 'URL_DOCS' }) do
+    check(type(AB[k]) == 'string' and AB[k] ~= '', 'about carries ' .. k)
+  end
+  check(AB.URL_REPO:match('^https://') ~= nil, 'the repo link is https')
+  check(AB.URL_DOCS:match('^https://') ~= nil, 'and so is the docs link')
+
+  -- Only reachable outside REAPER: the manifest is not installed beside the
+  -- scripts, so there is nothing to compare against in there.
+  if not IN_REAPER then
+    -- run.sh runs this with the cwd at the script directory, three levels under
+    -- the repo root. Both spellings are tried so running it from the root works
+    -- too; if neither is there the check simply does not run.
+    local f
+    for _, rel in ipairs({ '../../../Color/MXM_AutoColor.lua',
+                           'Color/MXM_AutoColor.lua' }) do
+      f = io.open(rel)
+      if f then break end
+    end
+    if f then
+      local manifest = f:read('a'); f:close()
+      local declared = manifest:match('\nVersion:%s*([%d%.]+)')
+      check(declared ~= nil, 'the ReaPack manifest declares a version')
+      check(declared == AB.VERSION,
+            'the shipped version matches the ReaPack manifest',
+            tostring(declared) .. ' vs ' .. tostring(AB.VERSION))
+    end
+  end
 end
 
 --=================================================================== apply

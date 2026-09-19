@@ -92,6 +92,19 @@ local function frame()
     ImGui.End(ctx)            -- ONLY when Begin returned true
   end
 
+  -- The dialogs are top-level windows of their own, so they are drawn AFTER the
+  -- main window has ended -- outside the dim, at full opacity, and still inside
+  -- the theme/font push so they are styled and sized like everything else.
+  for _, d in ipairs({ { 'options', window.draw_options, 'options_open' },
+                       { 'about',   window.draw_about,   'about_open'   } }) do
+    local okd, derr = pcall(d[2], FS)
+    if not okd then
+      reaper.ShowConsoleMsg('AutoColor: ' .. d[1] .. ' dialog error: ' ..
+                            tostring(derr) .. '\n')
+      app.st[d[3]] = false      -- or it throws again on every frame
+    end
+  end
+
   theme.pop()                 -- always, and before PopFont
   ImGui.PopFont(ctx)          -- always, Begin or not
 

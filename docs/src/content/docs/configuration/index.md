@@ -56,14 +56,23 @@ interval exists.
 
 ## Window
 
-**Text size** — 8 to 32. Every dimension in the window is a multiple of the font size, so this
+**Text size** — 8 to 20. Every dimension in the window is a multiple of the font size, so this
 scales the whole layout rather than just the labels.
+
+The dialog stays **open** when you switch to another application and back, or click elsewhere in
+REAPER. Close it with its **Close** button, `Escape`, or a click on the AutoColor window behind it.
 
 ## Rules file
 
-Shows the path to [`config.json`](/Reaper-AutoColor/configuration/rules-file/), and offers **Replace with
-the starter rules…** — the built-in starter set, as written on first run. It asks for confirmation,
-and the **Undo** button takes it back while the window is open.
+Shows the path to [`config.json`](/Reaper-AutoColor/configuration/rules-file/), and two buttons that
+replace the **whole** rule set — every tab, not just the one you are looking at:
+
+| Button | What it does |
+|---|---|
+| **Example rules** | The built-in set, as written on first run. |
+| **Remove Rules** | Empties every tab. |
+
+Both ask for confirmation, and the **Undo** button takes either one back while the window is open.
 
 ## Where to go next
 

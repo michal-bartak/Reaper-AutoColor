@@ -38,6 +38,8 @@ local st = {
   preview_dirty = true, preview_at = 0,
 
   sel_id = nil,
+  options_open = false,
+  about_open = false,
   active_kind = 'track',
   filter = '',
   undo = {},

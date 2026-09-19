@@ -93,6 +93,7 @@ M.GLYPH_NUDGE_Y   = -0.02  -- x the text height; lifts a glyph off the line box.
                            -- the size changes.
 
 M.MODAL_PAD       = 1.20   -- x font size; padding inside a modal dialog
+M.INFO_SCALE      = 1.25   -- x font size; the circled "i" glyph, which is small
 M.DIM_CONTENT     = 0.30   -- 0..1; opacity of the window's content while a
                            -- dialog is open. Fades everything toward the dark
                            -- background, so bright elements lose the most --
@@ -382,12 +383,22 @@ end
 --- StyleVar_Alpha is global and consulted as each widget draws, so it reaches
 --- inside children -- and because it fades toward the background rather than
 --- layering a veil, bright elements dim the most.
+---
+--- It also BLOCKS input. The Options dialog is an ordinary window rather than a
+--- popup (see window.lua for why), and a window does not block what is behind
+--- it -- without this the faded rule table would still be clickable.
+--- DisabledAlpha is pinned to 1.0 because BeginDisabled MULTIPLIES it into
+--- StyleVar_Alpha: left at its 0.6 default the content would fade to 0.18
+--- rather than the DIM_CONTENT that was chosen.
 function M.push_content_dim()
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, M.DIM_CONTENT)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_DisabledAlpha, 1.0)
+  ImGui.BeginDisabled(ctx, true)
 end
 
 function M.pop_content_dim()
-  ImGui.PopStyleVar(ctx)
+  ImGui.EndDisabled(ctx)
+  ImGui.PopStyleVar(ctx, 2)
 end
 
 --- Border and sizing flags for a rule table, per the tweakables above.
@@ -472,6 +483,23 @@ end
 
 function M.icon_size()
   return ImGui.GetFrameHeight(ctx)
+end
+
+--- The circled "i" that opens About: U+24D8, from the font.
+---
+--- Drawn by hand at first, as a circle plus a dot and a stem, and it looked it.
+--- ReaImGui 0.10 has no glyph-range list to opt into -- CreateFont takes a
+--- family and flags, nothing else -- because glyphs are rasterised from the
+--- system font on demand. So a codepoint outside ASCII costs nothing and needs
+--- no icon font. Nudged up a size because the glyph's ink is small relative to
+--- its advance width, so at text size it reads as a speck.
+--- @return true when clicked
+function M.info_button(id)
+  local sz = ImGui.GetFrameHeight(ctx)
+  ImGui.PushFont(ctx, nil, ImGui.GetFontSize(ctx) * M.INFO_SCALE)
+  local clicked = M.button('\u{24D8}##' .. id, sz, sz)
+  ImGui.PopFont(ctx)
+  return clicked
 end
 
 --- A colour swatch the same square size as icon_button(). ColorEdit3 with

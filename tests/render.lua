@@ -535,23 +535,57 @@ do
   check(lines[1] and lines[1].th >= 1, 'with a sane thickness')
 end
 
-------------------------------------------------- the options dialog is modal
-do
-  local pos
-  local ImGui, rec = mockimgui.new{ scripted = {
-    Button = function(_, label) return label == 'Options' end,   -- click Options
+------------------------------------------ the options dialog, and what shuts it
+-- It is a borderless, fixed, TopMost window that looks exactly like the popup it
+-- replaced. It is not a popup because ImGui owns a popup's visibility and closes
+-- it on focus loss -- which lost the dialog on alt-tab, and whose re-open was
+-- visible as a blink. Nothing closes a window behind our back, so nothing
+-- blinks; the price is that Escape, dismissal-by-click and input blocking all
+-- have to be asked for.
+local function optdialog(scripted, open)
+  local ImGui, rec = mockimgui.new{ scripted = scripted or {} }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  app.st.options_open = open and true or false
+  P.advance(1); app.recompute_preview()
+  theme.push(14)
+  local okmain = pcall(window.draw, 14)
+  local ok, err = pcall(window.draw_options, 14)
+  theme.pop()
+  local still = app.st.options_open
+  app.st.options_open = false
+  return ok and okmain, err, rec, still, ImGui
+end
+
+do -- the button opens it; it is drawn as a window, centred, and never a popup
+  local pos, flags
+  local ok, err, rec, _, ImGui = optdialog({
+    -- theme.button draws '##'..label, so the id is what the mock is asked for
+    Button = function(_, id) return id == '##Options' end,
     SetNextWindowPos = function(_, x, y, cond, px, py)
       pos = { x = x, y = y, cond = cond, px = px, py = py }
     end,
     GetWindowPos  = function() return 100, 80 end,
     GetWindowSize = function() return 900, 640 end,
-  } }
-  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
-  P.advance(1); app.recompute_preview()
-  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+    Begin = function(_, name, _, f)
+      if name == 'Options' then flags = f end
+      return true, true
+    end,
+  }, true)
 
-  check(rec.seen.BeginPopup, 'the options dialog is drawn')
-  check(rec.seen.OpenPopup, 'and is opened by the button')
+  check(ok, 'the dialog draws without error', tostring(err))
+  check(flags ~= nil, 'it is begun as an ordinary window')
+  check(rec.labels['Options'], 'named Options')
+  check(not rec.seen.BeginPopupModal, 'and never as a modal')
+
+  -- The mock hands out a distinct bit per flag name, so the OR can be taken
+  -- apart again and each one checked for.
+  if flags then
+    for _, f in ipairs({ 'NoTitleBar', 'NoResize', 'NoMove', 'NoCollapse',
+                         'NoSavedSettings', 'TopMost' }) do
+      check(flags & ImGui['WindowFlags_' .. f] ~= 0, 'with WindowFlags_' .. f)
+    end
+  end
+
   check(pos ~= nil, 'its position is set explicitly')
   if pos then
     -- centre of a 900x640 window at (100,80), with a centre pivot
@@ -559,20 +593,268 @@ do
           'centred on the app window', string.format('%g,%g', pos.x, pos.y))
     check(pos.px == 0.5 and pos.py == 0.5, 'using a centre pivot')
   end
-  check(rec.labels['Options'], 'the popup name is used verbatim')
 end
 
-do -- the Folders section, with the popup actually OPEN
-  -- BeginPopup returns false in the mock by default, so the dialog body had
-  -- never been drawn here at all -- only the call that opens it was checked.
+do -- nothing shuts it on its own -- that is the whole point
+  local _, _, _, still = optdialog({}, true)
+  check(still == true, 'a plain frame leaves it open')
+
+  local _, _, _, unfocused = optdialog({
+    IsWindowFocused = function() return false end,   -- focus left REAPER
+    IsMouseClicked  = function() return true end,
+  }, true)
+  check(unfocused == true, 'and so does a click while no ImGui window has focus')
+end
+
+do -- Escape, Close, and a click on the window behind all shut it
+  local _, _, _, esc = optdialog({ IsKeyPressed = function() return true end }, true)
+  check(esc == false, 'Escape closes it')
+
+  local _, _, _, closed = optdialog({
+    Button = function(_, id) return id == '##Close' end,
+  }, true)
+  check(closed == false, 'the Close button closes it')
+
+  local _, _, _, behind = optdialog({
+    IsMouseClicked  = function() return true end,
+    IsWindowHovered = function() return false end,   -- not over the dialog
+    IsWindowFocused = function() return true end,    -- but ImGui has the click
+  }, true)
+  check(behind == false, 'and a click on the AutoColor window behind dismisses it')
+
+  local _, _, _, onit = optdialog({
+    IsMouseClicked  = function() return true end,
+    IsWindowHovered = function() return true end,    -- the click is ON the dialog
+    IsWindowFocused = function() return true end,
+  }, true)
+  check(onit == true, 'but a click inside the dialog does not')
+end
+
+do -- the window behind is dimmed AND blocked while it is open
+  local events = {}
+  local ImGui
+  ImGui = mockimgui.new{ scripted = {
+    PushStyleVar  = function(_, idx, a)
+      if idx == ImGui.StyleVar_Alpha then events[#events + 1] = 'dim:' .. a end
+    end,
+    BeginDisabled = function() events[#events + 1] = 'block' end,
+    EndDisabled   = function() events[#events + 1] = 'unblock' end,
+  } }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+
+  app.st.options_open = true
+  P.advance(1); app.recompute_preview()
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+  -- BeginDisabled is used elsewhere too (the Undo button), so the two are tied
+  -- together by ORDER: the block must be the event right after the dim.
+  local dim_at
+  for i, e in ipairs(events) do
+    if e:find('^dim:') then dim_at = i break end
+  end
+  check(dim_at ~= nil, 'the content is dimmed while the dialog is open')
+  check(dim_at and events[dim_at + 1] == 'block',
+        'and cannot be clicked through -- a window blocks nothing by itself')
+
+  events = {}
+  app.st.options_open = false
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+  local any_dim = false
+  for _, e in ipairs(events) do if e:find('^dim:') then any_dim = true end end
+  check(not any_dim, 'and neither happens while it is closed')
+end
+
+do -- the dialog body: every control it is supposed to offer
   -- Hovering everything at once is not a real frame, but it is the only way to
   -- make the tooltip branches execute at all.
-  local ok, err, rec = frame{ BeginPopup     = function() return true end,
-                              IsItemHovered  = function() return true end }
+  local ok, err, rec = optdialog({ IsItemHovered = function() return true end }, true)
   check(ok, 'the options body draws without error', tostring(err))
   check(rec.labels['Subfolder splits the parent\'s colour range'],
         'the Folders section offers the subfolder split checkbox')
+  check(rec.labels['Example rules'], 'the rules file section offers Example rules')
+  check(rec.labels['Remove Rules'], 'and Remove Rules')
   check(rec.seen.SetTooltip, 'and the dialog explains itself')
+end
+
+do -- the text size is applied on RELEASE, not while the slider is dragged
+  -- Every dimension in the window is a multiple of the font size, the slider
+  -- included, so applying it live moved the slider out from under the cursor
+  -- and the drag chased itself.
+  local drag = { SliderInt = function(_, label, v)
+    if label == 'Text size' then return true, 18 end
+    return false, v
+  end }
+
+  app.st.cfg.options.font_size = 14
+  optdialog(drag, true)
+  check(app.st.cfg.options.font_size == 14,
+        'dragging does not resize the window under the cursor',
+        tostring(app.st.cfg.options.font_size))
+
+  local release = {}
+  for k, v in pairs(drag) do release[k] = v end
+  release.IsItemDeactivatedAfterEdit = function() return true end
+  optdialog(release, true)
+  check(app.st.cfg.options.font_size == 18, 'releasing applies it',
+        tostring(app.st.cfg.options.font_size))
+  app.st.cfg.options.font_size = 14
+end
+
+--------------------------------------------------------------------- About
+do -- the About dialog offers everything it is supposed to
+  local aboutmod = dofile(NC .. '/lib/about.lua')
+  local links = {}
+  local ImGui, rec = mockimgui.new{ scripted = {
+    TextLinkOpenURL = function(_, label, url) links[url] = label; return false end,
+  } }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  app.st.about_open = true
+  P.advance(1); app.recompute_preview()
+  theme.push(14)
+  local ok, err = pcall(window.draw_about, 14)
+  theme.pop()
+  app.st.about_open = false
+
+  check(ok, 'the About dialog draws without error', tostring(err))
+  check(rec.labels[aboutmod.VERSION], 'it names the version', aboutmod.VERSION)
+  check(rec.labels[aboutmod.AUTHOR], 'and the author')
+  check(links[aboutmod.URL_REPO] ~= nil, 'it links to the source')
+  check(links[aboutmod.URL_DOCS] ~= nil, 'and to the documentation')
+  local licenced = false
+  for t in pairs(rec.labels) do
+    if type(t) == 'string' and t:find(aboutmod.LICENCE, 1, true)
+       and t:find('Copyright', 1, true) then licenced = true end
+  end
+  check(licenced, 'and states the licence and copyright')
+end
+
+do -- and it is dismissed the same way the Options dialog is
+  local function shut(scripted)
+    local ImGui = mockimgui.new{ scripted = scripted or {} }
+    window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+    app.st.about_open = true
+    theme.push(14); assert(pcall(window.draw_about, 14)); theme.pop()
+    local still = app.st.about_open
+    app.st.about_open = false
+    return still
+  end
+
+  check(shut{} == true, 'a plain frame leaves it open')
+  check(shut{ IsKeyPressed = function() return true end } == false, 'Escape closes it')
+  check(shut{ Button = function(_, id) return id == '##Close##about' end } == false,
+        'the Close button closes it')
+  check(shut{ IsMouseClicked  = function() return true end,
+              IsWindowHovered = function() return false end,
+              IsWindowFocused = function() return true end } == false,
+        'and a click on the window behind dismisses it')
+  check(shut{ IsMouseClicked  = function() return true end,
+              IsWindowHovered = function() return false end,
+              IsWindowFocused = function() return false end } == true,
+        'but a click while no ImGui window has focus does not')
+end
+
+do -- the info button raises the flag, and the dim covers About too
+  -- theme.button prefixes '##', and info_button puts the glyph before the id,
+  -- so match the suffix rather than the whole string.
+  local ImGui = mockimgui.new{ scripted = {
+    Button = function(_, id) return id:find('##about', 1, true) ~= nil end,
+  } }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  app.st.about_open = false
+  P.advance(1); app.recompute_preview()
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+  check(app.st.about_open == true, 'the circled-i button opens About')
+  app.st.about_open = false
+
+  -- It is the font's U+24D8, not a circle drawn by hand. ReaImGui rasterises
+  -- glyphs on demand, so there is no range to register and nothing to fall back
+  -- to if this regresses -- it would just silently look worse again.
+  local tsrc = pathlib_read('lib/gui/theme.lua')
+  check(tsrc:find('24D8', 1, true) ~= nil, 'the info icon is a font glyph')
+  check(tsrc:find('DrawList_AddCircle', 1, true) == nil,
+        'and nothing draws it by hand any more')
+
+  local events = {}
+  local I2
+  I2 = mockimgui.new{ scripted = {
+    PushStyleVar = function(_, idx, a)
+      if idx == I2.StyleVar_Alpha then events[#events + 1] = 'dim:' .. a end
+    end,
+  } }
+  window.init(I2, { 'ctx' }); theme.init(I2, { 'ctx' })
+  app.st.about_open = true
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+  app.st.about_open = false
+  local dim = false
+  for _, e in ipairs(events) do if e:find('^dim:') then dim = true end end
+  check(dim, 'and the window behind is dimmed while it is open')
+end
+
+do -- the rules-file path is shown WHOLE, however long it is
+  -- A path has no bound on its length, and the one thing asked of that line is
+  -- that you can read all of it. Wrapping is what guarantees that; plain Text
+  -- would run off the edge of a fixed-width dialog.
+  local wrapped, plain = nil, {}
+  optdialog({
+    TextWrapped = function(_, t) wrapped = t end,
+    TextColored = function(_, _, t) plain[#plain + 1] = tostring(t) end,
+  }, true)
+
+  check(wrapped == config.path(), 'the path is drawn wrapped', tostring(wrapped))
+  local truncatable = false
+  for _, t in ipairs(plain) do if t == config.path() then truncatable = true end end
+  check(not truncatable, 'and not as a plain line that could run off the edge')
+end
+
+do -- the Scope checkboxes sit under the question, not beside it
+  -- All four on the same line as a sentence that long overflowed the dialog.
+  local events = {}
+  optdialog({
+    Text     = function(_, t) events[#events + 1] = 'text:' .. tostring(t) end,
+    SameLine = function() events[#events + 1] = 'sameline' end,
+    Checkbox = function(_, label, v)
+      events[#events + 1] = 'cb:' .. tostring(label); return false, v
+    end,
+  }, true)
+
+  local qi, ci
+  for i, e in ipairs(events) do
+    if not qi and e:find('Reset to the default colour', 1, true) then qi = i end
+    if qi and not ci and e:find('^cb:.*##cu') then ci = i end
+  end
+  check(qi ~= nil, 'the scope question is drawn')
+  check(ci ~= nil, 'and its per-kind checkboxes')
+  if qi and ci then
+    local beside = false
+    for i = qi + 1, ci - 1 do if events[i] == 'sameline' then beside = true end end
+    check(not beside, 'the first checkbox starts a new line under the question')
+
+    -- the other three still share that line
+    local rest = 0
+    for i = ci + 1, #events do
+      if events[i] == 'sameline' then rest = rest + 1 end
+      if events[i]:find('^text:') then break end
+    end
+    check(rest >= 3, 'and the remaining three sit beside it', rest .. ' SameLine')
+  end
+end
+
+do -- Remove Rules empties every kind, behind a confirmation
+  local real = reaper.ShowMessageBox
+  local asked
+  reaper.ShowMessageBox = function(msg, _, kind) asked = { msg = msg, kind = kind }; return 6 end
+
+  app.st.cfg.rules = config.starter().rules
+  local before = #app.st.cfg.rules.track
+  optdialog({ Button = function(_, id) return id == '##Remove Rules' end }, true)
+  reaper.ShowMessageBox = real
+
+  check(before > 0, 'the fixture had rules to remove')
+  check(asked and asked.kind == 4, 'it asks a yes/no question first')
+  local left = 0
+  for _, k in ipairs(rules.KINDS) do left = left + #(app.st.cfg.rules[k] or {}) end
+  check(left == 0, 'and every kind is emptied', left .. ' left')
+  check(app.st.sel_id == nil, 'with the now-dangling selection cleared')
+  check(app.can_undo(), 'and a snapshot taken, so Undo puts them back')
 end
 
 do -- the split checkbox is wired to the option, and repaints the preview
@@ -603,63 +885,51 @@ do -- dimming is done with the GLOBAL alpha, not a veil
   check(src:find('StyleVar_WindowPadding', 1, true) ~= nil,
         'and the dialog gets its own padding')
 
-  -- OpenPopup and BeginPopup find each other by hashing the name, so the two
-  -- strings must be identical. A mismatch opens a popup nothing draws -- which
-  -- is exactly what happened when one said 'options' and the other
-  -- 'Options###options'.
-  check(src:find('OPTIONS_POPUP', 1, true) ~= nil,
-        'both calls use one shared name constant')
-  local uses = select(2, src:gsub('OPTIONS_POPUP', ''))
-  check(uses >= 3, 'the constant is defined and used by both calls', uses .. ' uses')
-  check(src:find('BeginPopup(ctx, OPTIONS_POPUP)', 1, true) ~= nil,
-        'and no optional nil is passed mid-arguments')
+  -- The dialog must not drift back to being a popup. ImGui owns a popup's
+  -- visibility and closes it on focus loss; re-opening it from our own flag
+  -- fixed the alt-tab disappearance but left a visible blink on the first click
+  -- elsewhere in REAPER, inside ImGui's own reopen where a script cannot reach.
+  check(src:find('BeginPopup(ctx, OPTIONS_', 1, true) == nil,
+        'the options dialog is not a popup')
+  check(src:find('PopupFlags_NoReopen', 1, true) == nil,
+        'and does not try to re-open one every frame')
+  check(src:find('Begin(ctx, OPTIONS_TITLE', 1, true) ~= nil,
+        'it is begun as an ordinary window, by its shared name constant')
+  check(src:find('WindowFlags_TopMost', 1, true) ~= nil,
+        'always on top, or the dimmed window behind could cover it')
+
+  -- Everything a popup used to give away free has to be asked for.
+  check(src:find('Key_Escape', 1, true) ~= nil, 'Escape is handled by hand')
+  check(src:find('IsMouseClicked', 1, true) ~= nil,
+        'as is dismissal by a click on the window behind')
+  local tsrc = pathlib_read('lib/gui/theme.lua')
+  check(tsrc:find('BeginDisabled', 1, true) ~= nil,
+        'and the dim blocks input, which a window does not')
 
   check(theme.DIM_CONTENT > 0 and theme.DIM_CONTENT < 1,
         'the dim level is a sane fraction', tostring(theme.DIM_CONTENT))
 end
 
-do -- the dim is applied only while the dialog is open, and lifted before the
-   -- dialog itself is drawn, or it would fade too
-  local function trace(popup_open)
-    local events = {}
-    local ImGui
-    ImGui = mockimgui.new{ scripted = {
-      IsPopupOpen  = function() return popup_open end,
-      PushStyleVar = function(_, idx, a)
-        if idx == ImGui.StyleVar_Alpha then events[#events + 1] = 'dim:' .. a end
-      end,
-      PopStyleVar  = function() events[#events + 1] = 'undim' end,
-      BeginPopup   = function() events[#events + 1] = 'dialog'; return false end,
-    } }
-    window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
-    P.advance(1); app.recompute_preview()
-    assert(pcall(window.draw, 14))
-    return events, ImGui
-  end
+do -- window.draw must not draw the dialog itself
+   -- It is a top-level window, so it is drawn from the frame loop AFTER the
+   -- main window has ended. Drawing it inside would nest it in the dim it is
+   -- supposed to sit above -- and a window cannot be begun inside another.
+  local drawn = false
+  local ImGui = mockimgui.new{ scripted = {
+    Begin = function(_, name)
+      if name == 'Options' then drawn = true end
+      return true, true
+    end,
+  } }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  app.st.options_open = true
+  P.advance(1); app.recompute_preview()
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+  check(not drawn, 'window.draw leaves the dialog to the frame loop')
 
-  local open = trace(true)
-  local dim_at, dialog_at, undim_at
-  for i, e in ipairs(open) do
-    if e:find('^dim:') and not dim_at then dim_at = i end
-    if e == 'dialog' then dialog_at = i end
-  end
-  -- the undim that matters is the last one before the dialog
-  for i = (dialog_at or #open), 1, -1 do
-    if open[i] == 'undim' then undim_at = i break end
-  end
-
-  check(dim_at ~= nil, 'the content is dimmed while the dialog is open')
-  check(dialog_at ~= nil, 'and the dialog is drawn')
-  if dim_at and dialog_at and undim_at then
-    check(dim_at < dialog_at, 'dim comes before the dialog')
-    check(undim_at < dialog_at, 'and is lifted before the dialog is drawn',
-          string.format('undim@%d dialog@%d', undim_at, dialog_at))
-  end
-
-  local shut = trace(false)
-  local any_dim = false
-  for _, e in ipairs(shut) do if e:find('^dim:') then any_dim = true end end
-  check(not any_dim, 'nothing is dimmed while the dialog is closed')
+  theme.push(14); assert(pcall(window.draw_options, 14)); theme.pop()
+  app.st.options_open = false
+  check(drawn, 'and draw_options is what puts it on screen')
 end
 
 ------------------------------------- the status line holds its own space

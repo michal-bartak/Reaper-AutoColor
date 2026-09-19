@@ -192,6 +192,15 @@ colours ramps across everything it reaches instead of painting it one flat shade
 `subfolder_splits_range` (default `true`) is in the same Options section but is
 about gradients, not inheritance — see the folder-grouping bullet above.
 
+## About
+
+The **ⓘ** button beside Options shows the version you are running, links to the
+source and the documentation, the author and the licence.
+
+The version lives in two places: `Color/MXM_AutoColor.lua` is the ReaPack
+manifest and never ships to `Scripts/`, so `Reaper/Scripts/MXM_AutoColor/lib/about.lua`
+carries the copy the dialog shows. A test fails if the two drift apart.
+
 ## Auto-apply
 
 `MXM_AutoColor_AutoToggle.lua` starts a background loop; run it again to
