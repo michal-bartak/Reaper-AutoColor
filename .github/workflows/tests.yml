@@ -1,0 +1,43 @@
+name: Tests
+
+# Every push, on every branch. The suite runs entirely outside REAPER -- the
+# REAPER and ReaImGui APIs are mocked -- so it needs nothing but an interpreter.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # REAPER ships Lua 5.4, so that is what the suite runs on here -- closer
+      # to what these scripts actually execute under than whatever a developer
+      # happens to have installed locally. run.sh invokes `lua`, which the
+      # Ubuntu package does not provide: it installs /usr/bin/lua5.4 only.
+      - name: Install Lua 5.4
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends lua5.4
+          sudo ln -sf /usr/bin/lua5.4 /usr/local/bin/lua
+
+      # python3 is preinstalled on the runner; the differential fuzz compares
+      # this repo's regex engine against Python's re, so the suite needs it.
+      - name: Versions
+        run: |
+          lua -v
+          python3 --version
+
+      # run.sh exits non-zero if any suite failed, so nothing else is needed.
+      - name: Run the suite
+        run: ./tests/run.sh

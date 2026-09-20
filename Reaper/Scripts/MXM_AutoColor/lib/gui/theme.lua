@@ -62,6 +62,8 @@ M.CHECKBOX_SCALE  = 0.62   -- x the normal control height; the tick box only.
                            -- the line height plus FramePadding, and padding
                            -- cannot go negative, so no smaller box exists.
 M.SWATCH_GAP      = 4      -- logical px between the two colour swatches and [+]/[x]
+M.SEGMENT_INSET   = 0.22   -- x segment height; how far the divider between two
+                           -- segments is held off their top and bottom edges
 
 M.GHOST_CHECK       = 0x000000  -- a faint tick drawn on UNticked checkboxes,
 M.GHOST_CHECK_ALPHA = 0.30      -- so the box reads as a checkbox either way
@@ -438,6 +440,25 @@ end
 --- @param label  visible text, optionally with an '##id' suffix
 --- @param w      width; nil or 0 auto-sizes to the label
 --- @return true when clicked
+--- GetColor, not GetStyleColor: it applies the global style alpha, so anything
+--- painted with it dims inside BeginDisabled like an ordinary widget.
+local function live(idx)
+  return (ImGui.GetColor and ImGui.GetColor(ctx, idx))
+         or ImGui.GetStyleColor(ctx, idx)
+end
+
+--- Centre a label in the given rect. Both the plain button and the segmented
+--- row paint their own frames and so must paint their own text: the draw list
+--- is ordered, and a frame appended after a label covers it.
+local function draw_label(x0, y0, x1, y1, text)
+  if text == '' then return end
+  local tw, th = ImGui.CalcTextSize(ctx, text)
+  ImGui.DrawList_AddText(ImGui.GetWindowDrawList(ctx),
+                         x0 + ((x1 - x0) - tw) * 0.5,
+                         y0 + ((y1 - y0) - th) * 0.5 + th * M.GLYPH_NUDGE_Y,
+                         live(ImGui.Col_Text), text)
+end
+
 function M.button(label, w, h)
   local text = label:match('^(.-)##') or label
   local tw, th = ImGui.CalcTextSize(ctx, text)
@@ -457,16 +478,7 @@ function M.button(label, w, h)
 
   local x0, y0 = ImGui.GetItemRectMin(ctx)
   local x1, y1 = ImGui.GetItemRectMax(ctx)
-  if x0 and text ~= '' then
-    -- GetColor, not GetStyleColor: it applies the global style alpha, so a
-    -- button inside BeginDisabled dims its label like any other.
-    local col = (ImGui.GetColor and ImGui.GetColor(ctx, ImGui.Col_Text))
-                or ImGui.GetStyleColor(ctx, ImGui.Col_Text)
-    ImGui.DrawList_AddText(ImGui.GetWindowDrawList(ctx),
-                           x0 + ((x1 - x0) - tw) * 0.5,
-                           y0 + ((y1 - y0) - th) * 0.5 + th * M.GLYPH_NUDGE_Y,
-                           col, text)
-  end
+  if x0 then draw_label(x0, y0, x1, y1, text) end
 
   return clicked
 end
@@ -512,16 +524,22 @@ function M.color_swatch(label, rgb)
                           ImGui.ColorEditFlags_NoInputs | ImGui.ColorEditFlags_NoLabel)
 end
 
---- A row of mutually exclusive buttons. ImGui has no segmented control, so
---- the chosen one is drawn in the active-button colour and the others are left
---- at rest. Every button gets the width of the widest label, otherwise a row
---- of them comes out ragged.
+--- A row of mutually exclusive buttons, drawn as ONE button divided into
+--- segments: butted together, rounded only at the two outer ends, with a
+--- hairline where neighbours meet.
+---
+--- ImGui has no segmented control, and its Button rounds every corner by the
+--- same amount, so the frames are painted here. ImGui's own are pushed fully
+--- transparent and kept only for hit-testing and state -- which also fixes the
+--- draw order, since a frame appended after a label would cover it.
 --- @param items array of { value = ..., label = ... }
 --- @return the value that was clicked, or nil
 function M.segmented(id, items, current)
-  local picked
-  local sel = ImGui.GetStyleColor(ctx, ImGui.Col_ButtonActive)
+  local n = #items
+  if n == 0 then return nil end
 
+  -- Every segment gets the width of the widest label, or the row comes out
+  -- ragged and stops reading as one control.
   local w = 0
   for _, it in ipairs(items) do
     local tw = ImGui.CalcTextSize(ctx, it.label)
@@ -529,15 +547,50 @@ function M.segmented(id, items, current)
   end
   w = w + 2 * px(ImGui.GetFontSize(ctx) * M.PAD_X)
 
+  local round = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding)
+  local dl    = ImGui.GetWindowDrawList(ctx)
+  local picked
+
   for i, it in ipairs(items) do
-    if i > 1 then ImGui.SameLine(ctx, 0, M.SWATCH_GAP) end
-    local on = it.value == current
-    if on then
-      ImGui.PushStyleColor(ctx, ImGui.Col_Button, sel)
-      ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, sel)
+    if i > 1 then ImGui.SameLine(ctx, 0, 0) end   -- butted up, not spaced
+
+    ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0)
+    ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0)
+    ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, 0)
+    local clicked = ImGui.Button(ctx, '##' .. id .. i, w, 0)
+    ImGui.PopStyleColor(ctx, 3)
+    if clicked then picked = it.value end
+
+    local on   = it.value == current
+    local hot  = ImGui.IsItemHovered(ctx)
+    local held = ImGui.IsItemActive(ctx)
+
+    local x0, y0 = ImGui.GetItemRectMin(ctx)
+    local x1, y1 = ImGui.GetItemRectMax(ctx)
+    if x0 then
+      local idx = ImGui.Col_Button
+      if on or held then idx = ImGui.Col_ButtonActive
+      elseif hot     then idx = ImGui.Col_ButtonHovered end
+
+      -- Only the outer ends are rounded. That single detail is what makes the
+      -- row read as one control instead of three.
+      local flags = ImGui.DrawFlags_RoundCornersNone
+      if     n == 1 then flags = ImGui.DrawFlags_RoundCornersAll
+      elseif i == 1 then flags = ImGui.DrawFlags_RoundCornersLeft
+      elseif i == n then flags = ImGui.DrawFlags_RoundCornersRight end
+      ImGui.DrawList_AddRectFilled(dl, x0, y0, x1, y1, live(idx), round, flags)
+
+      -- The join. Inset top and bottom so it reads as a division rather than
+      -- as a border, and drawn after this segment's fill but before the next
+      -- one's, so nothing paints over it.
+      if i > 1 then
+        local inset = (y1 - y0) * M.SEGMENT_INSET
+        ImGui.DrawList_AddLine(dl, x0, y0 + inset, x0, y1 - inset,
+                               live(ImGui.Col_Separator), 1)
+      end
+
+      draw_label(x0, y0, x1, y1, it.label)
     end
-    if M.button(it.label .. '##' .. id .. i, w, 0) then picked = it.value end
-    if on then ImGui.PopStyleColor(ctx, 2) end
   end
 
   return picked

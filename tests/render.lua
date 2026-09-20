@@ -1137,17 +1137,28 @@ do
   check(painted == 14 + 2 * math.floor(14 * theme.TAB_PAD_Y + 0.5),
         'a tab is painted font size plus its own padding', tostring(painted))
 
+  -- On top of the reserved strip the table also rides UP over the bottom of
+  -- the tab by TAB_SHELF_BITE, which is what closed the last hairline of
+  -- background on a 175% DPI display. It is taken on every call, reserved
+  -- strip or not, so it belongs in all three expectations below. Derived from
+  -- the constant rather than written out, so re-tuning the bite does not mean
+  -- re-deriving these by hand.
+  local bite = theme.TAB_SHELF_BITE * theme.text_height()
+  check(bite > 0, 'the table bites into the tab strip', tostring(bite))
+
+  -- Grouped exactly as close_tab_gap groups it -- reserved is summed first,
+  -- then subtracted once -- so this is an exact comparison, not a near one.
   theme.close_tab_gap(14, painted + 3)
-  check(moved == 1000 - 4 - 3, 'the spacing AND the reserved strip are closed',
-        tostring(moved))
+  check(moved == 1000 - 4 - (3 + bite),
+        'the spacing AND the reserved strip are closed', tostring(moved))
 
   theme.close_tab_gap(14, painted)
-  check(moved == 1000 - 4, 'nothing extra is taken when none is reserved',
-        tostring(moved))
+  check(moved == 1000 - 4 - (0 + bite),
+        'nothing extra is taken when none is reserved', tostring(moved))
 
   theme.close_tab_gap(14, painted - 5)
-  check(moved == 1000 - 4, 'and a shorter rect never pushes the table DOWN',
-        tostring(moved))
+  check(moved == 1000 - 4 - (0 + bite),
+        'and a shorter rect never pushes the table DOWN', tostring(moved))
 end
 
 --------------------------------------- tabs sit on whole-pixel boundaries
@@ -1221,14 +1232,60 @@ do
   theme.SECTION_CASE = saved
 end
 
+--------------------------- the segmented control is ONE button, divided
+do
+  -- Three separate buttons with gaps between them read as three controls. This
+  -- is the difference: butted together, rounded only at the outer ends, with a
+  -- hairline at each join.
+  local gaps, rects, lines = {}, {}, 0
+  local ImGui
+  ImGui = mockimgui.new{ scripted = {
+    SameLine = function(_, off, spacing) gaps[#gaps + 1] = spacing end,
+    Button   = function(_, id) if id:find('tmode') then rects[#rects + 1] = id end
+                               return false end,
+    DrawList_AddRectFilled = function(_, _, _, _, _, _, _, flags)
+      if flags ~= nil then rects.flags = rects.flags or {}
+                           rects.flags[#rects.flags + 1] = flags end
+    end,
+    DrawList_AddLine = function() lines = lines + 1 end,
+  } }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  app.st.sel_id = nil
+  P.advance(1); app.recompute_preview()
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+
+  check(#rects == 3, 'the row is three segments', tostring(#rects))
+
+  -- every SameLine the segmented row makes is a zero gap
+  local zero = 0
+  for _, g in ipairs(gaps) do if g == 0 then zero = zero + 1 end end
+  check(zero >= 2, 'the segments are butted together, not spaced',
+        zero .. ' zero gaps')
+
+  local f = rects.flags or {}
+  local want = { ImGui.DrawFlags_RoundCornersLeft,
+                 ImGui.DrawFlags_RoundCornersNone,
+                 ImGui.DrawFlags_RoundCornersRight }
+  local seen = {}
+  for _, v in ipairs(f) do seen[v] = true end
+  check(seen[want[1]], 'the first segment rounds only its left end')
+  check(seen[want[3]], 'the last rounds only its right end')
+  check(seen[want[2]], 'and the middle is square on both sides')
+  check(lines > 0, 'a hairline is drawn where segments meet')
+end
+
 ------------------------------------------------- the tester is a scratch pad
 do
   -- It draws with nothing selected, and offers its own mode buttons.
   app.st.sel_id = nil
   local ok, err, rec = frame()
   check(ok, 'a frame with no rule selected draws', tostring(err))
-  for _, lbl in ipairs({ 'contains##tmode1', 'glob##tmode2', 'regex##tmode3' }) do
-    check(rec.labels[lbl], 'the tester offers the ' .. lbl:match('^%a+') .. ' button')
+  -- The segmented row paints its own frames and labels, so ImGui only ever
+  -- sees an empty id per segment. The visible text reaches the mock through
+  -- CalcTextSize/AddText instead, so the two are asserted separately.
+  for i, lbl in ipairs({ 'contains', 'glob', 'regex' }) do
+    check(rec.labels[lbl], 'the tester offers the ' .. lbl .. ' button')
+    check(rec.labels['##tmode' .. i], 'and it has an id of its own')
   end
   check(rec.labels['pattern'] and rec.labels['a name to try it on'],
         'and its own pattern and name fields')
