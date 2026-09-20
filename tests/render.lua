@@ -932,6 +932,36 @@ do -- window.draw must not draw the dialog itself
   check(drawn, 'and draw_options is what puts it on screen')
 end
 
+------------------------- the bottom panels fill the width, like the table
+do
+  -- The complaint this encodes: the pattern tester's right border did not line
+  -- up with the rule table's above it. SameLine puts ItemSpacing.x between the
+  -- two panels, but the tester was sized as if the gap were a whole font size,
+  -- so it came up (FS - ItemSpacing.x) short -- and being font-relative, the
+  -- error grew every time the text size went up.
+  local SPACING = 8
+  local widths = {}
+  local ImGui = mockimgui.new{ scripted = {
+    GetStyleVar = function() return SPACING, 4 end,
+    BeginChild  = function(_, name, w) widths[name] = w; return true end,
+  } }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  P.advance(1); app.recompute_preview()
+  theme.push(14); assert(pcall(window.draw, 14)); theme.pop()
+
+  -- the mock's GetContentRegionAvail
+  local availw = 900
+  check(widths['preview'] ~= nil, 'the preview list is drawn')
+  check(widths['tester'] ~= nil, 'and the pattern tester')
+  if widths['preview'] and widths['tester'] then
+    local total = widths['preview'] + SPACING + widths['tester']
+    check(total == availw,
+          'the two panels plus the gap fill the width exactly',
+          string.format('%g + %g + %g = %g, want %g',
+                        widths['preview'], SPACING, widths['tester'], total, availw))
+  end
+end
+
 ------------------------------------- the status line holds its own space
 do
   -- The complaint this encodes: the status message used to sit among the top

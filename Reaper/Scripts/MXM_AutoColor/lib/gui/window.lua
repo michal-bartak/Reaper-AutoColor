@@ -620,10 +620,15 @@ function M.draw(FS)
   action_bar(FS)
   ImGui.Spacing(ctx)
 
+  -- SameLine inserts ItemSpacing.x between the two panels, so THAT -- not FS --
+  -- is what the right-hand one has to give up. Subtracting FS left the tester
+  -- (FS - ItemSpacing.x) too narrow, so its right border sat inside the table's
+  -- above it, and the error grew with the text size.
+  local spacing = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
   local leftw = math.floor(availw * 0.58)
   preview.draw_list(FS, leftw, bottom)
   ImGui.SameLine(ctx)
-  preview.draw_tester(FS, availw - leftw - FS, bottom)
+  preview.draw_tester(FS, availw - leftw - spacing, bottom)
 
   status_line(statusy)
 
