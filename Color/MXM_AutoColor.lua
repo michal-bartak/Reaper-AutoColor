@@ -1,6 +1,6 @@
 --[[
 Description: AutoColor
-Version: 0.9.0
+Version: 0.9.1
 Author: Michal MaXyM Bartak
 Links:
   GitHub https://github.com/michal-bartak/Reaper-AutoColor
@@ -23,7 +23,15 @@ About:
   MIT licensed. Source: <https://github.com/michal-bartak/Reaper-AutoColor>
 Metapackage: true
 Changelog:
-  Initial ReaPack release
+  Options dialog no longer closes when REAPER loses focus, and no longer
+  flickers when you click elsewhere. It is always on top, dismissed with
+  Escape, its Close button, or a click on the window behind.
+  New About dialog: version, links, author, licence.
+  Text size is capped at 20 and applied when the slider is released.
+  "Example rules" (was "Replace with the starter rules") is joined by
+  "Remove Rules", which empties every tab.
+  The pattern tester's right edge lines up with the table above it again.
+  The pattern tester's mode buttons are drawn as one divided control.
 Provides:
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua > MXM_AutoColor/
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoToggle.lua > MXM_AutoColor/
