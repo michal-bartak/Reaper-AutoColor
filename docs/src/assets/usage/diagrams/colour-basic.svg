@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 108" width="470" height="108" role="img" aria-label="Three rules, one colour each">
+<title>Three rules, one colour each</title>
+<rect x="12" y="13" width="26" height="12" rx="3" fill="#F2A8A4"/>
+<text x="43" y="22" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">red*</text>
+<rect x="85.8" y="13" width="26" height="12" rx="3" fill="#A9D8AE"/>
+<text x="116.8" y="22" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">green*</text>
+<rect x="173.0" y="13" width="26" height="12" rx="3" fill="#A6C4EE"/>
+<text x="204.0" y="22" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">blue*</text>
+<rect x="12" y="30" width="66" height="66" rx="9" fill="#F2A8A4"/>
+<text x="45.0" y="67.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red1</text>
+<rect x="88" y="30" width="66" height="66" rx="9" fill="#A9D8AE"/>
+<text x="121.0" y="67.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">green</text>
+<rect x="164" y="30" width="66" height="66" rx="9" fill="#A6C4EE"/>
+<text x="197.0" y="67.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">blue1</text>
+<rect x="240" y="30" width="66" height="66" rx="9" fill="#F2A8A4"/>
+<text x="273.0" y="67.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red2</text>
+<rect x="316" y="30" width="66" height="66" rx="9" fill="#A6C4EE"/>
+<text x="349.0" y="67.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">blue2</text>
+<rect x="392" y="30" width="66" height="66" rx="9" fill="#DEDEE2" stroke="#7A7A83" stroke-opacity="0.35"/>
+<text x="425.0" y="67.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="0.55">bass</text>
+</svg>

@@ -3,9 +3,9 @@ title: Applying colours
 description: Apply now, Selection, and the actions that do the same without the window
 ---
 
-Rules decide colours; applying is what writes them into the project. Nothing in the rule table
-touches your tracks until you apply, or until the
-[background loop](/Reaper-AutoColor/usage/auto-apply/) does it for you.
+Rules decide colours. Applying writes them into the project. Nothing in the rule table touches your
+tracks until you apply, or until the [background loop](/Reaper-AutoColor/usage/auto-apply/) does it
+for you.
 
 Objects that already have the colour the rules want are **not rewritten**, so applying twice costs
 nothing and changes nothing.
@@ -21,17 +21,17 @@ nothing and changes nothing.
 
 **Apply now** colours the whole project — every track, item, region and marker — in **one undo
 point**. It also tells the background loop to drop the marks it holds on objects you recoloured by
-hand, so the rules take those objects back. That is the way out if you have hand-coloured something
-and want the rules to own it again.
+hand, so the rules take those objects back. Use it when you have hand-coloured something and want
+the rules to own it again.
 
 **Selection** colours only what is selected. When a track **and** some items are selected, whichever
-you clicked last wins — the same rule REAPER uses for its own "depending on focus" actions. The
+you clicked last wins, the same rule REAPER uses for its own "depending on focus" actions. The
 status line says which it used.
 
-- With **items** in focus, tracks are still read (folder inheritance and the track → item cascade
-  need them) but none of them is written.
+- With **items** in focus, AutoColor still reads tracks, because folder inheritance and the
+  track → item cascade need them, but writes to none of them.
 - With **tracks** in focus, items are left out entirely.
-- **Selected regions and markers are always included**, whichever way the focus went: there is no
+- **Selected regions and markers are always included**, whichever way the focus went. There is no
   focus value to weigh them against.
 
 ## From the Action List
@@ -53,10 +53,10 @@ difference in, so it takes the narrower, more predictable scope.
 ## When a rule change reaches the project
 
 Editing a rule does **not** repaint the project, and neither does clicking around in the window
-afterwards. With the background loop running, the edit is held until an object actually changes, and
-is then applied to everything at once, so the project is never half on the old rules.
+afterwards. With the background loop running, the edit waits until an object actually changes, then
+applies to everything at once. The project is never half on the old rules.
 
-**Apply now** is the way to commit an edit immediately.
+**Apply now** commits an edit immediately.
 
 ## Where to go next
 

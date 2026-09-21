@@ -116,6 +116,13 @@ console.log('Rendering from ' + MASTER.replace(REPO + '/', ''));
 //    <link> for anything that prefers a vector. Everything here lands in docs/public/, which is
 //    the only directory Astro serves verbatim.
 await write(join(DOCS, 'public', 'favicon.svg'), master);
+
+// 1b. The same two marks as flat SVGs, for the docs to show inline beside the action each one
+//     belongs to (installation.md). Copies of the masters rather than new art, so `make icon`
+//     keeps them in step and there is still only one hand-drawn file per mark. public/ again:
+//     these are referenced by <img src> at a fixed size, not through Astro's image pipeline.
+await write(join(DOCS, 'public', 'toolbar-autocolor.svg'), master);
+await write(join(DOCS, 'public', 'toolbar-autocolor-gui.svg'), await readFile(MASTER_GUI, 'utf8'));
 for (const size of [16, 32, 48]) {
   await write(
     join(DOCS, 'public', `favicon-${size}.png`),

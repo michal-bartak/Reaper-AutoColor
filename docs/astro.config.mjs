@@ -69,7 +69,7 @@ export default defineConfig({
                 return el;
               }
               function wire() {
-                var imgs = document.querySelectorAll('.sl-markdown-content img');
+                var imgs = document.querySelectorAll('.sl-markdown-content img:not(.tb-icon)');
                 for (var i = 0; i < imgs.length; i++) {
                   (function (img) {
                     if (img.dataset.lightbox) return;
@@ -91,7 +91,13 @@ export default defineConfig({
         },
       ],
       sidebar: [
-        { label: 'Overview', link: '/' },
+        {
+          label: 'Overview',
+          items: [
+            { label: 'Reaper AutoColor', link: '/' },
+            { label: 'Requirements', link: '/requirements/' },
+          ],
+        },
         { label: 'Installation', link: '/installation/' },
         {
           label: 'Usage',
@@ -99,7 +105,6 @@ export default defineConfig({
             { label: 'The configuration window', link: '/usage/' },
             { label: 'Matching names', link: '/usage/matching/' },
             { label: 'Colours and gradients', link: '/usage/colours/' },
-            { label: 'Items and folders', link: '/usage/items-and-folders/' },
             { label: 'Applying colours', link: '/usage/applying/' },
             { label: 'Auto-apply', link: '/usage/auto-apply/' },
             { label: 'Clearing colours', link: '/usage/clearing/' },

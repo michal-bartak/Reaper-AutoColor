@@ -36,6 +36,28 @@
   margin: 1.5rem 0;
 }
 
+/* A toolbar icon shown inline beside the action it belongs to (installation.md). Text-sized and
+   not clickable -- it is a glyph, not a screenshot, so the lightbox skips it (see the wire()
+   selector in astro.config.mjs). */
+.sl-markdown-content img.tb-icon {
+  display: inline-block;
+  width: 1.35em;
+  height: 1.35em;
+  vertical-align: -0.3em;
+  border-radius: 0;
+  cursor: default;
+}
+
+/* Generated colouring diagrams (scripts/diagrams.py). Transparent SVG, so they sit on the
+   page background in either theme; the squares carry their own contrast. Wider than the
+   prose column on a phone, hence the scale-to-fit -- the lightbox is still there for a
+   closer look. */
+.diagram img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0;
+}
+
 .shot figcaption {
   margin-top: 0.5rem;
   font-size: var(--sl-text-sm);

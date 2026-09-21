@@ -3,7 +3,7 @@ title: Clearing colours
 description: The three clearing scopes, and the per-kind reset for unmatched objects
 ---
 
-Clearing sets an object back to the **theme default** — it removes the custom colour rather than
+Clearing sets an object back to the **theme default**. It removes the custom colour instead of
 writing a new one.
 
 ## The Clear menu
@@ -27,12 +27,12 @@ included.
 
 :::caution
 The third scope reaches colours that had nothing to do with these rules. It asks for confirmation,
-and REAPER's undo (`Cmd`/`Ctrl`+`Z`) will put them back — but it is the one clearing scope that can
-lose work.
+and REAPER's undo (`Cmd`/`Ctrl`+`Z`) puts them back, but it is the one clearing scope that can lose
+work.
 :::
 
 `MXM_AutoColor_ClearColors.lua` offers the first two scopes from the Action List. Clearing *every*
-custom colour is deliberately GUI-only: it is not something a single keystroke should do.
+custom colour is GUI-only on purpose: a single keystroke should not do it.
 
 ## Reset unmatched objects
 
@@ -47,7 +47,7 @@ off everywhere by default.
 </figure>
 
 With it on for a kind, every apply strips the colour from any object of that kind the rules do not
-claim — making the rules the single source of truth for that kind.
+claim. The rules become the single source of truth for that kind.
 
 :::caution[Careful with tracks]
 For tracks this also strips every track colour you set by hand.
@@ -55,11 +55,9 @@ For tracks this also strips every track colour you set by hand.
 
 ### For items it is usually what you want
 
-It is the better answer to "my pasted item kept its old colour":
-
-> An item with **no custom colour** is drawn by REAPER in its **track's** colour, live. Copy it to
-> another track and it follows that track immediately — no rule, no sweep, and nothing that can go
-> stale.
+It is the better answer to "my pasted item kept its old colour". REAPER draws an item with **no
+custom colour** in its **track's** colour, live. Copy it to another track and it follows that track
+at once: no rule, no sweep, and nothing that can go stale.
 
 So there are two ways to make items match their track, and they are not equal:
 
@@ -68,12 +66,12 @@ So there are two ways to make items match their track, and they are not equal:
 | **also colour items** on a track rule | Writes the track's colour onto the item | Stays wrong until something re-applies, and is stale if the new track's rule does not cascade |
 | **reset unmatched items** | Removes the item's colour, so REAPER draws it from the track | Correct instantly, forever |
 
-Prefer the second, unless you actually want items to differ from their track, or your theme does not
-tint item backgrounds by track colour.
+Prefer the second, unless you want items to differ from their track, or your theme does not tint
+item backgrounds by track colour.
 
 :::note[Older REAPER builds]
 On REAPER older than 7.62 the marker/region *clear* path is unavailable, because `SetProjectMarker4`
-reads colour 0 as "leave unchanged". Colouring still works, and the scripts say how many
+reads colour 0 as "leave unchanged". Colouring still works, and the scripts report how many
 markers/regions they had to skip.
 :::
 

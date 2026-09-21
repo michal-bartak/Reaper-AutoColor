@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 622 126" width="622" height="126" role="img" aria-label="Two gradient rules over unbroken stretches">
+<title>Two gradient rules over unbroken stretches</title>
+<defs><linearGradient id="gradient-basic-g0"><stop offset="0" stop-color="#F2A8A4"/><stop offset="1" stop-color="#A8514C"/></linearGradient><linearGradient id="gradient-basic-g1"><stop offset="0" stop-color="#A6C4EE"/><stop offset="1" stop-color="#48699F"/></linearGradient></defs>
+<text x="12" y="22" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">spread: all matches</text>
+<rect x="12" y="31" width="26" height="12" rx="3" fill="url(#gradient-basic-g0)"/>
+<text x="43" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">red*</text>
+<rect x="85.8" y="31" width="26" height="12" rx="3" fill="url(#gradient-basic-g1)"/>
+<text x="116.8" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">blue*</text>
+<rect x="12" y="48" width="66" height="66" rx="9" fill="#F2A8A4"/>
+<text x="45.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red1</text>
+<rect x="88" y="48" width="66" height="66" rx="9" fill="#E1847F"/>
+<text x="121.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red2</text>
+<rect x="164" y="48" width="66" height="66" rx="9" fill="#CA6660"/>
+<text x="197.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red3</text>
+<rect x="240" y="48" width="66" height="66" rx="9" fill="#A8514C"/>
+<text x="273.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#FFFFFF" fill-opacity="1">red4</text>
+<rect x="316" y="48" width="66" height="66" rx="9" fill="#A6C4EE"/>
+<text x="349.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">blue1</text>
+<rect x="392" y="48" width="66" height="66" rx="9" fill="#7EA4DC"/>
+<text x="425.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">blue2</text>
+<rect x="468" y="48" width="66" height="66" rx="9" fill="#5B85C5"/>
+<text x="501.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">blue3</text>
+<rect x="544" y="48" width="66" height="66" rx="9" fill="#48699F"/>
+<text x="577.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#FFFFFF" fill-opacity="1">blue4</text>
+</svg>

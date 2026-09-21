@@ -1,4 +1,4 @@
-.PHONY: help test icon docs docs-install docs-dev docs-build docs-preview docs-shots docs-shots-status docs-clean
+.PHONY: help test icon docs docs-install docs-dev docs-build docs-preview docs-shots docs-shots-status docs-diagrams docs-diagrams-verify docs-clean
 
 # The scripts themselves need no build step -- REAPER runs the .lua files where they sit. This
 # file is for the parts that do have a toolchain: the test suite, the icon, and the docs site.
@@ -14,6 +14,7 @@ help:
 	@echo "  make docs               read them locally -- build, then serve at $(DOCS_URL)"
 	@echo "  make docs-dev           live-reload dev server, for writing"
 	@echo "  make docs-build         static build into docs/dist/"
+	@echo "  make docs-diagrams      redraw the computed colouring diagrams"
 	@echo "  make docs-shots         draw placeholders for any newly referenced screenshot"
 	@echo "  make docs-shots-status  list which screenshots are real and which are placeholders"
 	@echo "  make docs-clean         remove docs/dist and docs/.astro"
@@ -46,11 +47,11 @@ docs-install: $(DOCS_DIR)/node_modules
 docs: docs-preview
 
 # Live-reload dev server at http://localhost:4321/Reaper-AutoColor/
-docs-dev: $(DOCS_DIR)/node_modules docs-shots
+docs-dev: $(DOCS_DIR)/node_modules docs-diagrams docs-shots
 	cd $(DOCS_DIR) && npm run dev
 
 # Static build into docs/dist/
-docs-build: $(DOCS_DIR)/node_modules docs-shots
+docs-build: $(DOCS_DIR)/node_modules docs-diagrams docs-shots
 	cd $(DOCS_DIR) && npm run build
 
 # Serve the built site locally (builds first if needed)
@@ -64,6 +65,17 @@ docs-preview: docs-build
 # Pillow (pip3 install Pillow); without it this is a no-op and the committed ones still build.
 #   docs-shots         draw placeholders for any newly referenced image (runs on dev/build too)
 #   docs-shots-status  list which screenshots are real and which are still placeholders
+# The colouring diagrams under docs/src/assets/usage/diagrams are GENERATED, not drawn:
+# scripts/diagrams.py computes every square from a port of lib/apply.lua. Redrawing on
+# every docs build is cheap (no dependencies) and keeps an edited scenario from shipping
+# stale. `--verify` diffs the port against the real apply.lua and needs lua, so it is a
+# separate target rather than a build prerequisite.
+docs-diagrams:
+	cd $(DOCS_DIR) && npm run --silent diagrams
+
+docs-diagrams-verify:
+	cd $(DOCS_DIR) && npm run --silent diagrams:verify
+
 docs-shots:
 	cd $(DOCS_DIR) && npm run --silent shots
 

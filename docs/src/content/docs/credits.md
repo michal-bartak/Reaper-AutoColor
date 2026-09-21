@@ -11,12 +11,12 @@ Created by Michal Bartak, assisted by [Claude](https://claude.ai).
 
 - [REAPER](https://www.reaper.fm/) and its ReaScript Lua API.
 - [ReaImGui](https://codeberg.org/cfillion/reaimgui) by cfillion, for the configuration window.
-- A hand-written regex engine — no external Lua dependencies at all.
-- These docs use [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/).
+- A hand-written regex engine. No external Lua dependencies at all.
+- [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/), for these docs.
 
 ## Prior art
 
-[SWS/S&M's](https://www.sws-extension.org/) Auto Color is the tool this one grew out of. It matches
+AutoColor grew out of [SWS/S&M's](https://www.sws-extension.org/) Auto Color. SWS matches
 case-insensitive substrings only and has no item support; this covers tracks, items, regions and
 markers in one ordered rule list, with real regular expressions. Do not run both at once — see
 [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).

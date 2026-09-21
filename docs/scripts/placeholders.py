@@ -60,13 +60,7 @@ SHOTS = [
      "The Colour cell and its picker, with the second colour added"),
     ("usage/gradient-spread.png", (900, 380),
      "The 'spread across' box beside the second colour, open"),
-    ("usage/gradient-runs.png", (900, 620),
-     "Track panel: two blocks of String* tracks, each with its own full ramp"),
 
-    ("usage/cascade-items.png", (900, 320),
-     "The Items column on a track rule -- 'also colour items' switched on"),
-    ("usage/folder-colours.png", (900, 620),
-     "A folder and its children in the track panel, showing fill gaps vs force"),
 
     ("usage/action-bar.png", (1200, 220),
      "The action bar: + rule, Undo, Apply now, Selection, Clear..., Auto, Options"),

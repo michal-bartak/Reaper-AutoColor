@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 160" width="470" height="160" role="img" aria-label="Spread across folders: a fresh ramp inside each one">
+<title>Spread across folders: a fresh ramp inside each one</title>
+<defs><linearGradient id="spread-folders-g0"><stop offset="0" stop-color="#F2A8A4"/><stop offset="1" stop-color="#A8514C"/></linearGradient></defs>
+<text x="12" y="22" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">spread: folders</text>
+<rect x="12" y="31" width="26" height="12" rx="3" fill="url(#spread-folders-g0)"/>
+<text x="43" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#7A7A83">red*</text>
+<path d="M13 135 L13 139 L229 139 L229 135" fill="none" stroke="#7A7A83" stroke-width="1.25" stroke-opacity="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M241 135 L241 139 L457 139 L457 135" fill="none" stroke="#7A7A83" stroke-width="1.25" stroke-opacity="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="12" y="68" width="66" height="66" rx="9" fill="#F2A8A4"/>
+<text x="45.0" y="105.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red1</text>
+<rect x="88" y="48" width="66" height="66" rx="9" fill="#D7746E"/>
+<text x="121.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red2</text>
+<rect x="164" y="48" width="66" height="66" rx="9" fill="#A8514C"/>
+<text x="197.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#FFFFFF" fill-opacity="1">red3</text>
+<rect x="240" y="68" width="66" height="66" rx="9" fill="#F2A8A4"/>
+<text x="273.0" y="105.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red4</text>
+<rect x="316" y="48" width="66" height="66" rx="9" fill="#D7746E"/>
+<text x="349.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#33333A" fill-opacity="1">red5</text>
+<rect x="392" y="48" width="66" height="66" rx="9" fill="#A8514C"/>
+<text x="425.0" y="85.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#FFFFFF" fill-opacity="1">red6</text>
+</svg>
