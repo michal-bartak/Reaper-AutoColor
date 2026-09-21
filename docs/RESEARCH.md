@@ -139,3 +139,19 @@ The full API reference ships locally with the extension:
   `UNDO_STATE_ALL` forces a full project snapshot and is slow.
 * `SetProjExtState` / `GetProjExtState` — not `SetProjectExtState`.
 * ExtState values **must not contain newlines**; documented.
+
+## Transport state
+
+`GetPlayState()` is a bitmask: `1` playing, `2` paused, `4` recording. The bits
+combine, and **record-pause keeps bit 4 set** — measured in REAPER 7.80 with a
+defer probe watching every transition:
+
+```
+state  &1  &2  &4   reading
+5      1   0   1    play+record
+6      0   1   1    pause+record
+```
+
+That is why `autoloop.lua` guards with `GetPlayState() & 4 ~= 0` rather than
+testing equality: one test holds the background loop for the whole of a take,
+armed-and-rolling or armed-and-paused, and never fights the transport.

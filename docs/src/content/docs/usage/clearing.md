@@ -3,17 +3,9 @@ title: Clearing colours
 description: The three clearing scopes, and the per-kind reset for unmatched objects
 ---
 
-Clearing sets an object back to the **theme default**. It removes the custom colour instead of
-writing a new one.
+Clearing sets an object back to the **theme default**. It removes the custom colour instead of writing a new one.
 
 ## The Clear menu
-
-<figure class="shot">
-
-![The Clear menu](../../../assets/usage/clear-menu.png)
-
-<figcaption>Clear…, on the action bar</figcaption>
-</figure>
 
 | Scope | What it resets |
 |---|---|
@@ -36,18 +28,9 @@ custom colour is GUI-only on purpose: a single keystroke should not do it.
 
 ## Reset unmatched objects
 
-**Options → Scope → Reset to the default colour when no rule matches** is set **per kind**, and is
-off everywhere by default.
+**Options → Scope → Reset to the default colour when no rule matches** is set **per kind**, and is off everywhere by default.
 
-<figure class="shot">
-
-![The Scope row in Options](../../../assets/configuration/scope.png)
-
-<figcaption>Reset to the default colour when no rule matches</figcaption>
-</figure>
-
-With it on for a kind, every apply strips the colour from any object of that kind the rules do not
-claim. The rules become the single source of truth for that kind.
+With it on for a kind, every apply strips the colour from any object of that kind the rules do not claim. The rules become the single source of truth for that kind.
 
 :::caution[Careful with tracks]
 For tracks this also strips every track colour you set by hand.

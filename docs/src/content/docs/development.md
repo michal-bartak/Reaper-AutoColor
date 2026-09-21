@@ -117,21 +117,12 @@ without one.
 
 ### Screenshots
 
-Every screenshot is taken by hand: the window is a ReaImGui script inside REAPER, so there is nothing
-to drive from CI. `scripts/placeholders.py` holds the list of shots the pages expect, and draws a
-labelled grey card for any that does not exist yet, so the site always builds and a missing shot is
-obvious on the page.
+Every screenshot is taken by hand: the window is a ReaImGui script inside REAPER, so there is
+nothing to drive from CI. They live under `docs/src/assets/<section>/`, and the pages reference them
+relatively, so replacing one is "save over the file, rebuild" — no markdown edit.
 
-```bash
-make docs-shots            # fill in what is missing (docs-dev and docs-build run it too)
-make docs-shots-status     # what is still a placeholder
-```
-
-To replace one, save a real screenshot over the placeholder at the same path under
-`docs/src/assets/`. The script never overwrites a file it did not draw, so a real shot stays put.
-
-Drawing new placeholders needs Pillow (`pip3 install Pillow`). Without it the script says so and does
-nothing, and the committed placeholders still build.
+A page that references an image which is not there fails the build, with
+`[ImageNotFound] Could not find requested image`. Add the figure and the file together.
 
 :::note
 Images in Markdown go through Astro's image pipeline, which converts them to `webp` and stamps the

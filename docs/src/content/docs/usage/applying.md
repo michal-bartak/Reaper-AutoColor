@@ -10,6 +10,15 @@ for you.
 Objects that already have the colour the rules want are **not rewritten**, so applying twice costs
 nothing and changes nothing.
 
+:::note
+An apply writes colours. By default it never removes one, so an object no rule claims keeps
+whatever colour it already had — an old item colour can survive every apply.
+
+To remove a colour, use [Clear](/Reaper-AutoColor/usage/clearing/), or tick
+[reset unmatched objects](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects) for that kind,
+which makes every apply strip the colour from anything the rules do not claim.
+:::
+
 ## From the window
 
 <figure class="shot">

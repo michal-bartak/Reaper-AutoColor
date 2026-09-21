@@ -3,8 +3,8 @@ title: The configuration window
 description: Tabs, the rule row, the action bar, and the preview panes
 ---
 
-`MXM_AutoColor_GUI.lua` opens the one window the tool has. It holds the rules, what they currently
-hit, and the buttons that write the colours into the project.
+`MXM_AutoColor_GUI.lua` opens AutoColor's configuration window. It holds the rules, a preview of
+what they currently hit, and the buttons that write the colours into the project.
 
 <figure class="shot">
 
@@ -52,7 +52,7 @@ else.
 | **Aa** | Ignore case (ASCII only). |
 | **Filter** | An extra condition on top of the pattern — see [Filters](/Reaper-AutoColor/usage/matching/#filters). |
 | **Colour** | The rule's colour, and optionally a [second one](/Reaper-AutoColor/usage/colours/#gradients) for a gradient. |
-| **Items** | Tracks tab only: [also colour the items](/Reaper-AutoColor/usage/colours/#items) on the tracks this rule matches. |
+| **Items** | Tracks tab only: [write the track's colour onto the items](/Reaper-AutoColor/usage/colours/#items) on the tracks this rule matches, instead of leaving REAPER to draw them from the track. |
 | **Hits** | How many objects this rule wins in this project. |
 | menu | Duplicate, Delete, and Move to top / up / down / bottom. |
 
@@ -82,13 +82,11 @@ the object will get, its name, and which rule is responsible:
 
 The list follows the open tab. Click a **name** to reveal that object in the project.
 
-**Pattern tester** is a scratch pad with its own mode, pattern and name. Type, and it says whether
-the pattern matches, which part of the name it matched, and what each group captured.
+**Pattern tester** is a scratch pad with its own mode, pattern and text to match. Type, and it says
+whether the pattern matches, which part of the name it matched, and what each group captured.
 
 :::tip[It knows nothing about your rules]
-That is the point. Testing the *selected rule* meant you could not try anything out without first
-committing it to a rule, and editing a rule to experiment is the thing you want to avoid. Nothing
-you type here is saved, and nothing it does reaches the project.
+That is the point. Nothing you type here is saved, and nothing it does reaches the project.
 :::
 
 ## The action bar

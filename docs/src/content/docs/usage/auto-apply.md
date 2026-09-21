@@ -6,13 +6,6 @@ description: The background loop, what it refuses to touch, and what it costs
 `MXM_AutoColor_AutoToggle.lua` starts a background loop that keeps the project in step as you rename
 things. Run the action again to stop it. The toolbar button lights while it runs.
 
-<figure class="shot">
-
-![The Auto button](../../../assets/usage/auto-status.png)
-
-<figcaption>The Auto button, and the status line</figcaption>
-</figure>
-
 ## It stays out of your way
 
 - **It never reverts a colour you set by hand.** Once an object's colour stops matching what the
@@ -21,9 +14,8 @@ things. Run the action again to stop it. The toolbar button lights while it runs
 - It adds **no undo points**, so renaming a track does not shred your undo history. Turn on *Create
   undo points for automatic changes* in [Options](/Reaper-AutoColor/configuration/) if you want
   them.
-- It writes nothing when nothing changed, and pauses entirely **while recording**.
-- It sweeps tracks immediately. Items and regions follow once the project has settled, in
-  time-budgeted chunks.
+- It writes nothing when nothing changed, and pauses entirely **while recording** (including record-pause).
+- It sweeps tracks immediately. Items and regions follow once the project has settled, in time-budgeted chunks.
 
 :::tip[Taking an object back]
 **Apply now**, from the window or `MXM_AutoColor_ApplyAll.lua`, tells the loop to drop those
