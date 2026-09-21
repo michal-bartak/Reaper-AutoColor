@@ -387,7 +387,9 @@ Reaper/                     mirrors REAPER's resource path; this is what gets in
     lib/                    the engine; lib/gui/ is the only part that uses ImGui
   Data/toolbar_icons/       the toolbar icon, at 1x, 150 and 200
 Color/                      the ReaPack manifest, and nothing else; the directory
-                            name is the ReaPack category the package appears in
+                            name is the ReaPack category the package is listed
+                            under -- the manifest retargets every file with ../
+                            so the category is not part of the install path
 dev/                        author-only probes, deliberately not shipped
 tests/                      runs outside REAPER against a mocked API
 icon/                       icon.svg, the master every icon output is rendered from
