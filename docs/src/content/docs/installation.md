@@ -3,7 +3,7 @@ title: Installation
 description: Install through ReaPack, or copy the folder in by hand
 ---
 
-The easy way, and the one that keeps itself up to date. Import the repository once:
+The easiest way is to use ReaPack.
 
 ```
 https://github.com/michal-bartak/ReaPack/raw/main/index.xml
@@ -18,7 +18,7 @@ ReaPack adds two actions to the Action List and dedicated [toolbar icons](#the-t
 * <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> `MXM_AutoColor_AutoToggle.lua` - Start/stop background auto-colouring
 
 :::note
-Add these scripts to toolbar of your choice, assigning dedicated icons.
+Add these scripts to toolbar of your choice, assigning icons.
 
 To quickly find actions or icons, search for `autocolor` or `mxm`.
 :::
@@ -44,19 +44,14 @@ To quickly find actions or icons, search for `autocolor` or `mxm`.
 
    The scripts and the [toolbar icons](#the-toolbar-icons) land in the right places together.
 
-1. In REAPER, open *Actions → Show action list → New action → Load ReaScript*, and load the scripts
-   you want from the table below. They are in `Scripts/MXM_AutoColor/`.
-
-<figure class="shot">
-
-![The Action List with the scripts loaded](../../assets/installation/action-list.png)
-
-<figcaption>The Action List with the scripts loaded</figcaption>
-</figure>
-
+In REAPER
+* open *Actions → Show action list → New action → Load ReaScript*, and load at least the scripts listed above.
+* add these actions to toolbar of choice, assigning provided icons
 </details>
 
 ## The actions
+
+All Scripts are located within `Scripts/MXM Scripts/MXM_AutoColor`.
 
 | | Script | What it does |
 |---|---|---|
@@ -69,68 +64,28 @@ To quickly find actions or icons, search for `autocolor` or `mxm`.
 | | `MXM_AutoColor_Dump.lua` | Read-only diagnostic listing |
 | | `MXM_AutoColor_RunTests.lua` | Self-test, prints to the ReaScript console |
 
-Only the two with an icon reach the **Action List**. They are also the two that get a toolbar
-button, and they are all most setups need. The other six install alongside them but stay out of the
-list, so it does not fill up with entries you will never run.
+Actions with an icon are comonly used by an end-user. These two are automatically added to Action List by ReaPack. Otherwise have to be added manually. Other scripts are called by the application or might be useful for debuging.
 
-Add any of the six when you want a keyboard shortcut, or to diagnose a colour that looks wrong:
-*Actions → Show action list → New action → Load ReaScript*, then pick the file from
-`Scripts/MXM_AutoColor/`.
-
-:::tip[Toolbar buttons]
-Right-click a toolbar → *Customize toolbar…* → **Add**, and pick the action. `AutoToggle` reports
-its state back, so its button lights while the background loop runs.
-:::
 
 ### The toolbar icons
 
-Both buttons come with an icon. Installing, or copying `Reaper/` over the resource path, already put
-them in place.
+The package comes with two toolbar icons designed to use with main scripts. 
 
 | | Name | Action |
 |---|---|---|
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> | `mxm_toolbar_autocolor` | `MXM_AutoColor_AutoToggle.lua` |
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor-gui.svg" alt="Window toolbar icon"> | `mxm_toolbar_autocolor_gui` | `MXM_AutoColor_GUI.lua` |
 
-Each name appears three times under `<resource path>/Data/toolbar_icons/`:
+They are provided in 3 sizes, being located in `<resource path>/Data/toolbar_icons/`:
 
 ```
 mxm_toolbar_autocolor.png            90x30
+mxm_toolbar_autocolor_gui.png        90x30
 150/mxm_toolbar_autocolor.png       135x45
+150/mxm_toolbar_autocolor_gui.png   135x45
 200/mxm_toolbar_autocolor.png       180x60
+200/mxm_toolbar_autocolor_gui.png   180x60
 ```
-
-They use REAPER's own toolbar format: a three-state strip of square cells — normal, hover, pressed.
-REAPER reaches for the `150` and `200` copies on a hi-DPI display, and finds them by the **same
-filename** in those subfolders, so do not rename them.
-
-To use them, restart REAPER, right-click the toolbar → *Customize toolbar…*, select a button and
-pick its icon from REAPER's icon browser. The file names mirror the script names, so the two line
-up in that list.
-
-:::note[What the states look like]
-A REAPER toolbar icon is three cells, and REAPER draws the third while a **toggle action is armed**,
-not as a click flash. So the AutoToggle button says whether the loop is running: grey while it is
-off, that grey lifted on hover, and the full six colours once it is working. The mark pays out its
-colour only while the tool is doing something.
-
-The window button is not a toggle, so it keeps its colours throughout and brightens under the
-pointer.
-
-The greys are REAPER's own — `#818989`, and `#939A9A` on hover — measured from the 528 icons it
-ships, so an idle AutoColor button sits at the same weight as every other idle button.
-
-REAPER also brightens the **button plate behind** the icon on hover, and turns it the theme's accent
-colour while a toggle action is armed. That comes from the theme, not from the icon, and applies to
-every button on the toolbar.
-:::
-
-<figure class="shot">
-
-![The AutoToggle toolbar button](../../assets/installation/toolbar-button.png)
-
-<figcaption>The AutoToggle toolbar button, lit while the loop runs</figcaption>
-</figure>
 
 ## First run
 
@@ -144,22 +99,3 @@ something to show, and tells you where:
 That file is one global rule set shared by every project, and it sits **outside** `Scripts/` on
 purpose: reinstalling or updating the scripts cannot destroy your rules. See
 [Rules file](/Reaper-AutoColor/configuration/rules-file/).
-
-:::caution[Editing the scripts]
-The window and the auto-toggle hold their Lua state for as long as they run. After editing anything
-under `Scripts/MXM_AutoColor/lib/`, close the window and re-run it, and toggle auto off and on
-again. Otherwise the old code is still the code that is running. One-shot actions pick up changes
-immediately.
-:::
-
-## Upgrading from the single-list version
-
-Older configurations kept **one** rule list, where each rule carried track/item/region/marker
-checkboxes. AutoColor migrates them on first load: a rule that ticked several boxes becomes one rule
-**per tab**, in the same relative order, so the precedence you had survives within every kind.
-Nothing is lost, and the previous file is kept as `config.bak.json`.
-
-After migrating you may find duplicate rules on the **Items** tab, copies of track rules that
-happened to match item *names*. If what you wanted was "colour the items on these tracks", delete
-the copies and tick [also colour items](/Reaper-AutoColor/usage/colours/#items) on the track
-rule instead.

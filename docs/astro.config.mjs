@@ -9,7 +9,7 @@ export default defineConfig({
   base: '/Reaper-AutoColor',
   integrations: [
     starlight({
-      title: 'Reaper AutoColor',
+      title: 'AutoColor — the REAPER extension',
       description: 'Colour REAPER tracks, items, regions and markers from their names',
       plugins: [starlightThemeRapide()],
       // One transparent SVG serves both: the mark is mid-tone throughout, so it reads on the
@@ -92,13 +92,13 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'Overview',
+          label: 'Introduction',
           items: [
-            { label: 'Reaper AutoColor', link: '/' },
+            { label: 'Overview', link: '/' },
             { label: 'Requirements', link: '/requirements/' },
+            { label: 'Installation', link: '/installation/' },
           ],
         },
-        { label: 'Installation', link: '/installation/' },
         {
           label: 'Usage',
           items: [

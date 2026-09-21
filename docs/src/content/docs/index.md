@@ -1,5 +1,5 @@
 ---
-title: Reaper AutoColor
+title: Overview
 description: Colour REAPER tracks, items, regions and markers from their names
 ---
 

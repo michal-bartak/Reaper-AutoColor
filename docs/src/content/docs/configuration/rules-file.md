@@ -88,8 +88,7 @@ is the whole configuration. Copying it to another machine is the entire "sync" s
 `version` is the schema version. It is what makes upgrading safe in both directions:
 
 - An **older** file is migrated on load, and the previous file is kept as `config.bak.json`. The
-  single-list layout becomes one list per kind, preserving relative order within each kind — see
-  [Upgrading](/Reaper-AutoColor/installation/#upgrading-from-the-single-list-version).
+  single-list layout becomes one list per kind, preserving relative order within each kind.
 - A **newer** file loads read-only. The window shows a banner and lets you edit, but saves nothing,
   so an older build cannot quietly rewrite a config it does not understand.
 
