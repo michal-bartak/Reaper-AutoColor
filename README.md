@@ -20,8 +20,6 @@ support at all.
 | [Troubleshooting](https://michal-bartak.github.io/Reaper-AutoColor/troubleshooting/) | when nothing happens, or the wrong thing does |
 | [Development](https://michal-bartak.github.io/Reaper-AutoColor/development/) | repository layout, the test suite, building these docs |
 
-The pages live in `docs/`; `make docs` builds and serves them locally.
-
 ## Install
 
 Via ReaPack. Import this repository once, under *Extensions → ReaPack → Import
@@ -31,8 +29,7 @@ repositories*:
 https://github.com/michal-bartak/ReaPack/raw/main/index.xml
 ```
 
-Then *Browse packages* and install **AutoColor**. It lands in
-`Scripts/MXM Scripts/MXM_AutoColor/`, and the configuration window and the
-auto-apply toggle are added to the Action List for you.
+Read [Installation](https://michal-bartak.github.io/Reaper-AutoColor/installation/) for further details.
+
 
 MIT licensed — see [LICENSE](LICENSE).
