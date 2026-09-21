@@ -129,3 +129,35 @@ The repository's `dev/` folder holds a few more: a take-colour probe, a focus pr
 builds a scratch project covering the awkward cases. They are author tools, excluded from the package
 on purpose, so they are not in your REAPER install. Clone the repository if you want them.
 :::
+
+## Known limitations
+
+* Case-insensitive matching folds **ASCII only** — `(?i)` will not equate `Č` and `č`. Byte classes
+  do accept non-ASCII, so `\w+` matches `Kytara_hlavní`.
+* A pathological pattern (`(a+)+$` and friends) is cut off by a step budget rather than being
+  allowed to hang REAPER — see [“This pattern is too slow”](#this-pattern-is-too-slow).
+* On REAPER older than 7.62 the marker and region *clear* path is unavailable; colouring still
+  works. See [Marker and region colours will not clear](#marker-and-region-colours-will-not-clear).
+* The master track is never scanned or coloured, because REAPER does not honour a custom colour on
+  it. See [The master track is never coloured](#the-master-track-is-never-coloured).
+* **No rules for takes.** Take names are auto-derived from the track (`$tracknumber-$track` by
+  default) and are not updated when the track is renamed, so matching on them would mostly duplicate
+  matching the track, using a staler copy of the same string. Genuine take colouring is per-instance
+  and semantic (“this one is a keeper”, “this is pass 3”), which REAPER already covers natively with
+  recording-pass auto-colour and take ranking. A Takes tab would add little, and would let rules on
+  two tabs fight over the same object.
+* **Takes are not coloured, they are cleared.** Colours are written to the **item**. A custom colour
+  on a *take* can hide the item's colour entirely — which of the two is displayed is a REAPER
+  preference — so whenever a colour is written to an item, every take on that item has its own
+  colour reset. This is deliberate: without it the tool appears to do nothing on items whose takes
+  carry colours, and because take colours travel with a copy/paste, a stale one follows an item onto
+  a track it no longer belongs to. If you deliberately colour takes, do not use this tool on items.
+  The `dev/` take-colour probe reports what your setup displays.
+* Don't run SWS Auto Color at the same time — both are live colour engines and will fight. The
+  scripts warn if SWS's auto-colour is switched on.
+
+## Not implemented
+
+There is **no filter or search box** over the rule list. It interacts badly with drag-to-reorder
+(the visible index stops matching the real one), and precedence *is* the list order, so hiding rows
+would hide the thing that matters most.
