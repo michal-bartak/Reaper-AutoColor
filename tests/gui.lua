@@ -443,6 +443,16 @@ do
           kick2 and kick2.rgb and string.format("%06X", kick2.rgb) or "no op")
   end
 
+  do -- the conflict banner reads the same file, through the same module
+    local entry = require 'entry'
+    local clash, keys = entry.sws_conflict()
+    check(clash == true, 'the fixture reports SWS as switched on')
+    check(keys and #keys == 2, 'naming both of the switches that are on',
+          keys and table.concat(keys, ','))
+    drop('sws-autocoloricon.ini')
+    check(entry.sws_conflict() == false, 'and no file means no conflict')
+  end
+
   drop('sws-autocoloricon.ini')
   drop('reaper.ini')
 end
