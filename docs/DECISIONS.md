@@ -375,6 +375,84 @@ character-class tables with integer keys, which is not encodable as a JSON
 object. That silently
 broke every save after the first preview until `config.serializable()` existed.
 
+## Importing SWS Auto Color
+
+Worth doing because the translation is genuinely exact, not a best effort: SWS
+matches with `stristr` — case-insensitive plain substring — and applies the
+first rule that matches. That is one specific point in this tool's matcher
+space (`mode='substring'`, `ci=true`) with this tool's own precedence, so an
+ordinary name rule crosses over unchanged. Retyping the list by hand was the
+biggest single reason not to switch.
+
+**Imported once, not read live.** Reading SWS's file on every apply would make
+it a second source of truth, and the point of importing is to stop using SWS —
+which the conflict banner already tells people to do.
+
+**What cannot be expressed arrives switched off, with the reason in the rule's
+NAME.** The rule list renders `label`; nothing in it renders `note`. Putting
+the explanation only in the note would have been an explanation nobody can
+read. Silently dropping those rules would have been worse: the user would have
+no idea which parts of their setup did not survive.
+
+**An unsupported rule keeps its keyword as its pattern**, rather than being
+emptied. An empty pattern with no predicate matches *every* object — the rule
+warnings say exactly that — so a user re-enabling one out of curiosity would
+repaint the whole project. `(MIDI input)` read as a substring matches nothing,
+which is the safe inert state, and it still shows what the rule used to be.
+
+**Gradient is the one sentinel that imports enabled**, because it maps exactly:
+SWS ramps its global `ColorGradients` across every track *that rule* matched,
+in track order, and `gradient_scope = 'all'` is already defined as one ramp
+across every match. First-match-wins on both sides makes "matched" and "won"
+the same set. Two differences are left alone: `colors.lerp` interpolates in HSL
+where SWS lerps per channel in RGB (identical for the default black-to-white,
+and the HSL ramp is the better one — see *Gradients restart per group*), and
+`propagate_folders` can hand a folder's rule to its children before grouping,
+which SWS has no equivalent for.
+
+**Losing `(ignore)` is the only loss that changes which *other* rule wins.** In
+SWS it matches, leaves the object alone, and blocks every rule below it. The
+rest merely fail to colour something, so `(ignore)` gets a longer sentence in
+its name.
+
+**Append lands at the end of each list.** The user's own rules are the ones
+they tuned; an SWS `(any)` catch-all arriving above them would repaint the
+project on the next auto tick. The SWS rules keep their order among themselves,
+so their internal precedence survives, and dragging them higher is one gesture
+away.
+
+**Replace empties the Items tab**, which SWS cannot refill — it has no item
+rules. That is the honest reading of "replace" and it matches the two buttons
+beside it, which both clear all four tabs. A half-replace that quietly spared
+items would be the special case nobody remembers a year later, so the confirm
+text says it outright instead.
+
+**The colour decode does not go through `colors.lua`.** `colors.norm` masks
+`0x1FFFFFF`, which drops SWS's `PORTABLE_FLAG` at `0x2000000` and folds the
+negative sentinels into large positives, so every "random" and "parent" rule
+would have read as a real colour. `colors.from_native` additionally answers
+`nil` for 0, which would have turned every *black* SWS rule into the default
+grey. Only the legacy unflagged branch goes through the host, and only because
+that one genuinely needs the machine's byte order.
+
+**Auto-detect only, no file picker.** The package has no JS_ReaScriptAPI
+dependency, no file dialog and no shell-out anywhere; adding one for this would
+have been the first, and the file is always in the same place.
+
+### Two things that fell out of putting a popup in the Options dialog
+
+The row's `FS * 13` button width no longer fit three buttons — the dialog is
+`FS * 42` less `MODAL_PAD` each side — so the width is derived from the content
+region instead. That also survives the text-size slider, which sits three
+sections above it and a constant did not.
+
+More subtly: the dialog dismisses itself on any click that is not hovering it,
+and an ImGui popup is a separate **root** window, not a child. So choosing a
+menu item closed Options underneath, and Escape closed the dialog rather than
+the menu. Both dismissals are now suspended while a popup of ours is open, which
+covers the Folders combo in the same dialog too — nobody had reported it
+misbehaving, but it opens a popup by the same mechanism.
+
 ## GUI constraints worth knowing
 
 ReaImGui has effectively **one look, and it is dark** — no `StyleColorsLight`,

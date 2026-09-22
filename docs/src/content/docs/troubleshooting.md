@@ -32,7 +32,9 @@ Almost always a REAPER display setting rather than the tool:
 
 Two live colour engines are fighting. The AutoColor warns when SWS's auto-colour is on:
 
-Switch one off — *SWS → Auto Color/Icon/Layout* — and keep the rules in one place.
+Switch one off — *SWS → Auto Color/Icon/Layout* — and keep the rules in one place. To move
+them here first, use **Options ▸ Rules file ▸ Import SWS…**; see
+[Importing from SWS](/Reaper-AutoColor/configuration/#importing-from-sws).
 
 ## A rule shows 0 hits
 
@@ -154,7 +156,8 @@ on purpose, so they are not in your REAPER install. Clone the repository if you 
   a track it no longer belongs to. If you deliberately colour takes, do not use this tool on items.
   The `dev/` take-colour probe reports what your setup displays.
 * Don't run SWS Auto Color at the same time — both are live colour engines and will fight. The
-  scripts warn if SWS's auto-colour is switched on.
+  scripts warn if SWS's auto-colour is switched on. **Options ▸ Rules file ▸ Import SWS…**
+  brings its rules across so you can switch it off without losing them.
 
 ## Not implemented
 
