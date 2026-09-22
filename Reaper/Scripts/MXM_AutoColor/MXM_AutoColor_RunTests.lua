@@ -766,6 +766,251 @@ do
         'patterns survive cleaning')
 end
 
+--=============================================================== sws import
+-- This whole section runs with no REAPER table in sight, which is the point:
+-- everything except paths()/read() is pure, so the mapping is testable here
+-- rather than only by clicking about inside REAPER.
+local SI = require 'swsimport'
+
+do -- tokenizer: WDL's LineParser rules, quotes and all
+  local t = SI.tokenize('0 "(MIDI input)" 50331644 "" "" ""')
+  check(#t == 6, 'a modern record is six tokens', #t .. ' tokens')
+  check(t[2] == '(MIDI input)', 'a quoted token loses its quotes')
+  -- Load-bearing: the token COUNT is what separates the modern record from the
+  -- legacy three-token one, so trailing empties must not be swallowed.
+  check(t[4] == '' and t[5] == '' and t[6] == '', 'empty tokens are emitted, not skipped')
+
+  local b = SI.tokenize('0 (any) 0 "" "" ""')
+  check(b[2] == '(any)', 'a bare token survives -- SWS only quotes what it must')
+
+  check(SI.tokenize("x 'has \"quotes\"' y")[2] == 'has "quotes"',
+        'single quotes are a quote character too')
+  check(SI.tokenize('x `odd \'un` y')[2] == "odd 'un", 'and so is a backtick')
+
+  check(#SI.tokenize('a b ;trailing note') == 2, '";" at a token start starts a comment')
+  check(#SI.tokenize('a b #trailing note') == 2, 'and so does "#"')
+  check(SI.tokenize('a;b')[1] == 'a;b', 'but only at a token start, never mid-token')
+
+  check(SI.tokenize('a "unterminated')[2] == 'unterminated',
+        'an unterminated quote runs to the end of the line, as WDL does')
+  check(#SI.tokenize('a\tb\t\tc') == 3, 'tabs separate tokens')
+  check(#SI.tokenize('') == 0, 'an empty line is no tokens')
+end
+
+do -- ini reader
+  local ini = SI.ini('[A]\nx=1\n[SWS]\nAutoColor 1=0 (any) 0\nAutoColorCount=1\n')
+  check(ini.SWS ~= nil and ini.A ~= nil, 'sections are kept apart')
+  check(ini.SWS['AutoColor 1'] == '0 (any) 0', 'a key keeps its embedded space')
+  check(ini.A.x == '1' and ini.SWS.x == nil, 'keys do not leak between sections')
+  -- A filter can contain '=' and a key never does.
+  check(SI.ini('[SWS]\nk=a=b\n').SWS.k == 'a=b', 'the split is at the FIRST "="')
+  -- An ini carried over from a Windows install is CRLF, and without this
+  -- tonumber('16\r') is nil and the import silently finds nothing.
+  check(SI.ini('[SWS]\r\nAutoColorCount=2\r\n').SWS.AutoColorCount == '2',
+        'a trailing CR is stripped')
+  check(next(SI.ini('no section here\nk=v\n')) == nil, 'keys before any section are dropped')
+end
+
+do -- colour decode -- deliberately NOT routed through colors.lua
+  local w, c = SI.decode_color(50331644)     -- the value in the real file
+  check(w == 'rgb' and c == 0xFFFFFC, 'a portable colour drops its flag and enable bit',
+        tostring(w) .. ' ' .. string.format('%06X', c or 0))
+
+  local w0, c0 = SI.decode_color(0)
+  -- colors.from_native answers nil here, which would quietly turn every black
+  -- SWS rule into the default grey. This is the one place that matters.
+  check(w0 == 'rgb' and c0 == 0x000000, '0 is BLACK, not "no colour"')
+
+  local _, c2 = SI.decode_color(0x2000000 | 0x123456)
+  check(c2 == 0x123456, 'the portable flag is stripped, the colour is not')
+
+  for n, name in pairs({ [-1] = 'custom', [-2] = 'gradient', [-3] = 'random',
+                         [-4] = 'none', [-5] = 'parent', [-6] = 'ignore' }) do
+    check(select(1, SI.decode_color(n)) == name, 'sentinel ' .. n .. ' is "' .. name .. '"')
+    check(select(2, SI.decode_color(n)) == nil, 'and carries no colour')
+  end
+
+  -- No portable flag: written before the format was portable, so it is in the
+  -- byte order of whichever machine wrote it and only the host can say which.
+  local got
+  local _, cl = SI.decode_color(0xFF0000, {
+    native_to_rgb = function(v) got = v; return ((v & 0xFF) << 16) | (v & 0xFF00) | ((v >> 16) & 0xFF) end,
+  })
+  check(got == 0xFF0000, 'a legacy colour is handed to the host already masked to 24 bits')
+  check(cl == 0x0000FF, 'and the host decides its byte order')
+  check(select(2, SI.decode_color(0xFF0000)) == 0xFF0000,
+        'with no host, a legacy colour is left alone')
+end
+
+do -- gradient endpoints, which live in reaper.ini rather than beside the rules
+  local a, b = SI.gradient_ends('[SWS]\nColorGradients=33554432 50331647\n')
+  check(a == 0x000000 and b == 0xFFFFFF, 'portable gradient endpoints are decoded',
+        string.format('%06X %06X', a, b))
+  local da, db = SI.gradient_ends(nil)
+  check(da == 0x000000 and db == 0xFFFFFF, 'an absent reaper.ini falls back to SWS\'s default')
+  check(select(1, SI.gradient_ends('[SWS]\nColorGradients=-3 -3\n')) == 0x000000,
+        'a sentinel where a colour belongs falls back too')
+end
+
+-- The fixture. Read by path so the awkward cases live in a file that looks
+-- like the real thing rather than as string literals dotted through here.
+local FIXDIR = ROOT .. '../../../tests/fixtures/'
+local function slurp(p)
+  local f = io.open(p, 'r'); if not f then return nil end
+  local s = f:read('a'); f:close(); return s
+end
+local FIX  = slurp(FIXDIR .. 'sws-autocoloricon.ini')
+local RINI = slurp(FIXDIR .. 'reaper.ini')
+check(FIX ~= nil, 'the SWS fixture is readable')
+
+if FIX then
+  local res = SI.parse(FIX, RINI)
+  local by = {}
+  for _, k in ipairs({ 'track', 'item', 'region', 'marker' }) do
+    by[k] = res.rules[k]
+  end
+
+  check(res.count == 16, 'every AutoColorCount entry is looked at', tostring(res.count))
+  check(#by.item == 0, 'SWS has no item rules, so the item list stays empty')
+  check(#by.region == 1, 'a type-2 rule becomes a region rule', tostring(#by.region))
+  check(#by.marker == 1, 'a type-1 rule becomes a marker rule', tostring(#by.marker))
+  -- 14 is an unknown type and 15 has too few tokens; neither can be a rule.
+  check(res.skipped == 2, 'an unknown type and a malformed line are skipped',
+        tostring(res.skipped))
+  check(res.imported == 14, 'and everything else is imported', tostring(res.imported))
+
+  local t = by.track
+  check(t[1].pattern == '(MIDI input)' and t[1].enabled == false,
+        'an unsupported property filter arrives OFF')
+  -- Not an empty pattern: that would match EVERY track, so re-enabling it out
+  -- of curiosity would repaint the project. The keyword matches nothing.
+  check(t[1].label:find('(MIDI input) filter is not supported', 1, true) ~= nil,
+        'and says why in its NAME, which is the only field the list renders')
+
+  check(t[2].pattern == '' and t[2].only == nil and t[2].enabled == true,
+        '(any) is an empty pattern with no filter')
+  check(t[3].pattern == 'Kick' and t[3].mode == 'substring' and t[3].ci == true,
+        'a plain name filter is a case-insensitive substring -- SWS\'s stristr exactly')
+  check(t[3].color == 0x00A655, 'and keeps its colour',
+        string.format('%06X', t[3].color))
+  check(t[4].pattern == 'Lead Vox', 'a quoted filter keeps its spaces')
+  check(t[4].label == 'Lead Vox', 'and the filter becomes the rule name')
+
+  check(t[5].only == 'folder' and t[5].pattern == '', '(folder) becomes the folder filter')
+  -- The one sentinel that translates exactly: SWS ramps its global gradient
+  -- across every track THAT rule matched, which is what scope 'all' means.
+  check(t[5].enabled == true, 'a gradient rule arrives ENABLED')
+  check(t[5].color == 0x000000 and t[5].color2 == 0xFFFFFF,
+        'with the SWS gradient endpoints')
+  check(t[5].gradient_scope == 'all', 'spread across all matches')
+  check(t[5].label == '(folder)', 'and nothing appended to its name')
+
+  check(t[6].only == 'unnamed' and t[6].enabled == false,
+        '(unnamed) maps, but a random colour does not')
+  check(t[6].label:find('random colours', 1, true) ~= nil, 'and says so')
+  check(t[7].only == 'children' and t[7].enabled == false, '(children) maps, parent colour does not')
+  check(t[8].enabled == false, '(master) arrives off')
+  check(t[8].label:find('(master) filter', 1, true) ~= nil,
+        'because REAPER ignores a custom colour on the master track')
+
+  check(t[9].color == 0xFF0000, 'a legacy colour with no portable flag still decodes',
+        string.format('%06X', t[9].color))
+  check(t[10].pattern == 'say "hi"', 'a filter SWS had to single-quote round trips')
+  check(t[11].pattern == 'Legacy' and t[11].color == 0x00A655,
+        'the legacy three-token form is a track rule')
+  check(t[12].enabled == false and t[12].label:find('ignore', 1, true) ~= nil,
+        '"ignore" arrives off -- its loss changes which OTHER rule wins')
+
+  check(by.region[1].pattern == '' and by.region[1].color == 0xFFFFFF,
+        'the region rule keeps its colour')
+  check(by.marker[1].only == 'unnamed' and by.marker[1].enabled == false,
+        'the marker rule keeps its filter and loses its "none" colour')
+
+  check(res.disabled == 6, 'six rules could not be expressed', tostring(res.disabled))
+  check(#res.enabled_in_sws == 2, 'and SWS is reported as still switched on',
+        table.concat(res.enabled_in_sws, ','))
+
+  -- Order is priority order on both sides, so it has to survive the trip.
+  check(#t == 12, 'twelve of the sixteen entries are track rules', tostring(#t))
+  check(t[1].pattern == '(MIDI input)' and t[12].pattern == 'Ignored',
+        'file order is preserved within a kind')
+
+  -- Normalising twice must be a no-op, or a hand edit of the saved file would
+  -- come back different from what was written.
+  local stable = true
+  for _, list in pairs(res.rules) do
+    for _, r in ipairs(list) do
+      local again = RU.normalize({ id = r.id, label = r.label, enabled = r.enabled,
+                                   mode = r.mode, pattern = r.pattern, only = r.only,
+                                   ci = r.ci, invert = r.invert, color = r.color,
+                                   color2 = r.color2, note = r.note,
+                                   cascade_items = r.cascade_items,
+                                   gradient_scope = r.gradient_scope }, r.kind)
+      if again.enabled ~= r.enabled or again.only ~= r.only
+         or again.color ~= r.color or again.gradient_scope ~= r.gradient_scope then
+        stable = false
+      end
+    end
+  end
+  check(stable, 'every imported rule is already normalised')
+
+  -- The regression that would otherwise only surface as a silently failed save.
+  do
+    local cfg = CF.defaults()
+    SI.merge(cfg, res, 'replace')
+    local enc = J.encode(CF.serializable(CF.normalize(cfg)))
+    check(enc ~= nil, 'an imported rule set encodes')
+    local ids = {}
+    local dup = false
+    for _, r in ipairs(CF.all_rules(cfg)) do
+      if ids[r.id] then dup = true end
+      ids[r.id] = true
+    end
+    check(not dup, 'and every rule has a distinct id')
+  end
+end
+
+do -- merge
+  local res = SI.parse('[SWS]\nAutoColorCount=1\nAutoColor 1=0 Kick 50374229 "" "" ""\n')
+  check(res.imported == 1, 'a one-rule file imports one rule')
+
+  local cfg = CF.defaults()
+  cfg.rules.track[1] = RU.new('track', { pattern = 'mine' })
+  cfg.rules.item[1]  = RU.new('item',  { pattern = 'takes' })
+  SI.merge(cfg, res, 'append')
+  check(#cfg.rules.track == 2, 'append grows the list')
+  -- END, not top: an SWS "(any)" catch-all arriving above the user's own rules
+  -- would repaint the project on the next auto tick.
+  check(cfg.rules.track[1].pattern == 'mine', 'and the user\'s rules keep precedence')
+  check(cfg.rules.track[2].pattern == 'Kick', 'with the imported ones below')
+  check(#cfg.rules.item == 1, 'append leaves the item tab alone')
+
+  local cfg2 = CF.defaults()
+  cfg2.rules.track[1] = RU.new('track', { pattern = 'mine' })
+  cfg2.rules.item[1]  = RU.new('item',  { pattern = 'takes' })
+  SI.merge(cfg2, res, 'replace')
+  check(#cfg2.rules.track == 1 and cfg2.rules.track[1].pattern == 'Kick',
+        'replace swaps the list out')
+  check(#cfg2.rules.item == 0, 'and empties the item tab, which SWS cannot refill')
+
+  -- The one that would be a disaster: Replace against a file with no rules.
+  local cfg3 = CF.defaults()
+  cfg3.rules.track[1] = RU.new('track', { pattern = 'mine' })
+  SI.merge(cfg3, SI.parse('[SWS]\nAutoColorCount=0\n'), 'replace')
+  check(#cfg3.rules.track == 1, 'replacing with nothing changes nothing')
+end
+
+do -- degenerate files
+  check(SI.parse('').imported == 0, 'an empty file imports nothing')
+  check(SI.parse('[Other]\nx=1\n').count == 0, 'a file with no [SWS] section imports nothing')
+  check(SI.parse('[SWS]\nAutoColorCount=3\nAutoColor 1=0 a 0 "" "" ""\n').skipped == 2,
+        'a count larger than the rules present skips the gaps')
+  -- A hand-edited file with the count dropped should not lose rules that are
+  -- plainly there.
+  check(SI.parse('[SWS]\nAutoColor 1=0 a 0 "" "" ""\nAutoColor 2=0 b 0 "" "" ""\n').imported == 2,
+        'a missing count falls back to the highest index present')
+end
+
 --=================================================================== about
 -- The version exists twice: ReaPack reads it from the header of
 -- Color/MXM_AutoColor.lua, which never ships to Scripts/, and lib/about.lua

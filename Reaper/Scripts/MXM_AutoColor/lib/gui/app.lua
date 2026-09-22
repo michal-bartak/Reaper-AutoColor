@@ -18,6 +18,8 @@ local matcher    = require 'matcher'
 local json       = require 'json'
 local entrylib   = require 'entry'
 local regex      = require 'regex'
+local colors     = require 'colors'
+local swsimport  = require 'swsimport'
 
 local M = {}
 
@@ -373,6 +375,58 @@ function M.clear_colors(scope)
                         sel and noun or 'object',
                         written == 1 and '' or 's',
                         sel and ' in the selection' or ''))
+end
+
+---------------------------------------------------------------- SWS import
+--- Read SWS Auto Color's rules and fold them in.
+---
+--- Lives here rather than in the window so the whole thing is drivable without
+--- ImGui, the same split clear_colors uses. The window is left with the two
+--- things only it can do: asking, and saying what happened.
+---
+--- @param mode 'append' or 'replace'
+--- @return res  the parse result, or nil plus a reason string
+function M.import_sws(mode)
+  -- A config from a newer version is loaded but never written back, and
+  -- M.flush drops the save silently. Mutating it here would destroy the user's
+  -- view of their rules and persist nothing.
+  if st.readonly then
+    return nil, 'This rule file was written by a newer version of AutoColor, ' ..
+                'so it is open read-only. Nothing was imported.'
+  end
+
+  local sws_path, rini_path = swsimport.paths()
+  local sws_text, rini_text = swsimport.read(sws_path, rini_path)
+  if not sws_text then
+    return nil, 'SWS Auto Color settings were not found.\n\nLooked for:\n  ' ..
+                tostring(sws_path) .. '\n\nNothing was imported.'
+  end
+
+  -- The only branch that needs the host: a colour SWS wrote before the format
+  -- became portable is in this machine's byte order.
+  local res = swsimport.parse(sws_text, rini_text, {
+    native_to_rgb = function(v)
+      local r, g, b = reaper.ColorFromNative(v)
+      return colors.pack(r, g, b)
+    end,
+  })
+
+  if res.count == 0 then
+    return nil, 'SWS Auto Color has no rules to import.'
+  end
+  if res.imported == 0 then
+    return nil, string.format(
+      'Found %d SWS rule%s, but none of them could be read.\n\nNothing was imported.',
+      res.count, res.count == 1 and '' or 's')
+  end
+
+  M.snapshot()
+  res.counts = swsimport.merge(st.cfg, res, mode)
+  -- After a replace the selection can only be pointing at a rule that is gone.
+  if mode == 'replace' then st.sel_id = nil end
+  M.mark_dirty()
+
+  return res
 end
 
 -------------------------------------------------------------------- tester

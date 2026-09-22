@@ -6,7 +6,8 @@
   something the user actually needs to know.
 ]]
 
-local config = require 'config'
+local config    = require 'config'
+local swsimport = require 'swsimport'
 
 local M = {}
 
@@ -25,11 +26,12 @@ end
 --- result looks like a random flicker. Worth one cheap check.
 -- @return boolean, list of the enabled SWS keys
 function M.sws_conflict()
-  local path = reaper.GetResourcePath() .. '/sws-autocoloricon.ini'
-  local f = io.open(path, 'r')
-  if not f then return false end
-  local text = f:read('a') or ''
-  f:close()
+  -- Path and read live in swsimport, so the file this tool cares about is
+  -- named in exactly one place. The check stays a pattern match rather than a
+  -- full parse: it runs on a timer and only needs three flags.
+  local path = swsimport.paths()
+  local text = swsimport.read(path)
+  if not text then return false end
 
   local on = {}
   for _, key in ipairs({ 'AutoColorEnable', 'AutoColorMarkerEnable', 'AutoColorRegionEnable' }) do

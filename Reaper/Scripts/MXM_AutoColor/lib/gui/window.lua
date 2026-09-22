@@ -15,6 +15,7 @@ local ruletbl  = require 'gui.rule_table'
 local preview  = require 'gui.preview'
 local theme    = require 'gui.theme'
 local aboutmod = require 'about'
+local swsimport = require 'swsimport'
 
 local M = {}
 
@@ -86,6 +87,108 @@ local pending_font = nil
 -- but is drawn after End(), where GetWindowPos has no window left to report.
 -- Seeded with the first-use size from MXM_AutoColor_GUI.lua.
 local main_x, main_y, main_w, main_h = 0, 0, 78 * 14, 44 * 14
+
+------------------------------------------------------------------ SWS import
+--- Report what an import did.
+---
+--- A clean import gets a toast; anything switched off or skipped gets a real
+--- message box. The toast is one auto-expiring line, and "some of your rules
+--- arrived turned OFF, and turning them on is your call" does not fit in one --
+--- nor should it vanish after six seconds.
+local function report_import(res, mode)
+  local kinds = {}
+  for _, k in ipairs({ 'track', 'region', 'marker' }) do
+    local n = (res.counts and res.counts[k]) or 0
+    if n > 0 then
+      kinds[#kinds + 1] = n .. ' ' .. rulesmod.KIND_NOUN[k] ..
+                          (n == 1 and '' or 's')
+    end
+  end
+
+  local headline = string.format('%s %d rule%s from SWS Auto Color',
+                                 mode == 'replace' and 'Replaced yours with' or 'Imported',
+                                 res.imported, res.imported == 1 and '' or 's')
+
+  if res.disabled == 0 and res.skipped == 0 then
+    app.toast(headline .. '.')
+    return
+  end
+
+  local parts = { headline .. ':\n  ' .. table.concat(kinds, ', ') }
+  if res.disabled > 0 then
+    parts[#parts + 1] = string.format(
+      '%d of them arrived switched OFF -- this tool has no equivalent for what\n' ..
+      'they did in SWS. Each one says why in its name. Read them before you\n' ..
+      'switch any on.', res.disabled)
+  end
+  if res.skipped > 0 then
+    parts[#parts + 1] = string.format('%d line%s could not be read and %s skipped.',
+                                      res.skipped, res.skipped == 1 and '' or 's',
+                                      res.skipped == 1 and 'was' or 'were')
+  end
+  if #res.enabled_in_sws > 0 then
+    parts[#parts + 1] = 'SWS Auto Color is still switched on and will fight with\n' ..
+                        'this tool over the same objects. Turn one of them off:\n' ..
+                        'SWS > Auto Color/Icon/Layout.'
+  end
+
+  reaper.ShowMessageBox(table.concat(parts, '\n\n'), 'AutoColor', 0)
+  app.toast(headline .. '.')
+end
+
+local function do_import(mode)
+  if mode == 'replace' then
+    local ans = reaper.ShowMessageBox(
+      'Replace your current rules with the ones from SWS Auto Color?\n\n' ..
+      'Your existing rules will be gone, on all four tabs. SWS has no item ' ..
+      'rules, so the Items tab will end up empty.\n\n' ..
+      'This can be undone with the Undo button while the window is open.',
+      'AutoColor', 4)
+    if ans ~= 6 then return end
+  end
+  -- Append asks nothing. It destroys nothing, Undo covers it, and choosing the
+  -- menu item was already the second deliberate click.
+
+  local res, err = app.import_sws(mode)
+  if not res then
+    reaper.ShowMessageBox(err, 'AutoColor', 0)
+    return
+  end
+  report_import(res, mode)
+end
+
+local function sws_popup()
+  if not ImGui.BeginPopup(ctx, 'swsimport') then return end
+
+  if ImGui.MenuItem(ctx, 'Add SWS rules to mine') then do_import('append') end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Appends them BELOW your own rules, so nothing you have now\n' ..
+      'changes meaning. Drag them higher if you want them to win.')
+  end
+
+  if ImGui.MenuItem(ctx, 'Replace my rules with SWS\'s...') then do_import('replace') end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Clears all four tabs first. SWS has no item rules, so the\n' ..
+      'Items tab ends up empty.')
+  end
+
+  ImGui.Separator(ctx)
+  ImGui.TextColored(ctx, rgba(COL_DIM), 'Reads ' .. swsimport.SOURCE)
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'SWS name filters are case-insensitive substrings, and the first\n' ..
+      'matching rule wins -- both exactly how this tool works, so ordinary\n' ..
+      'rules come across unchanged.\n\n' ..
+      'Random, parent, palette-cycling and "ignore" colours, and the track\n' ..
+      'property filters like (record armed), have no equivalent here. Those\n' ..
+      'rules arrive switched off with the reason in their name.\n\n' ..
+      'Icons and track layouts are ignored -- this tool only colours.')
+  end
+
+  ImGui.EndPopup(ctx)
+end
 
 --- The Options dialog.
 ---
@@ -257,9 +360,20 @@ function M.draw_options(FS)
   ImGui.PushStyleColor(ctx, ImGui.Col_Text, rgba(COL_DIM))
   ImGui.TextWrapped(ctx, config.path())
   ImGui.PopStyleColor(ctx)
-  -- Both replace the WHOLE rule set, so both are one confirm and one snapshot.
-  -- Equal explicit widths: two auto-sized buttons on one row come out ragged.
-  local rw = FS * 13
+  -- Equal widths: auto-sized buttons on one row come out ragged. Derived, not
+  -- a constant: the dialog is FS*42 wide less MODAL_PAD each side, so three
+  -- buttons at the old FS*13 plus two ItemSpacing gaps overflow it. Splitting
+  -- the content region three ways also survives the text-size slider, which
+  -- sits three sections above this one.
+  local spacing = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+  local rw = math.floor((ImGui.GetContentRegionAvail(ctx) - spacing * 2) / 3)
+
+  -- A read-only config (written by a newer version) is never saved back, so
+  -- letting these run would destroy the user's view of their rules and persist
+  -- nothing. app.import_sws refuses on its own too; this is what makes the
+  -- refusal visible before the click.
+  ImGui.BeginDisabled(ctx, app.st.readonly)
+
   if theme.button('Example rules', rw) then
     local ans = reaper.ShowMessageBox(
       'Replace your current rules with the built-in example set?\n\n' ..
@@ -290,6 +404,18 @@ function M.draw_options(FS)
     end
   end
 
+  -- Third, so the two above keep the positions people already know.
+  ImGui.SameLine(ctx)
+  if theme.button('Import SWS...', rw) then ImGui.OpenPopup(ctx, 'swsimport') end
+  sws_popup()
+
+  ImGui.EndDisabled(ctx)
+
+  if app.st.readonly then
+    ImGui.TextColored(ctx, rgba(COL_WARN),
+      'Read-only: this file was written by a newer version of AutoColor.')
+  end
+
   ImGui.Spacing(ctx)
   ImGui.Separator(ctx)
   ImGui.Spacing(ctx)
@@ -297,14 +423,24 @@ function M.draw_options(FS)
   theme.center(bw)
   if theme.button('Close', bw) then st.options_open = false end
 
+  -- Both dismissals are suspended while any popup of ours is open. A popup is
+  -- a separate ROOT window, not a child, so `inside` above is false while the
+  -- mouse is over the Import menu -- and clicking a menu item would otherwise
+  -- close the dialog underneath it. Escape belongs to the menu too while one
+  -- is up, or the menu and the dialog would both go on one keystroke.
+  local popup = ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId
+                                           | ImGui.PopupFlags_AnyPopupLevel)
+
   -- Escape. The popup used to do this for us.
-  if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then st.options_open = false end
+  if not popup and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+    st.options_open = false
+  end
 
   -- A click on the AutoColor window behind dismisses it, as a click outside a
   -- popup did. The focus test is what keeps a click somewhere else in REAPER
   -- from counting: when the arrange takes the click, no ImGui window is
   -- focused, and the dialog stays exactly where it is.
-  if ImGui.IsMouseClicked(ctx, 0) and not inside
+  if not popup and ImGui.IsMouseClicked(ctx, 0) and not inside
      and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
     st.options_open = false
   end

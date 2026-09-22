@@ -857,6 +857,107 @@ do -- Remove Rules empties every kind, behind a confirmation
   check(app.can_undo(), 'and a snapshot taken, so Undo puts them back')
 end
 
+do -- the third button in the Rules file row, and the menu behind it
+  local _, _, rec = optdialog({ IsItemHovered = function() return true end }, true)
+  check(rec.labels['Import SWS...'], 'the rules file section offers Import SWS')
+
+  -- The button only opens a menu; it must not touch the rules on its own.
+  local before = #app.st.cfg.rules.track
+  local _, _, rec2 = optdialog({ Button = function(_, id) return id == '##Import SWS...' end }, true)
+  check(rec2.seen.OpenPopup, 'clicking it opens a popup')
+  check(#app.st.cfg.rules.track == before, 'and changes nothing by itself')
+end
+
+do -- three buttons have to FIT: the dialog is a fixed width and does not scroll
+  local widths = {}
+  optdialog({
+    GetContentRegionAvail = function() return 14 * 39.6, 640 end,
+    GetStyleVar = function() return 8, 8 end,
+    Button = function(_, id, w) widths[id] = w; return false end,
+  }, true)
+
+  local row = { widths['##Example rules'], widths['##Remove Rules'],
+                widths['##Import SWS...'] }
+  check(row[1] and row[2] and row[3], 'all three are drawn')
+  check(row[1] == row[2] and row[2] == row[3], 'at equal widths',
+        table.concat({ tostring(row[1]), tostring(row[2]), tostring(row[3]) }, '/'))
+  -- The real constraint. A stub cannot measure pixels, so it checks the
+  -- arithmetic instead of pretending to have looked at the screen.
+  check(row[1] and (row[1] * 3 + 8 * 2) <= 14 * 39.6,
+        'and the row fits the content region, spacing included',
+        tostring(row[1]))
+end
+
+do -- the Import menu itself
+  local real = reaper.ShowMessageBox
+  local asked
+  reaper.ShowMessageBox = function(msg, _, kind) asked = { msg = msg, kind = kind }; return 6 end
+
+  -- No SWS file in the mock resource path, so this exercises the menu and the
+  -- "nothing found" report without needing a fixture.
+  app.st.cfg = config.starter()
+  local before = #app.st.cfg.rules.track
+  optdialog({
+    BeginPopup = function(_, id) return id == 'swsimport' end,
+    MenuItem   = function(_, label) return label == 'Add SWS rules to mine' end,
+    IsItemHovered = function() return true end,
+  }, true)
+  reaper.ShowMessageBox = real
+
+  check(asked ~= nil, 'choosing Append reports back')
+  check(asked and asked.kind == 0, 'and Append itself asks nothing first -- it destroys nothing',
+        asked and tostring(asked.kind))
+  check(asked and asked.msg:find('not found', 1, true) ~= nil,
+        'with the missing-file message here', asked and asked.msg)
+  check(#app.st.cfg.rules.track == before, 'and the rules are untouched')
+end
+
+do -- Replace asks before it does anything
+  local real = reaper.ShowMessageBox
+  local asked
+  reaper.ShowMessageBox = function(msg, _, kind) asked = { msg = msg, kind = kind }; return 7 end
+
+  optdialog({
+    BeginPopup = function(_, id) return id == 'swsimport' end,
+    MenuItem   = function(_, label) return label:find('Replace', 1, true) ~= nil end,
+  }, true)
+  reaper.ShowMessageBox = real
+
+  check(asked and asked.kind == 4, 'Replace asks a yes/no question')
+  -- SWS has no item rules to refill that tab with, so saying so up front is
+  -- the whole reason this branch confirms and Append does not.
+  check(asked and asked.msg:find('Items tab', 1, true) ~= nil,
+        'and warns that the Items tab ends up empty', asked and asked.msg)
+end
+
+do -- a click in the menu must not dismiss the dialog underneath it
+  -- A popup is a separate ROOT window, so IsWindowHovered on the dialog is
+  -- false while the mouse is over the menu. Without the guard, choosing a menu
+  -- item closed Options.
+  local _, _, _, still = optdialog({
+    IsPopupOpen    = function() return true end,
+    IsMouseClicked = function() return true end,
+    IsWindowHovered = function() return false end,
+    IsWindowFocused = function() return true end,
+  }, true)
+  check(still, 'the dialog survives a click while a popup of its own is open')
+
+  -- And Escape belongs to the menu while one is up, not to the dialog.
+  local _, _, _, still2 = optdialog({
+    IsPopupOpen  = function() return true end,
+    IsKeyPressed = function() return true end,
+  }, true)
+  check(still2, 'and survives Escape, which the menu should be eating')
+
+  -- The guard must not have broken the ordinary dismissals.
+  local _, _, _, gone = optdialog({
+    IsMouseClicked  = function() return true end,
+    IsWindowHovered = function() return false end,
+    IsWindowFocused = function() return true end,
+  }, true)
+  check(not gone, 'with no popup open, a click outside still closes it')
+end
+
 do -- the split checkbox is wired to the option, and repaints the preview
   local src = pathlib_read('lib/gui/window.lua')
   check(src:find('o.subfolder_splits_range = v', 1, true) ~= nil,
