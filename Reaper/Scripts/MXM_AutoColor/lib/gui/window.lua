@@ -407,9 +407,16 @@ function M.draw_options(FS)
   -- Third, so the two above keep the positions people already know.
   ImGui.SameLine(ctx)
   if theme.button('Import SWS...', rw) then ImGui.OpenPopup(ctx, 'swsimport') end
-  sws_popup()
 
   ImGui.EndDisabled(ctx)
+
+  -- The menu is drawn OUTSIDE the disabled scope, though the button that opens
+  -- it is inside. A popup is a window of its own, and a window begun inside
+  -- BeginDisabled inherits the disable -- tooltips are the documented sole
+  -- exception -- so the menu would have come up dimmed and unclickable, with
+  -- no way to dismiss it. Nothing can open it while the buttons are disabled
+  -- anyway, so there is no case where drawing it here lets something through.
+  sws_popup()
 
   if app.st.readonly then
     ImGui.TextColored(ctx, rgba(COL_WARN),
