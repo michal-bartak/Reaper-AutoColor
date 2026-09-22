@@ -34,7 +34,7 @@ Two live colour engines are fighting. The AutoColor warns when SWS's auto-colour
 
 Switch one off — *SWS → Auto Color/Icon/Layout* — and keep the rules in one place. To move
 them here first, use **Options ▸ Rules file ▸ Import SWS…**; see
-[Importing from SWS](/Reaper-AutoColor/configuration/#importing-from-sws).
+[Importing from SWS](/Reaper-AutoColor/configuration/import-sws/).
 
 ## A rule shows 0 hits
 

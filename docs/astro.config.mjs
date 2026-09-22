@@ -115,6 +115,7 @@ export default defineConfig({
           items: [
             { label: 'Options', link: '/configuration/' },
             { label: 'Rules file', link: '/configuration/rules-file/' },
+            { label: 'Importing from SWS', link: '/configuration/import-sws/' },
             { label: 'REAPER preferences', link: '/configuration/reaper-preferences/' },
           ],
         },
