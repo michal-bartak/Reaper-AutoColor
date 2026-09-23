@@ -1,4 +1,4 @@
-.PHONY: help test icon docs docs-install docs-dev docs-build docs-preview docs-diagrams docs-diagrams-verify docs-clean
+.PHONY: help test reapack-text icon docs docs-install docs-dev docs-build docs-preview docs-diagrams docs-diagrams-verify docs-clean
 
 # The scripts themselves need no build step -- REAPER runs the .lua files where they sit. This
 # file is for the parts that do have a toolchain: the test suite, the icon, and the docs site.
@@ -23,9 +23,15 @@ help:
 	@echo ""
 	@echo "Tests (need a standalone Lua: brew install lua):"
 	@echo "  make test               run the suite outside REAPER"
+	@echo ""
+	@echo "ReaPack:"
+	@echo "  make reapack-text       print the About text and History ReaPack shows, from index.xml"
 
 test:
 	./tests/run.sh
+
+reapack-text:
+	@python3 dev/reapack_text.py index.xml
 
 # Re-render the favicon, the README mark and the REAPER toolbar strips from the one master SVG.
 # Deliberately NOT a prerequisite of docs-build: the outputs are committed and the master changes
