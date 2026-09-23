@@ -172,6 +172,23 @@ repo:
   `merge-index.py` there. Until that runs and is pushed, a new version reaches
   nobody.
 
+## Writing: short, and in the right place
+
+Prose is the thing I most often have to cut. Default to fewer words.
+
+- **UI text is the tightest.** A tooltip is two or three short lines. A dialog
+  states what will happen and stops. Neither explains *why* something works the
+  way it does, and neither restates what the manual covers.
+- **Say it once, in one place.** Reasons and background belong in `docs/` --
+  the user-facing pages for how to use it, `DECISIONS.md` and `RESEARCH.md` for
+  why. Not in a tooltip, not repeated across three files.
+- **Don't pad a reply.** Answer what was asked. No preamble, no summary of what
+  I just did if the diff already shows it, no listing of options I'm not taking.
+- **Code comments earn their place** by explaining what the code cannot: a
+  constraint discovered the hard way, why an obvious alternative was rejected.
+  Not a paraphrase of the line below.
+- When a change makes a paragraph redundant, delete it in the same commit.
+
 ## Working agreement
 
 - When asked to *see* something (an icon, a layout, any visual): render a
