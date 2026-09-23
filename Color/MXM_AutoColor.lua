@@ -1,18 +1,19 @@
 --[[
 Description: AutoColor
-Version: 1.0.0
+Version: 1.1.0beta1
 Author: Michal MaXyM Bartak
 Links:
   GitHub https://github.com/michal-bartak/Reaper-AutoColor
 About:
   # AutoColor
 
-  Colour tracks, items, regions and markers from their **names**, using plain
-  substring, glob, or **real regular expressions**.
+  Colour tracks, items, regions and markers, and set track icons, from their
+  **names**, using plain substring, glob, or **real regular expressions**.
 
-  One ordered rule list per object kind -- Tracks, Items, Regions, Markers --
-  and within a kind the first rule that matches wins, so precedence works like
-  firewall rules. Reordering track rules can never change which region wins.
+  One ordered rule list per object kind -- Tracks, Items, Regions, Markers,
+  Icons -- and within a list the first rule that matches wins, so precedence
+  works like firewall rules. Reordering track rules can never change which
+  region wins.
 
   The configuration window needs ReaImGui 0.10+. Every other action, including
   Apply and Clear, works without it.
@@ -23,18 +24,13 @@ About:
   MIT licensed. Source: <https://github.com/michal-bartak/Reaper-AutoColor>
 Metapackage: true
 Changelog:
-  First public release.
+  - Track icons support.
+  - New track filters: has an instrument, has a MIDI input, has receives.
+  - SWS import.
+  - Minor layout changes.
 
-  - Colour tracks, items, regions and markers by name -- substring, glob or
-    regular expressions.
-  - One ordered rule list per object kind; first match wins.
-  - Configuration stored outside the scripts location, to prevent overwriting
-    on update.
-  - Configuration window requires ReaImGui 0.10+.
-
-  Upgrading from 0.9.x: scripts moved to Scripts/MXM Scripts/MXM_AutoColor/.
-  ReaPack relocates the files; toolbar buttons, shortcuts and custom actions
-  bound to the old path must be repointed.
+  Config file bumped to version 3. Earlier versions of AutoColor will open it
+  in read-only mode.
 Provides:
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua > ../MXM_AutoColor/
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoToggle.lua > ../MXM_AutoColor/

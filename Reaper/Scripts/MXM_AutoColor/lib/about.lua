@@ -12,12 +12,12 @@ return {
   -- Inside REAPER the tool is "AutoColor"; the repository and the docs site are
   -- "Reaper AutoColor". Both names are deliberate.
   NAME    = 'AutoColor',
-  VERSION = '1.0.0',
+  VERSION = '1.1.0beta1',
   AUTHOR  = 'Michal MaXyM Bartak',
   LICENCE = 'MIT',
   COPYRIGHT = 'Copyright (c) 2026 Michal Bartak',
 
-  TAGLINE = 'Colour tracks, items, regions and markers from their names.',
+  TAGLINE = 'Colour tracks, items, regions and markers, and set track icons, from their names.',
 
   URL_REPO = 'https://github.com/michal-bartak/Reaper-AutoColor',
   URL_DOCS = 'https://michal-bartak.github.io/Reaper-AutoColor/',

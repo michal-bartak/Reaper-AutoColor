@@ -1014,8 +1014,9 @@ end
 -- this.
 do
   local AB = require 'about'
-  check(AB.VERSION:match('^%d+%.%d+%.%d+$') ~= nil,
-        'the shipped version is three numbers', tostring(AB.VERSION))
+  -- Three numbers, optionally a pre-release tag ReaPack recognises: 1.1.0beta1.
+  check(AB.VERSION:match('^%d+%.%d+%.%d+%a*%d*$') ~= nil,
+        'the shipped version is three numbers, optionally a pre-release', tostring(AB.VERSION))
   for _, k in ipairs({ 'NAME', 'AUTHOR', 'LICENCE', 'COPYRIGHT', 'TAGLINE',
                        'URL_REPO', 'URL_DOCS' }) do
     check(type(AB[k]) == 'string' and AB[k] ~= '', 'about carries ' .. k)
@@ -1037,7 +1038,7 @@ do
     end
     if f then
       local manifest = f:read('a'); f:close()
-      local declared = manifest:match('\nVersion:%s*([%d%.]+)')
+      local declared = manifest:match('\nVersion:%s*([%w%.]+)')
       check(declared ~= nil, 'the ReaPack manifest declares a version')
       check(declared == AB.VERSION,
             'the shipped version matches the ReaPack manifest',
