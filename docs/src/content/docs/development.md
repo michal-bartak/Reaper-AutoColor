@@ -8,7 +8,7 @@ description: Repository layout, running the tests, and building these docs
 ```
 Reaper/                     mirrors REAPER's resource path; this is what gets installed
   Scripts/MXM_AutoColor/
-    MXM_AutoColor_*.lua actions you add to REAPER's Action List
+    MXM_AutoColor_*.lua entry points, added to REAPER's Action List
     lib/                    the engine; lib/gui/ is the only part that uses ImGui
   Data/toolbar_icons/       the toolbar icon, at 1x, 150 and 200
 Color/                      the ReaPack manifest, and nothing else; the directory
@@ -42,7 +42,7 @@ checked against source rather than documentation. They exist so nobody has to re
 ## Tests
 
 `MXM_AutoColor_RunTests.lua` runs from REAPER's Action List and prints a summary to the ReaScript
-console. It touches no project state and never writes your config.
+console. It touches no project state and never writes the config.
 
 The full suite runs **outside** REAPER, against a mocked API:
 
@@ -51,8 +51,8 @@ brew install lua     # once; 5.4 or newer
 make test            # or ./tests/run.sh
 ```
 
-Expect `ALL GREEN`. The runner's exit status is meaningful, so it drops straight into CI or a
-pre-commit hook. It covers the engine, the action scripts end to end, the background loop, the GUI
+`ALL GREEN` is the expected result. The runner's exit status is meaningful, so it drops straight
+into CI or a pre-commit hook. It covers the engine, the action scripts end to end, the background loop, the GUI
 logic and its drawing paths — against a mock REAPER and a stub ImGui — plus a differential fuzz of
 the regex engine against Python's `re`. See
 [`tests/README.md`](https://github.com/michal-bartak/Reaper-AutoColor/blob/main/tests/README.md).

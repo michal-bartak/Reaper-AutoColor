@@ -8,11 +8,8 @@ description: The REAPER version and the one extension AutoColor needs
 | REAPER | **7**, tested against 7.80 on macOS/arm64 and Windows 10 |
 | ReaImGui | **0.10 or later**, for the configuration window only |
 
-Everything except the configuration window works without ReaImGui. The apply, clear and
-auto-colour actions are plain ReaScript.
-
-To install ReaImGui, open *Extensions → ReaPack → Browse packages*, search `ReaImGui`, click
-**Install**, then restart REAPER.
+To install ReaImGui: *Extensions → ReaPack → Browse packages*, search `ReaImGui`, **Install**,
+restart REAPER.
 
 ## Where to go next
 

@@ -12,18 +12,20 @@ Every rule tests one thing: the object's **name**. The **Match** mode decides ho
 | **regex** | anywhere, unless anchored | `^(kick\|snare\|hh)\b` |
 
 :::caution[contains and glob are not the same thing]
-Globs are anchored to the whole name, so `bass` as a **glob** matches only a track called exactly
+Globs are anchored to the whole name, so `bass` as a **glob** matches only a track named exactly
 "bass". As **contains**, it matches "Sub Bass DI". A glob rule unexpectedly on 0 hits is almost
-always this. Wrap it in `*`.
+always this; wrap it in `*`.
 :::
 
-**Aa** on the row makes the comparison case-insensitive. It is **on** for a new rule: track names
-get typed casually, and a rule that silently misses "Bass" because it was written `bass` is a bad
-default. It folds **ASCII only**, so it will not equate `Č` with `č`.
+**Aa** on the row makes the comparison case-insensitive. On by default, since track names are
+typed casually and a rule missing "Bass" because it was written `bass` is a poor default. Folding
+is **ASCII only**: `Č` and `č` are not equated.
 
 ## Pattern Syntax
 
-Use the Pattern tester at the foot of the window to work a pattern out before you commit it to a rule. It has its own mode, pattern and name, shows where the match landed and what each group captured, and touches neither your rules nor the project.
+The Pattern tester at the foot of the window works a pattern out before it goes into a rule. It has
+its own mode, pattern and subject, reports where the match landed and what each group captured, and
+touches neither the rules nor the project.
 
 ### Regex
 
@@ -40,17 +42,16 @@ Use the Pattern tester at the foot of the window to work a pattern out before yo
 (?i)                        case-insensitive, at the very start only
 ```
 
-Backreferences, lookaround and named groups are **not** supported. A pattern that uses them is
-rejected with a message on the row, rather than misbehaving silently.
+Backreferences, lookaround and named groups are **not** supported. A pattern using them is rejected
+with a message on the row, rather than misbehaving silently.
 
 :::note[Non-ASCII names]
 Byte classes accept non-ASCII, so `\w+` matches `Kytara_hlavní`. Only case *folding* is ASCII-only.
 :::
 
 :::caution[Patterns that are too slow]
-A step budget cuts off a pathological pattern — `(a+)+$` and friends — rather than letting it hang
-REAPER. The window flags the rule and treats it as a no-match. Nested quantifiers are the usual
-cause; simplify the pattern.
+A step budget cuts off a pathological pattern — `(a+)+$` and similar — to prevent it hanging
+REAPER. The rule is flagged and treated as a no-match. Nested quantifiers are the usual cause.
 :::
 
 ### Glob
@@ -66,9 +67,9 @@ A glob is anchored to the **whole** name. Four things are special:
 
 Every other character is literal, so `.`, `+`, `(` and `|` match themselves.
 
-There is no escape character. To match a literal `*` or `?`, put it in a class: `x[*]y` matches
-`x*y` and nothing else. A `[` with no closing `]` is a literal `[`. To put `]` in a class, make it
-the first character, as in `[]x]`.
+There is no escape character. A literal `*` or `?` goes in a class: `x[*]y` matches `x*y` and
+nothing else. A `[` with no closing `]` is a literal `[`. A `]` inside a class must come first, as
+in `[]x]`.
 
 ## Filters
 
@@ -80,11 +81,11 @@ A rule can carry one optional non-name filter that **narrows** what it matches.
 | **is inside a folder** | tracks | any track nested under a folder parent |
 | **has no name** | all kinds | an object with an empty name |
 
-The filter and the pattern combine with **and**: both must hold. Leave the **pattern** empty to match
-on the filter alone. An empty pattern with *is a folder track* means "every folder track"; `^Drums`
+The filter and the pattern combine with **and**: both must hold. An empty **pattern** matches on the
+filter alone — an empty pattern with *is a folder track* means "every folder track", while `^Drums`
 with the same filter means "folder tracks named Drums…".
 
-A tab does not offer filters its kind cannot use, so you cannot build a rule that never matches.
+A tab offers only the filters its kind can use, to prevent building a rule that never matches.
 
 ## A worked example
 
@@ -96,11 +97,11 @@ Rules on the **Tracks** tab, top to bottom:
 | 2 | Drums | regex | `^(kick\|snare\|hh)\b` | — | the drum tracks by name |
 | 3 | Anything in a folder | contains | *(empty)* | is inside a folder | everything else nested |
 
-Rule 3 has no pattern, so without the filter it would match every track. It sits last, so it gets
-only what rules 1 and 2 did not claim. That is the normal shape: specific rules at the top, a
-catch-all at the bottom.
+Rule 3 has no pattern, so without the filter it would match every track. Sitting last, it gets only
+what rules 1 and 2 did not claim. That is the normal shape: specific rules at the top, a catch-all
+at the bottom.
 
 ## Where to go next
 
 - [Colours and gradients](/Reaper-AutoColor/usage/colours/) — what a matching rule then paints.
-- [Items](/Reaper-AutoColor/usage/colours/#items) — how an item gets a colour without a rule of its own.
+- [Items](/Reaper-AutoColor/usage/colours/#items) — how an item takes a colour without a rule of its own.

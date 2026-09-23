@@ -3,18 +3,17 @@ title: Applying colours
 description: Apply now, Selection, and the actions that do the same without the window
 ---
 
-Rules decide colours. Applying writes them into the project. Nothing in the rule table touches your
-tracks until you apply, or until the [background loop](/Reaper-AutoColor/usage/auto-apply/) does it
-for you.
+Rules decide colours; applying writes them into the project. Nothing in the rule table reaches the
+tracks until an apply runs, or the [background loop](/Reaper-AutoColor/usage/auto-apply/) does.
 
-Objects that already have the colour the rules want are **not rewritten**, so applying twice costs
+Objects already holding the colour the rules want are **not rewritten**, so a second apply costs
 nothing and changes nothing.
 
 :::note
-An apply writes colours. By default it never removes one, so an object no rule claims keeps
-whatever colour it already had — an old item colour can survive every apply.
+An apply writes colours and, by default, never removes one: an object no rule claims keeps whatever
+colour it had, so an old item colour can survive every apply.
 
-To remove a colour, use [Clear](/Reaper-AutoColor/usage/clearing/), or tick
+Removing a colour is [Clear](/Reaper-AutoColor/usage/clearing/), or
 [reset unmatched objects](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects) for that kind,
 which makes every apply strip the colour from anything the rules do not claim.
 :::
@@ -29,24 +28,23 @@ which makes every apply strip the colour from anything the rules do not claim.
 </figure>
 
 **Apply now** colours the whole project — every track, item, region and marker — in **one undo
-point**. It also tells the background loop to drop the marks it holds on objects you recoloured by
-hand, so the rules take those objects back. Use it when you have hand-coloured something and want
-the rules to own it again.
+point**. It also clears the marks the background loop holds on hand-recoloured objects, returning
+them to the rules. That is its purpose after hand-colouring something.
 
-**Selection** colours only what is selected. When a track **and** some items are selected, whichever
-you clicked last wins, the same rule REAPER uses for its own "depending on focus" actions. The
-status line says which it used.
+**Selection** colours the selection only. With a track **and** some items selected, the last one
+clicked wins — the same rule REAPER uses for its own "depending on focus" actions. The status line
+reports which it took.
 
-- With **items** in focus, AutoColor still reads tracks, because folder inheritance and the
-  track → item cascade need them, but writes to none of them.
+- With **items** in focus, tracks are still read, since folder inheritance and the track → item
+  cascade need them, but none are written.
 - With **tracks** in focus, items are left out entirely.
 - **Selected regions and markers are always included**, whichever way the focus went. There is no
   focus value to weigh them against.
 
 ## From the Action List
 
-The same two operations exist as standalone actions, so you can put them on a key or a toolbar
-without opening the window:
+The same two operations exist as standalone actions, for a key or a toolbar without opening the
+window:
 
 | Action | Scope |
 |---|---|
@@ -61,9 +59,9 @@ difference in, so it takes the narrower, more predictable scope.
 
 ## When a rule change reaches the project
 
-Editing a rule does **not** repaint the project, and neither does clicking around in the window
+Editing a rule does **not** repaint the project, nor does anything else done in the window
 afterwards. With the background loop running, the edit waits until an object actually changes, then
-applies to everything at once. The project is never half on the old rules.
+applies to everything at once, so the project is never half on the old rules.
 
 **Apply now** commits an edit immediately.
 
