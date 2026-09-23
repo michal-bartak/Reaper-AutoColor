@@ -96,7 +96,7 @@ function M.summary(what, stats, opts)
     return
   end
 
-  if stats.matched == 0 then
+  if stats.matched == 0 and (stats.icon_matched or 0) == 0 then
     M.msg(what .. ':\n\nNone of your rules matched any of the ' .. stats.scanned ..
           ' object(s) scanned.\n\nOpen the AutoColor window to see which ' ..
           'rules match what.', 'AutoColor: no matches')
@@ -110,9 +110,11 @@ function M.summary(what, stats, opts)
     return
   end
 
-  M.console(string.format('AutoColor: %s -- %d coloured%s (%d matched of %d scanned)',
-                          what, stats.written,
+  local ni = stats.icons_written or 0
+  M.console(string.format('AutoColor: %s -- %d coloured%s%s (%d matched of %d scanned)',
+                          what, stats.written - ni,
                           stats.cleared > 0 and (', ' .. stats.cleared .. ' cleared') or '',
+                          ni > 0 and (', ' .. ni .. ' icons set') or '',
                           stats.matched, stats.scanned))
 end
 

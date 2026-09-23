@@ -50,10 +50,21 @@ do
                         'TableNextRow', 'TableSetColumnIndex', 'EndTable',
                         'PushID', 'PopID', 'ColorEdit3', 'InputText', 'Checkbox',
                         'BeginChild', 'EndChild', 'Button',
-                        'Selectable', 'ColorButton',
+                        'Selectable',
                         'BeginTabBar', 'BeginTabItem', 'PushStyleVar' }) do
     check(rec.seen[fn], 'frame reaches ' .. fn)
   end
+end
+
+-- The preview follows the LAST open tab, and with every tab open that is Icons,
+-- which shows thumbnails rather than swatches.
+do
+  local ImGui, rec = mockimgui.new{ only_tab = 'Tracks' }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  P.advance(1); app.refresh_entries(true); app.recompute_preview()
+  local ok, err = pcall(window.draw, 14)
+  check(ok, 'a Tracks-only frame draws', tostring(err))
+  check(rec.seen.ColorButton, 'the Tracks preview reaches ColorButton')
 end
 
 ------------------------------------------------------- one tab per object kind
@@ -1496,6 +1507,69 @@ do -- preview and Apply must agree for a GROUPED gradient too, not just a flat
   end
   check(mismatch == nil, 'every previewed grouped-gradient colour is what Apply writes',
         tostring(mismatch))
+end
+
+------------------------------------------------------ the Icons tab and browser
+do
+  local dir = TMP .. '/Data/track_icons'
+  P.files[dir] = { files = { 'kick.png', 'Snare.PNG', 'notes.txt', 'amp.jpg' }, dirs = { 'subf' } }
+  P.files[dir .. '/subf'] = { files = { 'fx.png' } }
+  local icons = require 'icons'
+  local list = icons.list(false)
+  check(#list == 4, 'the index keeps png/jpg, any case, subfolders included', #list .. '')
+  check(list[1].rel == 'amp.jpg' and list[4].rel == 'subf/fx.png', 'ordered by relative path')
+
+  app.st.cfg.rules = config.empty_rules()
+  app.st.cfg.rules.icon[1] = rules.new('icon', { label = 'Kick', pattern = 'kick',
+                                                 icon = 'kick.png', children = 'fill' })
+  local r = app.st.cfg.rules.icon[1]
+
+  local steps = 0
+  local scripted = {
+    CreateImage = function() return { 'img' } end,
+    Image_GetSize = function() return 64, 64 end,
+    ValidatePtr = function() return true end,
+    CreateListClipper = function() return { 'clipper' } end,
+    ListClipper_Step = function() steps = steps + 1; return steps % 2 == 1 end,
+    ListClipper_GetDisplayRange = function() return 0, 10 end,
+  }
+  local function iframe(extra)
+    local sc = {}
+    for k, v in pairs(scripted) do sc[k] = v end
+    for k, v in pairs(extra or {}) do sc[k] = v end
+    local ImGui, rec = mockimgui.new{ only_tab = 'Icons', scripted = sc }
+    window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+    P.advance(1); app.refresh_entries(true); app.recompute_preview()
+    local ok, err = pcall(window.draw, 14)
+    local ok2, err2 = pcall(window.draw_icon_browser, 14)
+    return ok and ok2, tostring(err) .. ' / ' .. tostring(err2), rec
+  end
+
+  local ok, err, rec = iframe()
+  check(ok, 'the Icons tab draws', err)
+  check(rec.labels['##children'], 'an icon rule has a Children combo')
+  check(rec.labels['##icon'], 'and an icon cell')
+  check(not rec.labels['##col1'], 'but no colour swatch')
+
+  app.st.icon_browser = nil
+  require('gui.icon_browser').open(r)
+  ok, err, rec = iframe()
+  check(ok, 'the icon browser draws', err)
+  check(rec.seen.InvisibleButton and rec.seen.DrawList_AddImage, 'it draws icon cells')
+
+  -- typing narrows the grid; Select applies the marked icon
+  app.st.icon_browser.query = 'SUBF'
+  app.st.icon_browser.mark = 'subf/fx.png'
+  ok, err = iframe{ Button = function(_, label) return label == '##Select' end }
+  check(ok, 'a Select frame draws', err)
+  check(r.icon == 'subf/fx.png', 'Select applies the marked icon', r.icon)
+  check(app.st.icon_browser == nil, 'and closes the browser')
+
+  -- Cancel changes nothing
+  require('gui.icon_browser').open(r)
+  app.st.icon_browser.mark = 'amp.jpg'
+  iframe{ Button = function(_, label) return label == '##Cancel' end }
+  check(r.icon == 'subf/fx.png' and app.st.icon_browser == nil, 'Cancel leaves the rule alone')
 end
 
 print('\n=== gui render (stub ImGui) ===')

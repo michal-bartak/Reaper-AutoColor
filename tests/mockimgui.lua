@@ -14,6 +14,7 @@ local FLAG_PREFIX = {
   'InputTextFlags_', 'HoveredFlags_', 'PopupFlags_', 'ComboFlags_',
   'ConfigFlags_', 'FontFlags_', 'Cond_', 'Col_', 'Key_', 'Mod_', 'MouseButton_',
   'StyleVar_', 'DrawFlags_', 'TabBarFlags_', 'TabItemFlags_', 'TableBgTarget_',
+  'ImageFlags_',
 }
 
 local function is_flag(name)
@@ -53,6 +54,7 @@ function M.new(opts)
     BeginTooltip  = function() return false end,
     GetFontSize   = function() return 14 end,
     GetFrameHeight = function() return 20 end,
+    GetFrameHeightWithSpacing = function() return 24 end,
     GetCursorPosX = function() return 0 end,
     GetCursorPosY = function() return 0 end,
     GetTextLineHeight = function() return 14 end,

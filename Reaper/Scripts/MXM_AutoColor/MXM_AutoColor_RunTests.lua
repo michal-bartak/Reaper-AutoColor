@@ -1944,6 +1944,161 @@ do -- an item coloured by a TRACK cascade is claimed by the rules too, so
   check(#ops == 2, 'along with its track', #ops .. ' ops')
 end
 
+--===================================================================== icons
+-- The icon list: tracks only, own precedence, per-rule folder propagation.
+local IC = require 'icons'
+
+check(pr('instrument', 'track', { instrument = true }) == true,  'instrument: yes')
+check(pr('instrument', 'track', { instrument = false }) == false, 'instrument: no')
+check(pr('midi_in', 'icon', { midi_in = true }) == true, 'midi_in on the icon list')
+check(pr('bus', 'track', { bus = true }) == true, 'bus: has receives')
+check(pr('bus', 'item', { bus = true }) == false, 'bus is track-only')
+check(pr('folder', 'icon', { folderdepth = 1 }) == true, 'folder applies to icon rules')
+check(PR.applies('instrument', 'region') == false, 'instrument does not apply to regions')
+
+do -- the record
+  local r = RU.new('icon', { pattern = 'kick', icon = 'kick.png', color = RED })
+  check(r.icon == 'kick.png' and r.children == 'off', 'icon rule keeps its icon, children off')
+  check(r.color == nil and r.color2 == nil and r.cascade_items == nil,
+        'an icon rule carries no colour fields')
+  check(RU.new('icon', { children = 'bogus' }).children == 'off', 'bad children coerces')
+  check(RU.new('icon', {}).icon == '', 'no icon means remove the icon')
+  check(RU.new('track', { icon = 'x.png', children = 'fill' }).icon == nil,
+        'a colour rule drops icon fields')
+  local w = RU.warnings(RU.new('icon', { pattern = 'a', only = 'children', children = 'fill',
+                                         icon = 'gone.png' }), {},
+                        function() return false end)
+  check(#w == 2, 'icon warnings: propagating a children-only rule, missing file', #w .. '')
+end
+
+do -- paths: relative inside track_icons, absolute outside; P_ICON reads absolute
+  local dir = IC.dir()
+  check(IC.resolve('kick.png') == dir .. '/kick.png', 'relative resolves into track_icons')
+  check(IC.resolve('/x/y.png') == '/x/y.png', 'absolute is kept')
+  check(IC.resolve('') == '', 'empty stays empty')
+  check(IC.to_stored(dir .. '/sub/fx.png') == 'sub/fx.png', 'inside track_icons stores relative')
+  check(IC.to_stored('/elsewhere/a.jpg') == '/elsewhere/a.jpg', 'outside stores absolute')
+  check(IC.basename('sub/fx.png') == 'fx', 'basename')
+end
+
+local function itr(name, o)
+  local e = tr(name, o)
+  o = o or {}
+  e.icon = o.icon and IC.resolve(o.icon) or ''
+  e.instrument = o.instrument
+  return e
+end
+
+-- name -> planned icon path ('' for removal); only icon ops
+local function iconmap(entries, rules, opts)
+  local ops = AP.plan(entries, rules, opts or {})
+  local out, n = {}, 0
+  for _, op in ipairs(ops) do
+    if op.icon ~= nil then out[op.entry.name] = op.icon; n = n + 1 end
+  end
+  return out, n
+end
+
+do -- first match wins; an icon already in place is not rewritten
+  local rs = ruleset{ icon = {
+    { pattern = 'kick', icon = 'kick.png' },
+    { pattern = 'k',    icon = 'other.png' },
+  } }
+  local m, n = iconmap({ itr('Kick'), itr('Keys'), itr('Kick 2', { icon = 'kick.png' }),
+                         itr('Bass') }, rs)
+  check(m['Kick'] == IC.resolve('kick.png'), 'first icon rule wins')
+  check(m['Keys'] == IC.resolve('other.png'), 'second rule takes the rest')
+  check(m['Kick 2'] == nil, 'an icon already right produces no op')
+  check(m['Bass'] == nil and n == 2, 'unmatched track untouched by default')
+end
+
+do -- icon rules are independent of colour rules
+  local rs = ruleset{ track = { { pattern = 'kick', color = RED } },
+                      icon  = { { pattern = 'kick', icon = 'kick.png' } } }
+  local ops = AP.plan({ itr('Kick') }, rs, {})
+  check(#ops == 2, 'one colour op and one icon op', #ops .. '')
+end
+
+do -- clear unmatched, and the context rule
+  local rs = ruleset{ icon = { { pattern = 'kick', icon = 'kick.png' } } }
+  local m = iconmap({ itr('Bass', { icon = 'bass.png' }), itr('Kick', { context = true }) },
+                    rs, { clear_unmatched = { icon = true } })
+  check(m['Bass'] == '', 'reset when unmatched removes the icon')
+  check(m['Kick'] == nil, 'a context track is never written')
+end
+
+do -- a filter narrows the icon rule
+  local rs = ruleset{ icon = { { pattern = '', only = 'instrument', icon = 'synth.png' } } }
+  local m = iconmap({ itr('Pad', { instrument = true }), itr('Vox') }, rs)
+  check(m['Pad'] == IC.resolve('synth.png') and m['Vox'] == nil, 'instrument filter')
+end
+
+do -- per-rule folder propagation
+  local function tree(children_mode)
+    local rs = ruleset{ icon = {
+      { mode = 'regex', pattern = '^drums$', icon = 'drums.png', children = children_mode },
+      { mode = 'regex', pattern = '^kick',   icon = 'kick.png' },
+    } }
+    return iconmap({ itr('drums', { fd = 1 }), itr('kick', { depth = 1 }),
+                     itr('snare', { depth = 1, fd = -1 }), itr('after') }, rs)
+  end
+  local m = tree('off')
+  check(m['snare'] == nil and m['kick'] == IC.resolve('kick.png'), 'off: children untouched')
+  m = tree('fill')
+  check(m['snare'] == IC.resolve('drums.png'), 'fill: an unmatched child takes the folder icon')
+  check(m['kick'] == IC.resolve('kick.png'), 'fill: a matched child keeps its own')
+  check(m['after'] == nil, 'fill: stops at the folder end')
+  m = tree('force')
+  check(m['kick'] == IC.resolve('drums.png'), 'force: overrides the child')
+end
+
+do -- nesting: an outer fill reaches through a subfolder whose rule does not propagate
+  local rs = ruleset{ icon = {
+    { mode = 'regex', pattern = '^outer$', icon = 'o.png', children = 'fill' },
+    { mode = 'regex', pattern = '^inner$', icon = 'i.png' },
+  } }
+  local m = iconmap({ itr('outer', { fd = 1 }), itr('inner', { depth = 1, fd = 1 }),
+                      itr('leaf', { depth = 2, fd = -2 }), itr('top') }, rs)
+  check(m['inner'] == IC.resolve('i.png'), 'the subfolder keeps its own icon')
+  check(m['leaf'] == IC.resolve('o.png'), 'the outer fill reaches through it')
+  check(m['top'] == nil, 'a two-level close ends both folders')
+end
+
+do -- nesting: an outer force beats an inner fill
+  local rs = ruleset{ icon = {
+    { mode = 'regex', pattern = '^outer$', icon = 'o.png', children = 'force' },
+    { mode = 'regex', pattern = '^inner$', icon = 'i.png', children = 'fill' },
+  } }
+  local m = iconmap({ itr('outer', { fd = 1 }), itr('inner', { depth = 1, fd = 1 }),
+                      itr('leaf', { depth = 2, fd = -2 }) }, rs)
+  check(m['inner'] == IC.resolve('o.png') and m['leaf'] == IC.resolve('o.png'),
+        'the outermost force wins')
+end
+
+do -- tally counts icon rules against tracks
+  local rs = ruleset{ icon = { { pattern = 'k', icon = 'a.png' }, { pattern = 'kick', icon = 'b.png' } } }
+  local won, sh = AP.tally({ itr('kick'), itr('bass') }, rs)
+  check(won[rs.icon[1].id] == 1 and sh[rs.icon[2].id] == 1, 'icon tally: won and shadowed')
+end
+
+do -- clearing icons
+  local rs = ruleset{ icon = { { pattern = 'kick', icon = 'kick.png' } } }
+  local es = { itr('Kick', { icon = 'x.png' }), itr('Bass', { icon = 'y.png' }), itr('Vox') }
+  check(#AP.plan_clear_icons(es, rs, 'matched', {}) == 1, 'clear matched icons')
+  check(#AP.plan_clear_icons(es, rs, 'all', {}) == 2, 'clear every icon')
+end
+
+do -- config: v3, and the icon list round-trips
+  check(CF.VERSION == 3, 'config version 3')
+  local c = CF.normalize(CF.migrate{ version = 2, rules = { track = {} } })
+  check(c.version == 3 and type(c.rules.icon) == 'table', 'v2 migrates with an empty icon list')
+  c.rules.icon[1] = RU.new('icon', { pattern = 'k', icon = 'k.png', children = 'force' })
+  local back = CF.normalize(CF.serializable(c))
+  check(back.rules.icon[1].icon == 'k.png' and back.rules.icon[1].children == 'force',
+        'icon and children survive serialisation')
+  check(back.options.clear_unmatched.icon == false, 'icons are not reset by default')
+end
+
 ------------------------------------------------------------------- report
 local lines = {}
 lines[#lines + 1] = ''

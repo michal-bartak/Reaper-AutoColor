@@ -43,17 +43,42 @@ function M.install(opts)
   r.GetTrack        = function(_, i) return P.tracks[i+1] end
   r.IsTrackSelected = function(t) return t.sel == true end
   r.GetTrackGUID    = function(t) return t.guid end
-  r.GetSetMediaTrackInfo_String = function(t, parm, _, set)
+  -- P_ICON reads back ABSOLUTE whatever was written, as measured on 7.80.
+  local function icon_abs(v)
+    if v == '' or v:match('^/') or v:match('^%a:[\\/]') then return v end
+    return (opts.resource or '.') .. '/Data/track_icons/' .. v
+  end
+  r.GetSetMediaTrackInfo_String = function(t, parm, v, set)
     if parm == 'P_NAME' then
       if t.is_master then return false, '' end   -- master really does return NULL
       return true, t.name or ''
     end
+    if parm == 'P_ICON' then
+      if set then
+        t.icon = icon_abs(v); P.scc = P.scc + 1; P.icon_writes = (P.icon_writes or 0) + 1
+      end
+      return true, t.icon or ''
+    end
     return false, ''
+  end
+  r.TrackFX_GetInstrument = function(t) return t.instrument and 0 or -1 end
+  r.GetTrackNumSends = function(t, cat) return cat == -1 and (t.receives or 0) or 0 end
+
+  -- A directory tree for the icon index: P.files[path] = { files = {...}, dirs = {...} }
+  P.files = {}
+  r.EnumerateFiles = function(path, i)
+    local d = P.files[path]; if not d or i < 0 then return nil end
+    return (d.files or {})[i + 1]
+  end
+  r.EnumerateSubdirectories = function(path, i)
+    local d = P.files[path]; if not d or i < 0 then return nil end
+    return (d.dirs or {})[i + 1]
   end
   r.GetMediaTrackInfo_Value = function(t, parm)
     if parm == 'I_CUSTOMCOLOR' then return t.color or 0 end
     if parm == 'I_FOLDERDEPTH' then return t.fd or 0 end
     if parm == 'I_SPACER' then return t.spacer and 1 or 0 end
+    if parm == 'I_RECINPUT' then return t.recinput or -1 end
     return 0
   end
   r.SetMediaTrackInfo_Value = function(t, parm, v)
@@ -249,7 +274,8 @@ function M.install(opts)
   function P.track(name, o)
     o = o or {}
     local t = { name = name, color = o.color or 0, fd = o.fd or 0,
-                spacer = o.spacer or false,
+                spacer = o.spacer or false, icon = o.icon,
+                instrument = o.instrument, receives = o.receives, recinput = o.recinput,
                 sel = o.sel or false, guid = '{T' .. (#P.tracks+1) .. '}' }
     P.tracks[#P.tracks+1] = t
     return t

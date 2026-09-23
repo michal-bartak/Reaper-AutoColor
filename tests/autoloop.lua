@@ -455,6 +455,36 @@ check(#P.undo == 0, 'the auto loop creates no undo points by default',
       #P.undo .. ' undo blocks')
 check(P.dirty > 0, 'but it does mark the project dirty')
 
+-- icons: applied on the hot pass, a hand-set icon survives until a rename
+do
+  local TMP6 = os.getenv('SP') .. '/icons'
+  os.execute('rm -rf "' .. TMP6 .. '" && mkdir -p "' .. TMP6 .. '/MXM_AutoColor"')
+  local P6 = mock.install{ resource = TMP6, script = NC .. '/x.lua' }
+  for _, m in ipairs({ 'targets', 'apply', 'autoloop', 'config', 'matcher', 'icons' }) do
+    package.loaded[m] = nil
+  end
+  local config6   = require 'config'
+  local autoloop6 = require 'autoloop'
+  local c = config6.defaults()
+  c.rules.icon[1] = rules.new('icon', { pattern = 'snare', icon = 'snare.png' })
+  assert(config6.save(c))
+  local want = TMP6 .. '/Data/track_icons/snare.png'
+
+  local sn = P6.track('Snare Top')
+  local function tk(n) for _ = 1, n do P6.advance(0.3); autoloop6.tick() end end
+  autoloop6.reset()
+  tk(3)
+  check(sn.icon == want, 'auto sets the icon', tostring(sn.icon))
+
+  sn.icon = '/mine.png'; P6.bump()
+  tk(4)
+  check(sn.icon == '/mine.png', 'a hand-set icon is NOT reverted')
+
+  sn.name = 'Snare Bottom'; P6.bump()
+  tk(3)
+  check(sn.icon == want, 'a rename hands the icon back to the rules', tostring(sn.icon))
+end
+
 print('\n=== autoloop (mock REAPER) ===')
 for _, f in ipairs(fails) do print('  FAIL  ' .. f) end
 print(string.format('%d passed, %d failed\n', pass, fail))

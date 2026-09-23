@@ -6,6 +6,11 @@
   the track list colours tracks, full stop. It removes a whole class of
   confusion, like a region rule offering an "is a folder track" filter.
 
+  The 'icon' list is the exception to "kind = what it writes to": its rules
+  match tracks and set their icon rather than a colour. A list of its own gives
+  icons their own precedence, so a track's colour and icon can come from
+  different rules.
+
   Rules arrive from three places (the GUI, the config file, the starter set) and
   all three go through normalise(), so the rest of the code can assume every
   field is present and of the right type.
@@ -15,13 +20,17 @@ local predicates = require 'predicates'
 
 local M = {}
 
-M.KINDS = { 'track', 'item', 'region', 'marker' }
+M.KINDS = { 'track', 'item', 'region', 'marker', 'icon' }
+
+-- The kinds whose rules set a colour.
+M.COLOR_KINDS = { 'track', 'item', 'region', 'marker' }
 
 M.KIND_LABEL = {
   track  = 'Tracks',
   item   = 'Items',
   region = 'Regions',
   marker = 'Markers',
+  icon   = 'Icons',
 }
 
 M.KIND_NOUN = {
@@ -29,6 +38,31 @@ M.KIND_NOUN = {
   item   = 'item',
   region = 'region',
   marker = 'marker',
+  icon   = 'icon',
+}
+
+-- The objects a kind's rules match. Differs from KIND_NOUN only for icons.
+M.OBJECT_NOUN = {
+  track  = 'track',
+  item   = 'item',
+  region = 'region',
+  marker = 'marker',
+  icon   = 'track',
+}
+
+-- Whether an icon rule matching a folder hands its icon to the children.
+M.ICON_CHILDREN = { 'off', 'fill', 'force' }
+
+M.ICON_CHILDREN_LABEL = {
+  off   = 'off',
+  fill  = 'fill',
+  force = 'force',
+}
+
+M.ICON_CHILDREN_HELP = {
+  off   = 'The icon goes on the matched track only.',
+  fill  = 'On a folder, children that no icon rule matches take its icon.',
+  force = 'On a folder, every child takes its icon.',
 }
 
 M.MODES = { 'substring', 'glob', 'regex' }
@@ -71,6 +105,9 @@ for _, k in ipairs(M.KINDS) do KIND_SET[k] = true end
 
 local GRADIENT_SET = {}
 for _, g in ipairs(M.GRADIENT_SCOPES) do GRADIENT_SET[g] = true end
+
+local CHILDREN_SET = {}
+for _, c in ipairs(M.ICON_CHILDREN) do CHILDREN_SET[c] = true end
 
 --- Can this kind use this grouping? Folder structure only means something for
 --- tracks; everything else can at least be grouped into runs.
@@ -155,6 +192,16 @@ function M.normalize(r, kind)
   -- A filter that cannot apply to this kind is dropped rather than left to
   -- sit there never matching.
   if r.only ~= nil and not predicates.applies(r.only, kind) then r.only = nil end
+  r.targets = nil        -- v1 leftover; the list a rule lives in decides this
+
+  if kind == 'icon' then
+    -- '' is a real choice: the rule removes the icon from what it matches.
+    if type(r.icon) ~= 'string' then r.icon = '' end
+    if not CHILDREN_SET[r.children] then r.children = 'off' end
+    r.color, r.color2, r.gradient_scope, r.cascade_items = nil, nil, nil, nil
+    return r
+  end
+  r.icon, r.children = nil, nil
 
   local function clampcolor(c)
     if type(c) ~= 'number' then return nil end
@@ -182,8 +229,6 @@ function M.normalize(r, kind)
     r.cascade_items = nil
   end
 
-  r.targets = nil        -- v1 leftover; the list a rule lives in decides this
-
   return r
 end
 
@@ -192,13 +237,24 @@ end
 --- rule from being applied.
 --- @param options the config options table, optional -- some warnings are about
 ---        how a rule interacts with a global setting
-function M.warnings(r, options)
+--- @param icon_exists  optional path -> bool, so this module stays off the disk
+function M.warnings(r, options, icon_exists)
   local w = {}
   local by_folder = r.gradient_scope == 'folder' or r.gradient_scope == 'both'
 
   if r.pattern == '' and r.only == nil then
-    w[#w + 1] = 'matches every ' .. (M.KIND_NOUN[r.kind] or 'object') ..
+    w[#w + 1] = 'matches every ' .. (M.OBJECT_NOUN[r.kind] or 'object') ..
                 ' -- add a pattern or a filter'
+  end
+
+  if r.kind == 'icon' then
+    if r.children ~= 'off' and r.only == 'children' then
+      w[#w + 1] = 'only matches tracks inside a folder, so it reaches a folder ' ..
+                  'only when that folder is nested'
+    end
+    if r.icon ~= '' and icon_exists and not icon_exists(r.icon) then
+      w[#w + 1] = 'icon file not found: ' .. r.icon
+    end
   end
 
   if r.only == 'unnamed' and r.pattern ~= '' then

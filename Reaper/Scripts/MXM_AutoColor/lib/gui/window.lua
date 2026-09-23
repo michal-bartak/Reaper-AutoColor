@@ -14,6 +14,8 @@ local app      = require 'gui.app'
 local ruletbl  = require 'gui.rule_table'
 local preview  = require 'gui.preview'
 local theme    = require 'gui.theme'
+local iconbrowser = require 'gui.icon_browser'
+local icons    = require 'icons'
 local aboutmod = require 'about'
 
 local M = {}
@@ -23,6 +25,7 @@ function M.init(imgui, context)
   ImGui, ctx = imgui, context
   ruletbl.init(imgui, context)
   preview.init(imgui, context)
+  iconbrowser.init(imgui, context)
 end
 
 local function rgba(rgb, a) return ((rgb & 0xFFFFFF) << 8) | (a or 0xFF) end
@@ -239,6 +242,9 @@ function M.draw_options(FS)
     local rvc, vc = theme.checkbox(rulesmod.KIND_LABEL[k] .. '##cu' .. k,
                                    o.clear_unmatched[k])
     if rvc then app.snapshot(); o.clear_unmatched[k] = vc; app.mark_dirty() end
+    if k == 'icon' then
+      ImGui.SetItemTooltip(ctx, 'Removes the icon from tracks no icon rule matches.')
+    end
     if ImGui.IsItemHovered(ctx) and k == 'item' then
       ImGui.SetTooltip(ctx,
         'Recommended for items.\n\n' ..
@@ -409,6 +415,11 @@ function M.draw_options(FS)
   ImGui.End(ctx)
 end
 
+--- The icon browser, centred on the main window.
+function M.draw_icon_browser(FS)
+  iconbrowser.draw(FS, main_x, main_y, main_w, main_h)
+end
+
 -- The About dialog. Same shape as the Options one, and for the same reasons:
 -- borderless, fixed, TopMost, state held here rather than by ImGui.
 function M.draw_about(FS)
@@ -474,8 +485,26 @@ function M.draw_about(FS)
   ImGui.End(ctx)
 end
 
+local function clear_icons_popup()
+  if ImGui.MenuItem(ctx, 'Clear icons the rules match') then app.clear_icons('matched') end
+  ImGui.SetItemTooltip(ctx, 'Removes icons only from tracks an icon rule currently claims.')
+  if ImGui.MenuItem(ctx, 'Clear icons on selected tracks') then app.clear_icons('selected') end
+  if ImGui.MenuItem(ctx, 'Clear EVERY track icon in the project...') then
+    local ans = reaper.ShowMessageBox(
+      'Remove every track icon in this project?\n\n' ..
+      'This includes icons this tool never set. Undo (Cmd+Z) will put them back.',
+      'AutoColor', 4)
+    if ans == 6 then app.clear_icons('all') end
+  end
+end
+
 local function clear_popup()
   if not ImGui.BeginPopup(ctx, 'clearmenu') then return end
+  if app.st.active_kind == 'icon' then
+    clear_icons_popup()
+    ImGui.EndPopup(ctx)
+    return
+  end
 
   if ImGui.MenuItem(ctx, 'Clear colours the rules match') then
     app.clear_colors('matched')
@@ -621,8 +650,10 @@ function M.draw(FS)
   main_x, main_y = ImGui.GetWindowPos(ctx)
   main_w, main_h = ImGui.GetWindowSize(ctx)
 
-  -- Everything below fades, and stops taking clicks, while either dialog is up.
-  local dimmed = st.options_open or st.about_open
+  iconbrowser.new_frame()
+
+  -- Everything below fades, and stops taking clicks, while a dialog is up.
+  local dimmed = st.options_open or st.about_open or iconbrowser.is_open()
   if dimmed then theme.push_content_dim() end
 
   banners(FS)
@@ -678,27 +709,43 @@ function M.draw(FS)
         -- colour -- so nothing extra is drawn between them.
         theme.close_tab_gap(FS, ty1 - ty0)
 
-        ruletbl.draw(kind, FS, math.max(tableh, FS * 6))
-
-        -- Below the table, not above it: anything between the shelf and the
-        -- header would break the join, and these notes point at the action bar
-        -- underneath anyway.
+        -- Notes go below the table, not above it: anything between the shelf
+        -- and the header would break the join, and they point at the action
+        -- bar underneath anyway. The table gives up their height, or the page
+        -- overflows and grows a scrollbar.
+        local notes = {}
         if total == 0 then
-          ImGui.TextColored(ctx, rgba(COL_DIM), 'No ' ..
-            (rulesmod.KIND_NOUN[kind] or '') .. ' rules yet -- add one below.')
+          notes[#notes + 1] = { COL_DIM, 'No ' .. (rulesmod.KIND_NOUN[kind] or '') ..
+                                         ' rules yet -- add one below.' }
         elseif on == 0 then
-          ImGui.TextColored(ctx, rgba(COL_WARN), 'Every rule on this tab is switched off.')
+          notes[#notes + 1] = { COL_WARN, 'Every rule on this tab is switched off.' }
         end
-
-        -- The selected rule's advisory notes. They used to sit under the name
-        -- tester; that panel is a scratch pad now, and these belong beside the
-        -- rule they are about anyway.
+        -- The selected rule's advisory notes, beside the rule they are about.
         local sr = st.sel_id and app.rule_by_id(st.sel_id)
         if sr and sr.kind == kind then
-          for _, wtext in ipairs(rulesmod.warnings(sr, st.cfg and st.cfg.options)) do
-            ImGui.TextColored(ctx, rgba(COL_WARN), '- ')
+          for _, wtext in ipairs(rulesmod.warnings(sr, st.cfg and st.cfg.options,
+                                                   icons.exists)) do
+            notes[#notes + 1] = { COL_WARN, wtext, bullet = true }
+          end
+        end
+
+        local _, spy = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+        local noteh = 0
+        local wrapw = ImGui.GetContentRegionAvail(ctx) - ImGui.CalcTextSize(ctx, '- ')
+        for _, n in ipairs(notes) do
+          local _, h = ImGui.CalcTextSize(ctx, n[2], nil, nil, false, n.bullet and wrapw or -1)
+          noteh = noteh + h + spy
+        end
+
+        ruletbl.draw(kind, FS, math.max(tableh - noteh, FS * 6))
+
+        for _, n in ipairs(notes) do
+          if n.bullet then
+            ImGui.TextColored(ctx, rgba(n[1]), '- ')
             ImGui.SameLine(ctx, 0, 0)
-            ImGui.TextWrapped(ctx, wtext)
+            ImGui.TextWrapped(ctx, n[2])
+          else
+            ImGui.TextColored(ctx, rgba(n[1]), n[2])
           end
         end
 
