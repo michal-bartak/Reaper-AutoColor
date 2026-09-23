@@ -12,7 +12,7 @@ Every project shares one global rule set:
 | OS | Path |
 |----|------|
 | macOS | `~/Library/Application Support/REAPER/MXM_AutoColor/config.json` |
-| Windows | `%AppData%\REAPER\AutoColor\config.json` |
+| Windows | `%AppData%\REAPER\MXM_AutoColor\config.json` |
 | Linux | `~/.config/REAPER/MXM_AutoColor/config.json` |
 
 *Options → Show REAPER resource path in explorer/finder* opens the parent directory. The **Rules
