@@ -187,6 +187,13 @@ Prose is the thing I most often have to cut. Default to fewer words.
 - **Code comments earn their place** by explaining what the code cannot: a
   constraint discovered the hard way, why an obvious alternative was rejected.
   Not a paraphrase of the line below.
+- **Commit messages: subject plus a short paragraph.** What changed and why, in
+  a few sentences. Not a walkthrough of the diff.
+- **The changelog is for users, in short bullets.** Group related changes into
+  one bullet. Name the feature, not the module. Internals -- a refactor, a new
+  file, a test -- do not appear at all unless the user can see the difference,
+  and then it is described as what they see. Anything that makes them act
+  (a moved path, a rebind, a setting that resets) goes last, as prose.
 - When a change makes a paragraph redundant, delete it in the same commit.
 
 ## Working agreement
