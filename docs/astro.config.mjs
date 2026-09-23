@@ -9,7 +9,7 @@ export default defineConfig({
   base: '/Reaper-AutoColor',
   integrations: [
     starlight({
-      title: 'AutoColor — the REAPER extension',
+      title: 'AutoColor — REAPER script',
       description: 'Colour REAPER tracks, items, regions and markers from their names',
       plugins: [starlightThemeRapide()],
       // One transparent SVG serves both: the mark is mid-tone throughout, so it reads on the

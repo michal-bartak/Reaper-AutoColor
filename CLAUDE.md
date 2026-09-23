@@ -26,10 +26,15 @@ Always `cd ~/GitRepo/AutoColor` first.
 | Context | Name |
 |---|---|
 | Repository, docs site, GitHub Pages base | **Reaper AutoColor** |
-| Inside REAPER: package description, `config.json` folder | **AutoColor** |
-| Files, actions, ExtState section | **MXM_AutoColor** |
+| Inside REAPER: package description | **AutoColor** |
+| Files, actions, ExtState section, `config.json` folder | **MXM_AutoColor** |
 
 Dead names, do not reintroduce: ReaColorizer, NameColorizer, the `MB_` prefix.
+
+**Never call this an extension.** In REAPER an extension is a native binary
+plugin -- SWS, ReaImGui, js_ReaScriptAPI. This is a **script** (ReaScript). The
+word is correct only when it refers to one of those, or to REAPER's own
+*Extensions* menu.
 
 Remote: `https://github.com/michal-bartak/Reaper-AutoColor.git`, branch `main`,
 **HTTPS** — the local SSH key is not registered with GitHub.
