@@ -34,7 +34,7 @@ first colour only.
 ## Scope
 
 **Reset to the default colour when no rule matches**, one checkbox per kind — Tracks, Items, Regions,
-Markers. Off everywhere by default. See
+Markers, Icons. Off everywhere by default. For Icons it removes the icon. See
 [Reset unmatched objects](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects).
 
 :::tip
@@ -62,9 +62,9 @@ the whole layout rather than just the labels.
 The dialog stays **open** across an application switch, or a click elsewhere in REAPER. It closes on
 its **Close** button, `Escape`, or a click on the AutoColor window behind it.
 
-## Rules file
+## Config file
 
-Shows the path to [`config.json`](/Reaper-AutoColor/configuration/rules-file/), and three buttons
+Shows the path to [`config.json`](/Reaper-AutoColor/configuration/config-file/), and three buttons
 that act on the **whole** rule set, every tab rather than the open one alone:
 
 | Button | What it does |
@@ -81,6 +81,6 @@ reads, what comes across exactly, and what arrives switched off.
 
 ## Where to go next
 
-- [Rules file](/Reaper-AutoColor/configuration/rules-file/) — what is stored, where, and what happens when it goes wrong.
+- [Config file](/Reaper-AutoColor/configuration/config-file/) — what is stored, where, and what happens when it goes wrong.
 - [Importing from SWS](/Reaper-AutoColor/configuration/import-sws/) — bringing SWS Auto Color rules across.
 - [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/) — two settings outside this tool that decide what is visible.

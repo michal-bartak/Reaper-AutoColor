@@ -27,8 +27,8 @@ which makes every apply strip the colour from anything the rules do not claim.
 <figcaption>Apply now and Selection, on the action bar</figcaption>
 </figure>
 
-**Apply now** colours the whole project — every track, item, region and marker — in **one undo
-point**. It also clears the marks the background loop holds on hand-recoloured objects, returning
+**Apply now** colours the whole project — every track, item, region and marker — and sets track
+icons, in **one undo point**. It also clears the marks the background loop holds on hand-recoloured objects, returning
 them to the rules. That is its purpose after hand-colouring something.
 
 **Selection** colours the selection only. With a track **and** some items selected, the last one

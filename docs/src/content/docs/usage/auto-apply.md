@@ -8,8 +8,9 @@ renames. Running the action again stops it. The toolbar button lights while it r
 
 ## What it will not do
 
-- **It never reverts a hand-set colour.** Once an object's colour stops matching what the tool last
-  wrote, its name unchanged, the loop leaves that object alone until the next rename.
+- **It never reverts a hand-set colour or icon.** Once an object's colour stops matching what the
+  tool last wrote, its name unchanged, the loop leaves that colour alone until the next rename. A
+  track icon is tracked the same way, separately.
 - It adds **no undo points**, to keep a rename from shredding the undo history. *Create undo points
   for automatic changes* in [Options](/Reaper-AutoColor/configuration/) enables them.
 - It writes nothing when nothing changed, and pauses entirely **while recording**, record-pause

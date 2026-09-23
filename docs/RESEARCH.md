@@ -71,6 +71,14 @@ AutoColorRegionEnable=0
   track already coloured by an earlier rule is skipped.
 * Icons and layouts have their own global switches (`AutoIconEnable`,
   `AutoLayoutEnable`) and are track-only.
+* **Icons are decided apart from colours** (`ApplyColorRuleToTrack`): a track
+  takes the icon of the first matching rule *that has one*. A rule with no icon
+  does not claim it, and a colour sentinel such as Ignore does not touch it.
+* The icon path is SWS's short resource path: relative to `Data/track_icons`
+  when inside it, with native separators, otherwise absolute.
+* `(instrument)` is `TrackFX_GetInstrument >= 0`, `(MIDI input)` is
+  `I_RECINPUT >= 0` with bit 4096, `(receive)` is a non-null `P_SRCTRACK` on
+  receive 0: the same tests as this tool's filters.
 
 ### Quoting
 
@@ -216,6 +224,15 @@ actually see", not "what is set". Zero means no colour, not black.
   be a `Begin` window with `WindowFlags_TopMost`. See DECISIONS, "Bugs worth
   remembering".
 
+* **Images** (`CreateImage`, v0.9+) load PNG and JPEG. With
+  `ImageFlags_NoErrors` (v0.10+) a missing file returns nil instead of raising.
+  An image lives only while it is used every frame, unless `Attach`ed; a large
+  JPEG loads at full size (1525×2048 measured), so a browser has to bound what
+  it holds. Measured with a probe on 7.80, 2026-09-23.
+* `IsWindowHovered` reports **false** while one of the window's own items other
+  than the title bar is active, the resize grip included, unless
+  `HoveredFlags_AllowWhenBlockedByActiveItem` is passed.
+
 The full API reference ships locally with the extension:
 `<resource path>/Data/reaper_imgui_doc.html`.
 
@@ -233,6 +250,18 @@ The full API reference ships locally with the extension:
   with `APIExists`.
 * `GetSetMediaTrackInfo_String(tr, 'P_NAME', …)` returns **false** on the master
   track. Media items have no `P_NAME` at all; match the active take.
+* **`P_ICON`** takes a path relative to `Data/track_icons`, subfolders
+  included, or an absolute one, and **always reads back absolute** — after a
+  relative write and after REAPER's own *Set track icon…* dialog alike. `''`
+  removes the icon; the TCP keeps its alignment space, which is REAPER's
+  *Align TCP controls* preference. REAPER's dialog filters on
+  `*.JPG;*.JPEG;*.PNG`. Measured on 7.80, 2026-09-23.
+* `TrackFX_GetInstrument` is *"the first track FX insert that is a virtual
+  instrument"*: instrument-type plugins only, by the plugin's own flag.
+  `I_RECINPUT` bit 4096 marks a MIDI input; `GetTrackNumSends(tr, -1)` counts
+  receives.
+* `EnumerateFiles` / `EnumerateSubdirectories` cache the directory; index `-1`
+  forces a re-read.
 * `UNDO_STATE_*` are `reaper_plugin.h` defines, not exposed to Lua:
   `TRACKCFG=1`, `ITEMS=4`, `MISCCFG=8` (markers and regions live under MISCCFG).
   `UNDO_STATE_ALL` forces a full project snapshot and is slow.

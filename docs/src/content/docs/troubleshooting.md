@@ -30,10 +30,10 @@ Almost always a REAPER display setting rather than the tool:
 
 ## Colours keep changing back
 
-Two live colour engines are fighting. A banner appears whenever SWS's auto-colour is on.
+Two live colour engines are fighting. A warning appears under the rule table of each affected tab while SWS's auto-colour is on.
 
 Switch one off — *SWS → Auto Color/Icon/Layout* — keeping the rules in one place.
-**Options ▸ Rules file ▸ Import from SWS** moves them here first; see
+**Options ▸ Config file ▸ Import from SWS** moves them here first; see
 [Importing from SWS](/Reaper-AutoColor/configuration/import-sws/).
 
 ## A rule shows 0 hits
@@ -100,7 +100,7 @@ track-colour action, so it is not scanned at all.
 
 ## The rules are gone
 
-Next to [`config.json`](/Reaper-AutoColor/configuration/rules-file/):
+Next to [`config.json`](/Reaper-AutoColor/configuration/config-file/):
 
 | File | Meaning |
 |---|---|
@@ -111,7 +111,7 @@ The window also has **Undo** for rule changes, as long as it is still open.
 
 ## The window says nothing will be saved
 
-A **newer** version of the tool wrote the rule file. Editing is allowed, for inspection, but nothing
+A **newer** version of the tool wrote the config file. Editing is allowed, for inspection, but nothing
 is written back — an older build must not rewrite a config it does not understand. Update the
 scripts.
 
@@ -156,7 +156,7 @@ package, so they are not in a REAPER install — available by cloning the reposi
   a track it no longer belongs to. Deliberate take colours and item colouring are incompatible. The
   `dev/` take-colour probe reports which of the two a given setup displays.
 * SWS Auto Color must not run at the same time — both are live colour engines and will fight. The
-  scripts warn when SWS's auto-colour is switched on. **Options ▸ Rules file ▸ Import from SWS**
+  scripts warn when SWS's auto-colour is switched on. **Options ▸ Config file ▸ Import from SWS**
   brings its rules across first.
 
 ## Not implemented

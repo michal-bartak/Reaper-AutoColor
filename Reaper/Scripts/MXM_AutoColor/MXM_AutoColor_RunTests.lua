@@ -880,12 +880,12 @@ if FIX then
   check(res.imported == 14, 'and everything else is imported', tostring(res.imported))
 
   local t = by.track
-  check(t[1].pattern == '(MIDI input)' and t[1].enabled == false,
-        'an unsupported property filter arrives OFF')
+  check(t[1].only == 'midi_in' and t[1].pattern == '' and t[1].enabled == true,
+        '(MIDI input) becomes the MIDI input filter')
   -- Not an empty pattern: that would match EVERY track, so re-enabling it out
   -- of curiosity would repaint the project. The keyword matches nothing.
-  check(t[1].label:find('(MIDI input) filter is not supported', 1, true) ~= nil,
-        'and says why in its NAME, which is the only field the list renders')
+  check(t[8].pattern == '(master)',
+        'an unsupported filter keeps its keyword as the pattern, which matches nothing')
 
   check(t[2].pattern == '' and t[2].only == nil and t[2].enabled == true,
         '(any) is an empty pattern with no filter')
@@ -926,12 +926,17 @@ if FIX then
   check(by.marker[1].only == 'unnamed' and by.marker[1].enabled == false,
         'the marker rule keeps its filter and loses its "none" colour')
 
-  check(res.disabled == 6, 'six rules could not be expressed', tostring(res.disabled))
+  check(res.disabled == 5, 'five rules could not be expressed', tostring(res.disabled))
 
   -- Order is priority order on both sides, so it has to survive the trip.
   check(#t == 12, 'twelve of the sixteen entries are track rules', tostring(#t))
-  check(t[1].pattern == '(MIDI input)' and t[12].pattern == 'Ignored',
+  check(t[1].only == 'midi_in' and t[12].pattern == 'Ignored',
         'file order is preserved within a kind')
+
+  -- A track rule's icon arrives as an Icons rule with the same filter.
+  local ic = res.rules.icon
+  check(#ic == 1 and ic[1].pattern == 'Lead Vox' and ic[1].icon == 'drums.png'
+        and ic[1].enabled == true, 'an SWS icon becomes an Icons rule', tostring(#ic))
 
   -- Normalising twice must be a no-op, or a hand edit of the saved file would
   -- come back different from what was written.
@@ -1942,6 +1947,26 @@ do -- an item coloured by a TRACK cascade is claimed by the rules too, so
   for _, op in ipairs(ops) do kinds[op.entry.kind] = true end
   check(kinds.item == true, 'a cascaded item is cleared by "what the rules match"')
   check(#ops == 2, 'along with its track', #ops .. ' ops')
+end
+
+do -- SWS icons: independent of the colour, filters carried, paths kept
+  local res = SI.parse(table.concat({
+    '[SWS]',
+    'AutoColor 1=0 (instrument) -6 "/abs/keys.png" "" ""',
+    'AutoColor 2=0 Kick 50374229 "" "" ""',
+    'AutoColor 3=0 (receive) 50374229 "sub\\bus.png" "" ""',
+    'AutoColor 4=0 "(vca master)" 50374229 "vca.png" "" ""',
+    'AutoColor 5=2 (any) 50331647 "region.png" "" ""',
+    'AutoColorCount=5',
+  }, '\n'), nil)
+  local ic = res.rules.icon
+  check(#ic == 3, 'only track rules with an icon become Icons rules', tostring(#ic))
+  check(ic[1].only == 'instrument' and ic[1].icon == '/abs/keys.png' and ic[1].enabled,
+        'an "ignore" colour does not stop the icon')
+  check(res.rules.track[1].enabled == false, 'while the colour rule still arrives off')
+  check(ic[2].only == 'bus' and ic[2].icon == 'sub/bus.png', '(receive) maps; separators unified')
+  check(ic[3].enabled == false, 'an unsupported filter leaves the icon rule off too')
+  check(res.icons == 3, 'counted apart from the colour rules')
 end
 
 --===================================================================== icons

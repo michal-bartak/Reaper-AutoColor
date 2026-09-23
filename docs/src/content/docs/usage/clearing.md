@@ -22,6 +22,8 @@ The third scope reaches colours unrelated to these rules. It asks for confirmati
 undo (`Cmd`/`Ctrl`+`Z`) restores them, but it is the one clearing scope that can lose work.
 :::
 
+On the **Icons** tab the menu removes track icons instead, with the same three scopes.
+
 `MXM_AutoColor_ClearColors.lua` offers the first two scopes from the Action List. Clearing *every*
 custom colour is deliberately GUI-only, to keep a single keystroke from doing it.
 
@@ -31,7 +33,8 @@ custom colour is deliberately GUI-only, to keep a single keystroke from doing it
 everywhere by default.
 
 On for a kind, every apply strips the colour from any object of that kind the rules do not claim,
-making the rules the single source of truth for that kind.
+making the rules the single source of truth for that kind. The **Icons** checkbox removes the icon
+from tracks no icon rule claims.
 
 :::caution[Careful with tracks]
 For tracks this also strips every hand-set track colour.

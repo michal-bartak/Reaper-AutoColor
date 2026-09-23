@@ -3,7 +3,7 @@ title: Importing from SWS
 description: Moving an SWS Auto Color setup across, and what does not survive the trip
 ---
 
-**Options ▸ Rules file ▸ Import from SWS** converts an existing **SWS Auto Color** setup into rules
+**Options ▸ Config file ▸ Import from SWS** converts an existing **SWS Auto Color** setup into rules
 here, so nothing has to be retyped.
 
 It reads SWS first and reports what it found — how many rules, how they split across tabs, how many
@@ -37,7 +37,8 @@ in the list, same behaviour.
 |---|---|
 | A name filter, e.g. `Kick` | A `contains` rule with the same text |
 | `(any)` | A rule with no pattern and no filter |
-| `(unnamed)`, `(folder)`, `(children)` | The equivalent [filters](/Reaper-AutoColor/usage/matching/#filters) |
+| `(unnamed)`, `(folder)`, `(children)`, `(instrument)`, `(MIDI input)`, `(receive)` | The equivalent [filters](/Reaper-AutoColor/usage/matching/#filters) |
+| A track rule's **icon** | A rule on the **Icons** tab with the same filter, in the same order |
 | **Gradient** | A real [gradient](/Reaper-AutoColor/usage/colours/#gradients), using the start and end colours SWS was set to |
 | Rule order | Preserved — it is the priority order on both sides |
 
@@ -54,7 +55,7 @@ Some SWS features have no equivalent. Those rules are **still imported**, but th
 | **None** | There is no "clear the colour" rule; that is *Clear…* on the action bar, or [reset unmatched objects](/Reaper-AutoColor/usage/clearing/). |
 | **Ignore** | See the warning below. |
 | `(master)` | REAPER [ignores a custom colour on the master track](/Reaper-AutoColor/troubleshooting/#the-master-track-is-never-coloured), so this never did anything visible in SWS either. |
-| `(record armed)`, `(instrument)`, `(audio input)`, `(audio output)`, `(MIDI input)`, `(MIDI output)`, `(receive)`, `(vca master)` | No equivalent filter — these test a track's routing or state, not its name. |
+| `(record armed)`, `(audio input)`, `(audio output)`, `(MIDI output)`, `(vca master)` | No equivalent filter. |
 
 Those rules keep the SWS keyword as their pattern, which matches nothing, so leaving them switched
 off is harmless. They are worth reading before switching any on: a rule whose pattern is
@@ -67,12 +68,15 @@ colour tracks they never used to — the only one of these losses that affects a
 rule.
 :::
 
-Icons and TCP/MCP layouts are read and discarded — this tool only sets colours.
+TCP/MCP layouts are read and discarded.
+
+An icon rule does not lose what its colour lost: in SWS the two are decided separately, so an
+**Ignore** or **Random** colour still leaves its icon rule switched on.
 
 ## Afterwards
 
 Importing does not switch SWS off. Until it is, both are live colour engines fighting over the same
-tracks, and the window shows a banner while that holds. SWS's is switched off under
+tracks, and each affected tab shows a warning while that holds. SWS's is switched off under
 **SWS ▸ Auto Color/Icon/Layout**.
 
 Worth checking before applying:

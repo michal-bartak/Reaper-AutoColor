@@ -49,11 +49,37 @@ checkboxes. v2 has one list per kind, which:
 * makes precedence per-kind, so reordering track rules cannot change which
   region wins;
 * lets each tab offer only filters that mean something — folder filters exist on
-  Tracks and nowhere else;
+  Tracks and Icons and nowhere else;
 * removes the "targets nothing" state entirely.
 
 Migration splits a multi-target rule into one rule per kind, preserving relative
 order, with fresh ids for the copies.
+
+## Track icons are a list of their own
+
+Icons could have been a field on track rules. They are a fifth list instead
+(`rules.icon`, the **Icons** tab) so that icons have their own precedence: a
+track's colour and its icon often come from different rules, as they did in
+SWS, where a rule with no icon does not claim a track's icon. `rules.KINDS`
+includes `icon`, so config, the GUI tabs and the tallies pick it up; `apply.lua`
+keeps a colour-only kind list, and `plan()` appends the icon ops to the colour
+ops so every caller commits both.
+
+* **Folder propagation is per rule** (`children`: off / fill / force), where
+  colours have one global setting. A folder icon handed to every child says
+  less than a colour ramp does, so the common case is off, with the exception
+  chosen rule by rule. Both go through `apply.propagate(entries, direct,
+  mode_of)`: colours pass the global mode, icons each rule's. With one mode
+  for every rule the walk is exactly the old single-policy one.
+* **A folder whose rule does not propagate passes on what it inherited**, so an
+  outer fill still reaches the tracks inside it.
+* **No gradients and no items.** Both are colour concepts.
+* **Matching FX names was deferred.** "Kontakt → keys icon" is tempting, but
+  the FX name depends on the plugin and on the preset or rename the user
+  applied, neither of which the rules control. *has an instrument* covers the
+  robust part.
+* The config went to **v3** for the new list, so an older build opens a v3 file
+  read-only instead of saving it back without the icon rules.
 
 ## Two ways to make items follow their track, and they are not equal
 
@@ -562,10 +588,12 @@ Each of these was silent, and each now has a test named after its failure mode.
    both wrong, which is the lesson: this file's own rule is to measure, and the
    answer in the end was to delete the mechanism rather than time it.
 
-   It is a `Begin` window now, with `NoTitleBar | NoResize | NoMove |
-   NoCollapse | NoDocking | NoSavedSettings | TopMost`, which looks exactly like
-   the popup did. Nothing closes a window behind your back, so there is nothing
-   to re-open and nothing to blink. What the popup gave away free now has to be
+   It is a `Begin` window now, with `NoCollapse | NoDocking | NoSavedSettings |
+   TopMost` (and `NoResize` where the content sets the size). It first copied
+   the popup's look with `NoTitleBar | NoMove`. Since the icon browser, all
+   three dialogs share `gui/dialog.lua` and have a title bar with a close
+   button, and they can be moved. Nothing closes a window behind your back, so
+   there is nothing to re-open and nothing to blink. What the popup gave away free now has to be
    asked for, and each has a test:
 
    * **`TopMost`.** An earlier window version left it out, and the *dimmed* main
@@ -576,10 +604,11 @@ Each of these was silent, and each now has a test named after its failure mode.
      it multiplies into `StyleVar_Alpha` and the content fades to 0.18 instead
      of `DIM_CONTENT`.
    * **Escape**, by hand.
-   * **Dismissal by a click on the window behind**, by hand: a left click, not
-     over the dialog, while some ImGui window has focus. That last test is what
-     keeps a click in REAPER's arrange from counting — it takes the click, no
-     ImGui window is focused, and the dialog stays put.
+   * Not **dismissal by a click on the window behind**. It was copied from the
+     popup and then dropped: the main window is dimmed and blocked anyway, and
+     a stray click cost a dialog its state, such as the icon browser's search.
+     It also had to be exempted from the resize grip, whose grab read as a
+     click outside.
 
    The dialog is drawn from the frame loop *after* `ImGui.End`, so it sits
    outside the dim at full opacity. That means `GetWindowPos` has no window left

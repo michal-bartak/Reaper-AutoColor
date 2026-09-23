@@ -19,6 +19,11 @@
   TOKEN COUNT is the only thing that tells the two apart -- which is why the
   tokenizer has to emit empty tokens rather than skipping them.
 
+  A track rule's icon becomes a rule on the Icons list, in the same order. SWS
+  decides icons apart from colours: a rule with no icon does not claim a
+  track's icon, and a colour sentinel such as "ignore" does not touch it. So
+  the icon rule carries the filter, and nothing the colour lost.
+
   Everything here is pure except paths() and read(). That is deliberate: the
   whole mapping is then exercised by the unit suite, which runs with no `reaper`
   table at all. The one thing that genuinely needs the host is decoding a legacy
@@ -34,6 +39,7 @@
 
 local rulesmod = require 'rules'
 local config   = require 'config'
+local icons    = require 'icons'
 
 local M = {}
 
@@ -62,11 +68,18 @@ local SENTINEL = {
 -- The four we can express map onto a predicate with an empty pattern.
 -- predicates.lua NARROWS a pattern where SWS's keyword REPLACES it, so an empty
 -- pattern is the faithful translation, not a shortcut.
+--
+-- (instrument), (MIDI input) and (receive) test exactly what the predicates
+-- do: TrackFX_GetInstrument >= 0; I_RECINPUT >= 0 with bit 4096; a receive's
+-- P_SRCTRACK, i.e. at least one receive.
 local FILTER_PREDICATE = {
-  ['(any)']      = false,        -- expressible, but needs no predicate
-  ['(unnamed)']  = 'unnamed',
-  ['(folder)']   = 'folder',
-  ['(children)'] = 'children',
+  ['(any)']        = false,        -- expressible, but needs no predicate
+  ['(unnamed)']    = 'unnamed',
+  ['(folder)']     = 'folder',
+  ['(children)']   = 'children',
+  ['(instrument)'] = 'instrument',
+  ['(MIDI input)'] = 'midi_in',
+  ['(receive)']    = 'bus',
 }
 
 -- Track properties we have no equivalent for. '(master)' is here for a reason
@@ -75,13 +88,10 @@ local FILTER_PREDICATE = {
 -- rules.lua's legacy `only == 'master'` branch.
 local FILTER_UNSUPPORTED = {
   ['(master)']       = true,
-  ['(receive)']      = true,
   ['(record armed)'] = true,
   ['(vca master)']   = true,
-  ['(instrument)']   = true,
   ['(audio input)']  = true,
   ['(audio output)'] = true,
-  ['(MIDI input)']   = true,
   ['(MIDI output)']  = true,
 }
 
@@ -245,20 +255,22 @@ local function append_reason(label, why)
 end
 
 --- Turn one `AutoColor n=` value into a rule, or nil when it cannot be one.
---- @return rule, kind  or  nil
+--- @return rule, kind, icon_rule  -- icon_rule only for a track rule with an icon
 local function convert_line(value, index, grad_a, grad_b, opts)
   local tok = M.tokenize(value)
-  local typ, filter, colnum
+  local typ, filter, colnum, icon
 
   if #tok >= 4 then
     typ    = tonumber(tok[1])
     filter = tok[2]
     colnum = tonumber(tok[3])
+    icon   = tok[4]
   elseif #tok == 3 then
     -- Legacy: filter color icon, always a track rule.
     typ    = 0
     filter = tok[1]
     colnum = tonumber(tok[2])
+    icon   = tok[3]
   else
     return nil
   end
@@ -293,6 +305,24 @@ local function convert_line(value, index, grad_a, grad_b, opts)
     end
   end
 
+  -- -------------------------------------------------------------- the icon
+  -- Taken before the colour appends its own reasons to the label. SWS stores
+  -- it relative to Data/track_icons when it is inside, as this tool does.
+  local icon_rule
+  if kind == 'track' and icon and icon ~= '' then
+    local stored = icons.is_absolute(icon) and icons.to_stored(icon) or icon:gsub('\\', '/')
+    icon_rule = rulesmod.new('icon', {
+      label    = label,
+      enabled  = enabled,
+      mode     = 'substring',
+      ci       = true,
+      pattern  = pattern,
+      only     = only,
+      icon     = stored,
+      note     = 'imported from SWS Auto Color rule ' .. index .. ': ' .. value,
+    })
+  end
+
   -- ------------------------------------------------------------ the colour
   local what, rgb = M.decode_color(colnum, opts)
   local color, color2, scope = nil, nil, nil
@@ -325,7 +355,7 @@ local function convert_line(value, index, grad_a, grad_b, opts)
     note     = 'imported from SWS Auto Color rule ' .. index .. ': ' .. value,
   })
 
-  return rule, kind
+  return rule, kind, icon_rule
 end
 
 --- Convert a whole SWS ini.
@@ -367,14 +397,19 @@ function M.parse(sws_text, reaper_ini_text, opts)
   -- the PRIORITY order, and a Lua hash has none to give back.
   for i = 1, count do
     local value = sws['AutoColor ' .. i]
-    local rule, kind = nil, nil
-    if value then rule, kind = convert_line(value, i, grad_a, grad_b, opts) end
+    local rule, kind, icon_rule = nil, nil, nil
+    if value then rule, kind, icon_rule = convert_line(value, i, grad_a, grad_b, opts) end
 
     if rule then
       local list = res.rules[kind]
       list[#list + 1] = rule
       res.imported = res.imported + 1
       if not rule.enabled then res.disabled = res.disabled + 1 end
+      if icon_rule then
+        local il = res.rules.icon
+        il[#il + 1] = icon_rule
+        res.icons = (res.icons or 0) + 1
+      end
     else
       res.skipped = res.skipped + 1
     end

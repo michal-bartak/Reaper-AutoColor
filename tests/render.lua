@@ -591,9 +591,13 @@ do -- the button opens it; it is drawn as a window, centred, and never a popup
   -- The mock hands out a distinct bit per flag name, so the OR can be taken
   -- apart again and each one checked for.
   if flags then
-    for _, f in ipairs({ 'NoTitleBar', 'NoResize', 'NoMove', 'NoCollapse',
+    for _, f in ipairs({ 'NoResize', 'NoCollapse', 'NoDocking',
                          'NoSavedSettings', 'TopMost' }) do
       check(flags & ImGui['WindowFlags_' .. f] ~= 0, 'with WindowFlags_' .. f)
+    end
+    -- a title bar with a close button, and movable, like the icon browser
+    for _, f in ipairs({ 'NoTitleBar', 'NoMove' }) do
+      check(flags & ImGui['WindowFlags_' .. f] == 0, 'without WindowFlags_' .. f)
     end
   end
 
@@ -617,7 +621,7 @@ do -- nothing shuts it on its own -- that is the whole point
   check(unfocused == true, 'and so does a click while no ImGui window has focus')
 end
 
-do -- Escape, Close, and a click on the window behind all shut it
+do -- Escape and Close shut it
   local _, _, _, esc = optdialog({ IsKeyPressed = function() return true end }, true)
   check(esc == false, 'Escape closes it')
 
@@ -631,7 +635,7 @@ do -- Escape, Close, and a click on the window behind all shut it
     IsWindowHovered = function() return false end,   -- not over the dialog
     IsWindowFocused = function() return true end,    -- but ImGui has the click
   }, true)
-  check(behind == false, 'and a click on the AutoColor window behind dismisses it')
+  check(behind == true, 'a click on the AutoColor window behind leaves it open')
 
   local _, _, _, onit = optdialog({
     IsMouseClicked  = function() return true end,
@@ -755,8 +759,8 @@ do -- and it is dismissed the same way the Options dialog is
         'the Close button closes it')
   check(shut{ IsMouseClicked  = function() return true end,
               IsWindowHovered = function() return false end,
-              IsWindowFocused = function() return true end } == false,
-        'and a click on the window behind dismisses it')
+              IsWindowFocused = function() return true end } == true,
+        'a click on the window behind leaves it open')
   check(shut{ IsMouseClicked  = function() return true end,
               IsWindowHovered = function() return false end,
               IsWindowFocused = function() return false end } == true,
@@ -950,7 +954,9 @@ do -- with a file, it asks BEFORE changing anything, and Cancel means cancel
         'counting what it found', asked and asked.msg)
   check(asked and asked.msg:find('12 tracks, 1 region, 1 marker', 1, true) ~= nil,
         'broken down by kind', asked and asked.msg)
-  check(asked and asked.msg:find('6 of them switched off', 1, true) ~= nil,
+  check(asked and asked.msg:find('1 icon', 1, true) ~= nil,
+        'with the icon a track rule carried', asked and asked.msg)
+  check(asked and asked.msg:find('5 of them switched off', 1, true) ~= nil,
         'and saying how many arrive off', asked and asked.msg)
   -- WHY they are off is a table in the manual, not something to read with a
   -- Yes button waiting.
@@ -986,13 +992,9 @@ do -- a click in a dropdown must not dismiss the dialog underneath it
   }, true)
   check(still2, 'and survives Escape, which the dropdown should be eating')
 
-  -- The guard must not have broken the ordinary dismissals.
-  local _, _, _, gone = optdialog({
-    IsMouseClicked  = function() return true end,
-    IsWindowHovered = function() return false end,
-    IsWindowFocused = function() return true end,
-  }, true)
-  check(not gone, 'with no popup open, a click outside still closes it')
+  -- The guard must not have broken the ordinary dismissal.
+  local _, _, _, gone = optdialog({ IsKeyPressed = function() return true end }, true)
+  check(not gone, 'with no popup open, Escape still closes it')
 end
 
 do -- the split checkbox is wired to the option, and repaints the preview
@@ -1020,7 +1022,8 @@ do -- dimming is done with the GLOBAL alpha, not a veil
         'and no veil rect either -- it cannot reach inside child windows')
   check(src:find('push_content_dim', 1, true) ~= nil,
         'the content is faded with the global alpha instead')
-  check(src:find('StyleVar_WindowPadding', 1, true) ~= nil,
+  local dsrc = pathlib_read('lib/gui/dialog.lua')
+  check(dsrc:find('StyleVar_WindowPadding', 1, true) ~= nil,
         'and the dialog gets its own padding')
 
   -- The dialog must not drift back to being a popup. ImGui owns a popup's
@@ -1031,15 +1034,13 @@ do -- dimming is done with the GLOBAL alpha, not a veil
         'the options dialog is not a popup')
   check(src:find('PopupFlags_NoReopen', 1, true) == nil,
         'and does not try to re-open one every frame')
-  check(src:find('Begin(ctx, OPTIONS_TITLE', 1, true) ~= nil,
+  check(src:find('dialog.begin(FS, OPTIONS_TITLE', 1, true) ~= nil,
         'it is begun as an ordinary window, by its shared name constant')
-  check(src:find('WindowFlags_TopMost', 1, true) ~= nil,
+  check(dsrc:find('WindowFlags_TopMost', 1, true) ~= nil,
         'always on top, or the dimmed window behind could cover it')
 
   -- Everything a popup used to give away free has to be asked for.
-  check(src:find('Key_Escape', 1, true) ~= nil, 'Escape is handled by hand')
-  check(src:find('IsMouseClicked', 1, true) ~= nil,
-        'as is dismissal by a click on the window behind')
+  check(dsrc:find('Key_Escape', 1, true) ~= nil, 'Escape is handled by hand')
   local tsrc = pathlib_read('lib/gui/theme.lua')
   check(tsrc:find('BeginDisabled', 1, true) ~= nil,
         'and the dim blocks input, which a window does not')
@@ -1507,6 +1508,30 @@ do -- preview and Apply must agree for a GROUPED gradient too, not just a flat
   end
   check(mismatch == nil, 'every previewed grouped-gradient colour is what Apply writes',
         tostring(mismatch))
+end
+
+------------------------------------------------ the SWS conflict, per tab
+do
+  local f = assert(io.open(TMP .. '/sws-autocoloricon.ini', 'w'))
+  f:write('[SWS]\nAutoColorEnable=1\nAutoColorRegionEnable=0\nAutoIconEnable=1\n'); f:close()
+  app.st.cfg.rules = config.empty_rules()
+  app.st.cfg.rules.track[1] = rules.new('track', { pattern = 'a' })
+  app.st.cfg.rules.region[1] = rules.new('region', { pattern = 'a' })
+  local function note(tab)
+    local ImGui, rec = mockimgui.new{ only_tab = tab }
+    window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+    P.advance(10); app.refresh_entries(true); app.recompute_preview()
+    assert(pcall(window.draw, 14))
+    for l in pairs(rec.labels) do
+      if l:find('will fight these rules', 1, true) then return l end
+    end
+  end
+  check(note('Tracks') ~= nil, 'SWS auto colour on: the Tracks tab says so')
+  check(note('Regions') == nil, 'a switch that is off: no note')
+  check(note('Icons') == nil, 'no icon rules: nothing to fight over')
+  local all = note('Tracks')
+  check(all == 'SWS Auto Color for tracks is enabled and will fight these rules', 'naming the kind', all)
+  os.remove(TMP .. '/sws-autocoloricon.ini')
 end
 
 ------------------------------------------------------ the Icons tab and browser

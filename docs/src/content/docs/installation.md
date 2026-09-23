@@ -100,4 +100,4 @@ something in it, and reports the location:
 
 One global rule set, shared by every project, stored **outside** `Scripts/` to prevent
 reinstalling or updating from overwriting it. See
-[Rules file](/Reaper-AutoColor/configuration/rules-file/).
+[Config file](/Reaper-AutoColor/configuration/config-file/).

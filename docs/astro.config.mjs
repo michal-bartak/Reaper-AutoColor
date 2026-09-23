@@ -7,6 +7,8 @@ import starlightThemeRapide from 'starlight-theme-rapide';
 export default defineConfig({
   site: 'https://michal-bartak.github.io',
   base: '/Reaper-AutoColor',
+  // The page was rules-file until the file was renamed; old links still land.
+  redirects: { '/configuration/rules-file': '/Reaper-AutoColor/configuration/config-file/' },
   integrations: [
     starlight({
       title: 'AutoColor — REAPER script',
@@ -108,6 +110,7 @@ export default defineConfig({
             { label: 'The configuration window', link: '/usage/' },
             { label: 'Matching names', link: '/usage/matching/' },
             { label: 'Colours and gradients', link: '/usage/colours/' },
+            { label: 'Track icons', link: '/usage/icons/' },
             { label: 'Applying colours', link: '/usage/applying/' },
             { label: 'Auto-apply', link: '/usage/auto-apply/' },
             { label: 'Clearing colours', link: '/usage/clearing/' },
@@ -117,7 +120,7 @@ export default defineConfig({
           label: 'Configuration',
           items: [
             { label: 'Options', link: '/configuration/' },
-            { label: 'Rules file', link: '/configuration/rules-file/' },
+            { label: 'Config file', link: '/configuration/config-file/' },
             { label: 'Importing from SWS', link: '/configuration/import-sws/' },
             { label: 'REAPER preferences', link: '/configuration/reaper-preferences/' },
           ],

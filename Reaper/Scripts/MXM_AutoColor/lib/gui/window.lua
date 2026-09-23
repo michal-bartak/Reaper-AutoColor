@@ -15,6 +15,7 @@ local ruletbl  = require 'gui.rule_table'
 local preview  = require 'gui.preview'
 local theme    = require 'gui.theme'
 local iconbrowser = require 'gui.icon_browser'
+local dialog   = require 'gui.dialog'
 local icons    = require 'icons'
 local aboutmod = require 'about'
 
@@ -26,6 +27,7 @@ function M.init(imgui, context)
   ruletbl.init(imgui, context)
   preview.init(imgui, context)
   iconbrowser.init(imgui, context)
+  dialog.init(imgui, context)
 end
 
 local function rgba(rgb, a) return ((rgb & 0xFFFFFF) << 8) | (a or 0xFF) end
@@ -47,14 +49,7 @@ local function banners(FS)
 
   if st.readonly then
     ImGui.TextColored(ctx, rgba(COL_WARN),
-      'This rule file was written by a newer version. Editing is allowed but nothing will be saved.')
-  end
-
-  local sws = app.sws_warning()
-  if sws then
-    ImGui.TextColored(ctx, rgba(COL_WARN), sws)
-    ImGui.SameLine(ctx)
-    ImGui.TextColored(ctx, rgba(COL_DIM), '(SWS > Auto Color/Icon/Layout)')
+      'This config file was written by a newer version. Editing is allowed but nothing will be saved.')
   end
 
 end
@@ -97,7 +92,7 @@ local main_x, main_y, main_w, main_h = 0, 0, 78 * 14, 44 * 14
 --- something to read in a modal with a Yes button waiting.
 local function confirm_text(res)
   local kinds = {}
-  for _, k in ipairs({ 'track', 'region', 'marker' }) do
+  for _, k in ipairs({ 'track', 'region', 'marker', 'icon' }) do
     local n = #(res.rules[k] or {})
     if n > 0 then
       kinds[#kinds + 1] = n .. ' ' .. rulesmod.KIND_NOUN[k] .. (n == 1 and '' or 's')
@@ -136,68 +131,20 @@ local function do_import()
                           res.imported, res.imported == 1 and '' or 's'))
 end
 
---- The Options dialog.
----
---- A borderless, fixed, always-on-top WINDOW that looks exactly like the popup
---- it replaced -- and is one for a reason. See the note on the Begin call.
+--- The Options dialog. See dialog.lua for why it is a window.
 function M.draw_options(FS)
   local st = app.st
   if not st.options_open then return end
 
-  -- Centre on the app window (not the screen) and dim what is behind it.
-  -- Cond_Appearing so a window the user has since dragged stays put.
-  -- Cond_Always, not Cond_Appearing: the window is NoMove, so it simply tracks
-  -- the centre of the app window the way the popup did.
-  ImGui.SetNextWindowPos(ctx, main_x + main_w * 0.5, main_y + main_h * 0.5,
-                         ImGui.Cond_Always, 0.5, 0.5)
-
-  -- Fixed width, automatic height (0 on an axis means auto-fit). Wide enough
-  -- for the longest fixed line in here -- the Scope question -- with the four
-  -- checkboxes under it rather than beside it. The rules-file path is the one
-  -- thing with no bound on its length, so it wraps instead (see below).
-  ImGui.SetNextWindowSize(ctx, FS * 42, 0, ImGui.Cond_Always)
-
-  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding,
-                     FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
-
-  -- Not a MODAL: its dim overlay cannot be controlled. ImGui paints
-  -- Col_ModalWindowDimBg during Render(), long after any PushStyleColor here
-  -- has been popped, so it always uses the style default -- which in the dark
-  -- style is (0.8, 0.8, 0.8, 0.35), i.e. WHITE, and the window appeared to
-  -- BRIGHTEN. The dim is drawn by hand instead (theme.push_content_dim), which
-  -- also means any colour is possible. A modal was swallowing Escape too.
-  --
-  -- Not a POPUP either, though it was one for a long time and these flags are
-  -- chosen to look identical to it. ImGui owns a popup's visibility and closes
-  -- it on a click outside, on Escape, and on losing focus -- so the dialog
-  -- vanished across an alt-tab. Holding the state here and re-opening the popup
-  -- every frame fixed that but not the flicker it caused: on the first click
-  -- elsewhere in REAPER the popup is closed and re-opened, and it is not drawn
-  -- again for several frames. That gap is inside ImGui's reopen and there is no
-  -- reaching it from a script. An ordinary window is never closed behind our
-  -- back, so there is nothing to re-open and nothing to blink.
-  --
-  -- What the popup gave away free and this has to ask for:
-  --   * TopMost, or the dimmed main window could be raised ABOVE the dialog.
-  --   * theme.push_content_dim's BeginDisabled, or the faded rule table behind
-  --     would still be clickable.
-  --   * Escape, and dismissal by a click on the window behind -- both below.
-  local visible = ImGui.Begin(ctx, OPTIONS_TITLE, nil,
-                              ImGui.WindowFlags_NoTitleBar
-                              | ImGui.WindowFlags_NoResize
-                              | ImGui.WindowFlags_NoMove
-                              | ImGui.WindowFlags_NoCollapse
-                              | ImGui.WindowFlags_NoDocking
-                              | ImGui.WindowFlags_NoSavedSettings
-                              | ImGui.WindowFlags_TopMost)
-
-  ImGui.PopStyleVar(ctx)      -- window style is read at Begin
-
+  -- Fixed width, automatic height. Wide enough for the longest fixed line in
+  -- here -- the Scope question -- with the checkboxes under it rather than
+  -- beside it. The config-file path is the one thing with no bound on its
+  -- length, so it wraps instead (see below).
+  local visible, open = dialog.begin(FS, OPTIONS_TITLE, {
+    x = main_x + main_w * 0.5, y = main_y + main_h * 0.5, w = FS * 42 })
+  if open == false then st.options_open = false end
   if not visible then return end      -- End() only when Begin returned true
 
-  -- Taken before the body, so a click that lands on a widget still counts as
-  -- inside the dialog.
-  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows)
 
   local o = st.cfg.options
   local rv, v
@@ -301,7 +248,7 @@ function M.draw_options(FS)
   end
   if ImGui.IsItemDeactivated(ctx) then pending_font = nil end
 
-  theme.section('Rules file', true)
+  theme.section('Config file', true)
   -- WRAPPED, not TextColored: a path has no bound on its length, and the one
   -- thing asked of this line is that it always shows the whole thing. Wrapping
   -- costs a second line on a long path; truncation costs the part you needed.
@@ -390,27 +337,7 @@ function M.draw_options(FS)
   theme.center(bw)
   if theme.button('Close', bw) then st.options_open = false end
 
-  -- Both dismissals are suspended while any popup is open. A popup is a
-  -- separate ROOT window, not a child, so `inside` above is false while the
-  -- mouse is over the Folders dropdown -- and a click on one of its entries
-  -- would otherwise close the dialog underneath it. Escape belongs to the
-  -- dropdown too while it is up, or both would go on one keystroke.
-  local popup = ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId
-                                           | ImGui.PopupFlags_AnyPopupLevel)
-
-  -- Escape. The popup used to do this for us.
-  if not popup and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-    st.options_open = false
-  end
-
-  -- A click on the AutoColor window behind dismisses it, as a click outside a
-  -- popup did. The focus test is what keeps a click somewhere else in REAPER
-  -- from counting: when the arrange takes the click, no ImGui window is
-  -- focused, and the dialog stays exactly where it is.
-  if not popup and ImGui.IsMouseClicked(ctx, 0) and not inside
-     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
-    st.options_open = false
-  end
+  if dialog.dismissed() then st.options_open = false end
 
   ImGui.End(ctx)
 end
@@ -420,33 +347,16 @@ function M.draw_icon_browser(FS)
   iconbrowser.draw(FS, main_x, main_y, main_w, main_h)
 end
 
--- The About dialog. Same shape as the Options one, and for the same reasons:
--- borderless, fixed, TopMost, state held here rather than by ImGui.
+-- The About dialog. Same shape as the Options one.
 function M.draw_about(FS)
   local st = app.st
   if not st.about_open then return end
 
-  ImGui.SetNextWindowPos(ctx, main_x + main_w * 0.5, main_y + main_h * 0.5,
-                         ImGui.Cond_Always, 0.5, 0.5)
-  ImGui.SetNextWindowSize(ctx, FS * 32, 0, ImGui.Cond_Always)
-
-  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding,
-                     FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
-
-  local visible = ImGui.Begin(ctx, ABOUT_TITLE, nil,
-                              ImGui.WindowFlags_NoTitleBar
-                              | ImGui.WindowFlags_NoResize
-                              | ImGui.WindowFlags_NoMove
-                              | ImGui.WindowFlags_NoCollapse
-                              | ImGui.WindowFlags_NoDocking
-                              | ImGui.WindowFlags_NoSavedSettings
-                              | ImGui.WindowFlags_TopMost)
-
-  ImGui.PopStyleVar(ctx)
-
+  local visible, open = dialog.begin(FS, ABOUT_TITLE, {
+    x = main_x + main_w * 0.5, y = main_y + main_h * 0.5, w = FS * 32 })
+  if open == false then st.about_open = false end
   if not visible then return end
 
-  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows)
 
   ImGui.PushFont(ctx, nil, FS * theme.SECTION_SCALE)
   ImGui.Text(ctx, aboutmod.NAME)
@@ -476,11 +386,7 @@ function M.draw_about(FS)
   theme.center(bw)
   if theme.button('Close##about', bw) then st.about_open = false end
 
-  if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then st.about_open = false end
-  if ImGui.IsMouseClicked(ctx, 0) and not inside
-     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
-    st.about_open = false
-  end
+  if dialog.dismissed() then st.about_open = false end
 
   ImGui.End(ctx)
 end
@@ -714,10 +620,11 @@ function M.draw(FS)
         -- bar underneath anyway. The table gives up their height, or the page
         -- overflows and grows a scrollbar.
         local notes = {}
-        if total == 0 then
-          notes[#notes + 1] = { COL_DIM, 'No ' .. (rulesmod.KIND_NOUN[kind] or '') ..
-                                         ' rules yet -- add one below.' }
-        elseif on == 0 then
+        -- Per tab, and only with rules to fight over: SWS's switches are per
+        -- kind, and an empty list competes with nothing.
+        local sws = total > 0 and app.sws_warning(kind)
+        if sws then notes[#notes + 1] = { COL_WARN, sws } end
+        if total > 0 and on == 0 then
           notes[#notes + 1] = { COL_WARN, 'Every rule on this tab is switched off.' }
         end
         -- The selected rule's advisory notes, beside the rule they are about.

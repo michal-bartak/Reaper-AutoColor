@@ -1,10 +1,7 @@
 --[[
   gui/icon_browser.lua -- picking a track icon, and drawing icon thumbnails.
 
-  A top-level WINDOW, not a popup, for the reasons the Options dialog gives
-  (window.lua): TopMost so the main window cannot be raised over it, its open
-  state held in app.st rather than by ImGui, the main window dimmed and
-  blocked behind it. Unlike Options it moves and resizes -- a bigger window
+  A dialog window (see dialog.lua), and the one that resizes: a bigger window
   shows more of the grid.
 
   Images are loaded lazily, only for cells on screen, and held attached to the
@@ -16,6 +13,7 @@
 local icons = require 'icons'
 local app   = require 'gui.app'
 local theme = require 'gui.theme'
+local dialog = require 'gui.dialog'
 
 local M = {}
 
@@ -200,18 +198,12 @@ function M.draw(FS, mx, my, mw, mh)
     return
   end
 
-  ImGui.SetNextWindowPos(ctx, mx + mw * 0.5, my + mh * 0.5, ImGui.Cond_Appearing, 0.5, 0.5)
-  ImGui.SetNextWindowSize(ctx, FS * 44, FS * 34, ImGui.Cond_Appearing)
-  ImGui.SetNextWindowSizeConstraints(ctx, FS * 24, FS * 16, FS * 400, FS * 400)
-  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
-
   local r = app.rule_by_id(b.id)
   local what = r and (r.label ~= '' and r.label or r.pattern) or ''
-  local visible, open = ImGui.Begin(ctx,
-    (what ~= '' and ('Icon for "' .. what .. '"') or 'Icon') .. '###mxm_iconbrowser', true,
-    ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_NoDocking
-    | ImGui.WindowFlags_NoSavedSettings | ImGui.WindowFlags_TopMost)
-  ImGui.PopStyleVar(ctx)
+  local visible, open = dialog.begin(FS,
+    (what ~= '' and ('Icon for "' .. what .. '"') or 'Icon') .. '###mxm_iconbrowser', {
+      x = mx + mw * 0.5, y = my + mh * 0.5, w = FS * 45, h = FS * 34,
+      resizable = true, min_w = FS * 24, min_h = FS * 16 })
 
   if not r then close() end               -- its rule was deleted or undone away
   if not visible then
@@ -219,11 +211,6 @@ function M.draw(FS, mx, my, mw, mh)
     return
   end
 
-  -- AllowWhenBlockedByActiveItem: grabbing the resize grip makes it the active
-  -- item during Begin, and without the flag the window then reports itself not
-  -- hovered -- so the click read as one outside and closed the window.
-  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows
-                                            | ImGui.HoveredFlags_AllowWhenBlockedByActiveItem)
   local availw = ImGui.GetContentRegionAvail(ctx)
   local items = filtered(b)
 
@@ -296,19 +283,10 @@ function M.draw(FS, mx, my, mw, mh)
   ImGui.SameLine(ctx, startx + availw - bw)
   if theme.button('Select', bw) then b.chosen = true end
 
-  local popup = ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId
-                                           | ImGui.PopupFlags_AnyPopupLevel)
-  if not popup then
-    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then close() end
-    if ImGui.IsKeyPressed(ctx, ImGui.Key_Enter)
-       or ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter) then
-      b.chosen = true
-    end
-    -- A click on the main window behind cancels, as it does for Options.
-    if ImGui.IsMouseClicked(ctx, 0) and not inside
-       and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
-      close()
-    end
+  if dialog.dismissed() then close() end
+  if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId | ImGui.PopupFlags_AnyPopupLevel)
+     and (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) or ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter)) then
+    b.chosen = true
   end
 
   b.appearing = false

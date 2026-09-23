@@ -79,7 +79,12 @@ A rule can carry one optional non-name filter that **narrows** what it matches.
 |---|---|---|
 | **is a folder track** | tracks | a track that is the parent of a folder |
 | **is inside a folder** | tracks | any track nested under a folder parent |
+| **has an instrument** | tracks | a track with an instrument plugin in its FX chain, as REAPER classes it |
+| **has a MIDI input** | tracks | a track whose record input is MIDI |
+| **has receives** | tracks | a track with at least one receive, such as a bus or a return |
 | **has no name** | all kinds | an object with an empty name |
+
+Filters listed for tracks apply to icon rules too.
 
 The filter and the pattern combine with **and**: both must hold. An empty **pattern** matches on the
 filter alone — an empty pattern with *is a folder track* means "every folder track", while `^Drums`

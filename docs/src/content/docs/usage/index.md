@@ -13,7 +13,7 @@ what they currently hit, and the buttons that write the colours into the project
 <figcaption>The configuration window</figcaption>
 </figure>
 
-Every edit is saved to the [rules file](/Reaper-AutoColor/configuration/rules-file/) immediately;
+Every edit is saved to the [config file](/Reaper-AutoColor/configuration/config-file/) immediately;
 there is no Save button. **Undo**, or `Cmd`/`Ctrl`+`Z` while the window has focus, steps back
 through changes to the **rules**. Colour changes in the project use REAPER's own undo.
 
@@ -30,7 +30,10 @@ Each tab holds its own ordered list. Within a tab, **the first rule that matches
 reordering changes precedence, like firewall rules.
 
 Precedence is **per tab**: reordering track rules cannot change which region wins. Each tab offers
-only the controls that apply to it — the folder filters exist on Tracks and nowhere else.
+only the controls that apply to it — the folder filters exist on Tracks and Icons and nowhere else.
+
+The **Icons** tab sets track icons rather than colours; see
+[Track icons](/Reaper-AutoColor/usage/icons/).
 
 ## The rule row
 
@@ -105,23 +108,23 @@ Deliberately so. Nothing typed here is saved, and nothing it does reaches the pr
 | **Selection** | Colours the selection only. |
 | **Clear…** | Three clearing scopes — see [Clearing colours](/Reaper-AutoColor/usage/clearing/). |
 | **Auto: off / on / paused** | The state of the background loop, and a Pause button once it runs. See [Auto-apply](/Reaper-AutoColor/usage/auto-apply/). |
-| **Options** | Folders, scope, the background loop's timing, text size, rules file. See [Options](/Reaper-AutoColor/configuration/). |
+| **Options** | Folders, scope, the background loop's timing, text size, config file. See [Options](/Reaper-AutoColor/configuration/). |
 | **ⓘ** | About: the installed version, links to the source and these docs, the author, and the licence. |
 
 The foot of the window keeps one line for status messages: what an Apply coloured, why a clear did
 nothing, whether a save failed. The line is permanent, to keep the layout from jumping.
 
-## Banners
+## Warnings
 
-Two conditions appear at the top of the window rather than in passing:
-
-- **SWS Auto Color is enabled.** Both are live colour engines and they will fight. Switch one off;
-  see [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
-- **This rule file was written by a newer version.** Editing is allowed but nothing is saved, to
-  prevent an older build from destroying a config it does not understand.
+- **SWS Auto Color (or Auto Icon) is enabled**, shown under the rule table of each tab whose kind SWS
+  is also set to handle, while that tab has rules. The two will fight; switch one off, see
+  [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
+- **This config file was written by a newer version**, at the top of the window. Editing is allowed
+  but nothing is saved, to prevent an older build from destroying a config it does not understand.
 
 ## Where to go next
 
 - [Matching names](/Reaper-AutoColor/usage/matching/) — the three modes, the supported regex, the filters.
 - [Colours and gradients](/Reaper-AutoColor/usage/colours/) — one colour, two colours, and what a ramp spreads across.
+- [Track icons](/Reaper-AutoColor/usage/icons/) — the Icons tab and the icon browser.
 - [Applying colours](/Reaper-AutoColor/usage/applying/) — Apply now, Selection, and the actions that do the same without the window.

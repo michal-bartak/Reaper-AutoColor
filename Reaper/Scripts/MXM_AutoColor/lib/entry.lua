@@ -25,17 +25,35 @@ end
 --- are also applying, the two fight over the same tracks and markers and the
 --- result looks like a random flicker. Worth one cheap check.
 -- @return boolean, list of the enabled SWS keys
-function M.sws_conflict()
+-- The SWS switch that competes with each rule list. SWS has no item rules.
+M.SWS_SWITCH = {
+  track  = 'AutoColorEnable',
+  region = 'AutoColorRegionEnable',
+  marker = 'AutoColorMarkerEnable',
+  icon   = 'AutoIconEnable',
+}
+
+--- Which SWS Auto Color/Icon switches are on.
+--- @return set of key -> true; empty when the file is missing
+function M.sws_switches()
   -- Path and read live in swsimport, so the file this tool cares about is
   -- named in exactly one place. The check stays a pattern match rather than a
-  -- full parse: it runs on a timer and only needs three flags.
+  -- full parse: it runs on a timer and only needs a few flags.
   local path = swsimport.paths()
   local text = swsimport.read(path)
-  if not text then return false end
+  local on = {}
+  if not text then return on end
+  for _, key in pairs(M.SWS_SWITCH) do
+    if text:match(key .. '%s*=%s*1') then on[key] = true end
+  end
+  return on
+end
 
+function M.sws_conflict()
+  local set = M.sws_switches()
   local on = {}
   for _, key in ipairs({ 'AutoColorEnable', 'AutoColorMarkerEnable', 'AutoColorRegionEnable' }) do
-    if text:match(key .. '%s*=%s*1') then on[#on + 1] = key end
+    if set[key] then on[#on + 1] = key end
   end
   if #on == 0 then return false end
   return true, on
@@ -58,14 +76,14 @@ function M.load_config()
   local cfg, info = config.load()
 
   if info.corrupt then
-    M.msg('Your rule file could not be read:\n\n  ' .. tostring(info.err) ..
+    M.msg('Your config file could not be read:\n\n  ' .. tostring(info.err) ..
           '\n\nIt has been kept as:\n  ' .. config.badpath() ..
           '\n\nStarting from defaults so nothing is lost.',
           'AutoColor: unreadable config')
   elseif info.created then
     M.console('AutoColor: created a starter rule set at ' .. config.path())
   elseif info.readonly then
-    M.msg('This rule file was written by a newer version of AutoColor.\n\n' ..
+    M.msg('This config file was written by a newer version of AutoColor.\n\n' ..
           'It will be used as-is, but not saved over, so no settings are lost.',
           'AutoColor: newer config')
   end

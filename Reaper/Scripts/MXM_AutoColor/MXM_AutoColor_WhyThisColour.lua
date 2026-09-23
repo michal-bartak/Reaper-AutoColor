@@ -174,7 +174,7 @@ w('background auto-apply : %s', alive and 'RUNNING'
 if alive and reaper.GetExtState(config.EXT_SECTION, 'auto_enabled') == '0' then
   w('                        ...but PAUSED from the window')
 end
-w('rules file version    : %d  (%s)', cfg.version or 0, config.path())
+w('config file version   : %d  (%s)', cfg.version or 0, config.path())
 local n = 0
 for _, k in ipairs({ 'track', 'item', 'region', 'marker' }) do
   n = n + #(cfg.rules[k] or {})

@@ -6,9 +6,10 @@ first, then `docs/DECISIONS.md` and `docs/RESEARCH.md` before changing anything.
 ## What this is
 
 A REAPER (ReaScript / Lua 5.4) tool that colours **tracks, items, regions and
-markers from their names** — plain substring, glob, or real regular expressions.
-One ordered rule list per object kind; within a kind the first rule that matches
-wins, so precedence works like firewall rules.
+markers from their names**, and sets **track icons** the same way — plain
+substring, glob, or real regular expressions. One ordered rule list per object
+kind, plus one for icons; within a list the first rule that matches wins, so
+precedence works like firewall rules.
 
 SWS's Auto Color does case-insensitive substring only and has no item support;
 that gap is why this exists.
@@ -64,14 +65,15 @@ explains its own design — read it rather than inferring from the code.
 | Module | Role |
 |---|---|
 | `lib/apply.lua` | plan / prune / commit. `plan()` is pure; `commit()` is the only thing that writes |
-| `lib/targets.lua` | the **only** module that knows how REAPER stores names and colours |
+| `lib/targets.lua` | the **only** module that knows how REAPER stores names, colours and icons |
+| `lib/icons.lua` | icon paths (stored relative to `Data/track_icons`, compared resolved) and the icon index |
 | `lib/matcher.lua` | substring / glob / regex front end; glob compiles to regex, so one engine |
 | `lib/regex.lua` | hand-written pure-Lua regex engine (parser → program → backtracking VM) |
 | `lib/colors.lua` | canonical form is `0xRRGGBB`; native (OS-dependent) values are never persisted |
 | `lib/config.lua` | the JSON rule set, plus the ExtState revision counter |
 | `lib/rules.lua` / `lib/predicates.lua` | the rule record, and the non-name filters that *narrow* it |
 | `lib/autoloop.lua` | the background auto-apply engine and its cost model |
-| `lib/gui/*` | ReaImGui window; `app.lua` owns state, the rest draw |
+| `lib/gui/*` | ReaImGui window; `app.lua` owns state, the rest draw. `dialog.lua` is the one way to open a dialog; `icon_browser.lua` also owns the image cache |
 
 **The GUI's preview is `plan()` with no commit** — the same code path, not an
 approximation. Keep it that way; it is what makes the preview honest.

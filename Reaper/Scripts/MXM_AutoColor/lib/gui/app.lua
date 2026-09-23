@@ -59,7 +59,7 @@ function M.load()
   st.readonly = info.readonly == true
   st.preview_dirty = true
   if info.corrupt then
-    M.toast('Rule file was unreadable; kept as config.bad.json. Started from defaults.')
+    M.toast('Config file was unreadable; kept as config.bad.json. Started from defaults.')
   end
   return cfg
 end
@@ -438,7 +438,7 @@ function M.scan_sws()
   -- M.flush drops the save silently. Importing into it would destroy the
   -- user's view of their rules and persist nothing.
   if st.readonly then
-    return nil, 'This rule file was written by a newer version of AutoColor, ' ..
+    return nil, 'This config file was written by a newer version of AutoColor, ' ..
                 'so it is open read-only. Nothing was imported.'
   end
 
@@ -523,17 +523,19 @@ end
 -- The answer lives in a file on disk, and the banner asks for it on every
 -- frame. Nobody toggles SWS Auto Color mid-drag, so re-reading it once every
 -- few seconds is as live as this needs to be.
-local sws_text, sws_at = nil, nil
+local sws_on, sws_at = {}, nil
 
-function M.sws_warning()
+--- The SWS conflict for one tab, or nil.
+function M.sws_warning(kind)
   local now = reaper.time_precise()
-  if sws_at and now - sws_at < SWS_SETTLE then return sws_text end
-  sws_at = now
-
-  local clash, keys = entrylib.sws_conflict()
-  sws_text = clash and ('SWS Auto Color is enabled (' .. table.concat(keys, ', ') ..
-                        ') and will fight with this tool.') or nil
-  return sws_text
+  if not sws_at or now - sws_at >= SWS_SETTLE then
+    sws_at, sws_on = now, entrylib.sws_switches()
+  end
+  local key = entrylib.SWS_SWITCH[kind]
+  if not (key and sws_on[key]) then return nil end
+  local what = kind == 'icon' and 'SWS Auto Icon'
+               or ('SWS Auto Color for ' .. rulesmod.KIND_LABEL[kind]:lower())
+  return what .. ' is enabled and will fight these rules'
 end
 
 return M

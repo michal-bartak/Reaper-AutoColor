@@ -3,8 +3,8 @@ title: Overview
 description: Colour REAPER tracks, items, regions and markers from their names
 ---
 
-AutoColor colours **tracks, items, regions and markers** from their **names**, matching on a plain
-substring, a glob, or a real regular expression.
+AutoColor colours **tracks, items, regions and markers** from their **names**, and sets **track
+icons** the same way, matching on a plain substring, a glob, or a real regular expression.
 
 Rules are global: one set, shared by every project. A track named `Sub Bass DI` turns purple as
 soon as it is named, and the items on it follow.
@@ -21,13 +21,15 @@ soon as it is named, and the items on it follow.
 - **One ordered list per object kind.** Tracks, Items, Regions and Markers each have a tab. Within
   a tab the first rule that matches wins, like firewall rules.
 - **Three match modes.** `contains`, `glob` and full `regex`, per rule.
-- **Non-name filters.** A rule can be narrowed to folder tracks, tracks inside a folder, or
-  unnamed objects.
+- **Non-name filters.** A rule can be narrowed to folder tracks, tracks inside a folder, tracks
+  with an instrument, a MIDI input or receives, or unnamed objects.
+- **Track icons.** An Icons tab sets each track's icon by name, from a searchable browser, with its
+  own precedence.
 - **Gradients.** A rule with a second colour spreads its matches along a ramp, grouped by runs, by
   folders, or not at all.
 - **Items follow their track.** A track rule can colour the items on it, whatever they are called.
 - **Background auto-colouring.** A loop keeps the project in step with renames, adding no undo
-  points and leaving manually set colours alone.
+  points and leaving manually set colours and icons alone.
 - **Live preview.** Every rule shows its hit count, and the panes at the foot of the window list the
   objects it claims in this project.
 
