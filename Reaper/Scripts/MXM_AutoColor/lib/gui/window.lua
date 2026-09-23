@@ -348,7 +348,7 @@ function M.draw_options(FS)
   if ImGui.IsItemHovered(ctx) then
     ImGui.SetTooltip(ctx,
       'Replaces every rule with the built-in example set.\n\n' ..
-      'Asks before it does it.')
+      'Asks for confirmation.')
   end
 
   ImGui.SameLine(ctx)
@@ -369,7 +369,7 @@ function M.draw_options(FS)
   if ImGui.IsItemHovered(ctx) then
     ImGui.SetTooltip(ctx,
       'Empties all four tabs.\n\n' ..
-      'Asks before it does it.')
+      'Asks for confirmation.')
   end
 
   -- Third, so the two above keep the positions people already know. No '...':

@@ -867,9 +867,9 @@ do -- the third button in the Rules file row, and all three hints
   -- Every button in the row says what it does. The exact strings, because a
   -- tooltip that silently stopped being drawn would otherwise go unnoticed --
   -- rec.seen.SetTooltip is true if ANY of them fires.
-  check(rec.labels['Replaces every rule with the built-in example set.\n\nAsks before it does it.'],
+  check(rec.labels['Replaces every rule with the built-in example set.\n\nAsks for confirmation.'],
         'Example rules has a hint')
-  check(rec.labels['Empties all four tabs.\n\nAsks before it does it.'],
+  check(rec.labels['Empties all four tabs.\n\nAsks for confirmation.'],
         'Remove Rules has a hint')
   check(rec.labels['Appends the rules from SWS Auto Color below your own.\n\n' ..
                    'Unsupported SWS modes are imported as inactive.'],
