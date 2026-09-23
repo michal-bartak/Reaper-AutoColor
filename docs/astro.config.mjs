@@ -35,6 +35,9 @@ export default defineConfig({
       // src/styles/custom.css.
       components: {
         ThemeSelect: '@astrojs/starlight/components/ThemeSelect.astro',
+        // Adds a REAPER link beside GitHub. `social` below only takes
+        // Starlight's own icon names, and REAPER is not one of them.
+        SocialIcons: './src/components/SocialIcons.astro',
       },
       // Renames the table-of-contents' top entry from "Overview" to the page title.
       routeMiddleware: './src/starlightRouteData.ts',
