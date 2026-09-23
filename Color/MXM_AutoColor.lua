@@ -7,19 +7,16 @@ Links:
 About:
   # AutoColor
 
-  Colour tracks, items, regions and markers, and set track icons, from their
-  **names**, using plain substring, glob, or **real regular expressions**.
+  Colours tracks, items, regions and markers, and sets track icons, from their
+  **names**: plain substring, glob or **regular expression**.
 
-  One ordered rule list per object kind -- Tracks, Items, Regions, Markers,
-  Icons -- and within a list the first rule that matches wins, so precedence
-  works like firewall rules. Reordering track rules can never change which
-  region wins.
+  Each object type configured by separate set of rules. Within a set the first
+  matching rule wins.
 
-  The configuration window needs ReaImGui 0.10+. Every other action, including
-  Apply and Clear, works without it.
+  The configuration window requires ReaImGui 0.10+.
 
-  Your rules live in `MXM_AutoColor/config.json` under REAPER's resource
-  path, outside Scripts/, so updating or reinstalling never touches them.
+  Config file stored in `MXM_AutoColor/config.json` under the REAPER resource
+  path, outside Scripts/, to prevent overwriting on update.
 
   MIT licensed. Source: <https://github.com/michal-bartak/Reaper-AutoColor>
 Metapackage: true
