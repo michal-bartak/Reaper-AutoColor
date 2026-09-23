@@ -859,10 +859,10 @@ end
 
 do -- the third button in the Rules file row
   local _, _, rec = optdialog({ IsItemHovered = function() return true end }, true)
-  check(rec.labels['Import SWS'], 'the rules file section offers Import SWS')
+  check(rec.labels['Import from SWS'], 'the rules file section offers Import SWS')
   -- No '...': it acts rather than opening anything, so the label must not
   -- promise a dialog.
-  check(not rec.labels['Import SWS...'], 'without the ellipsis that means "opens a menu"')
+  check(not rec.labels['Import from SWS...'], 'without the ellipsis that means "opens a menu"')
 end
 
 do -- three buttons have to FIT: the dialog is a fixed width and does not scroll
@@ -874,7 +874,7 @@ do -- three buttons have to FIT: the dialog is a fixed width and does not scroll
   }, true)
 
   local row = { widths['##Example rules'], widths['##Remove Rules'],
-                widths['##Import SWS'] }
+                widths['##Import from SWS'] }
   check(row[1] and row[2] and row[3], 'all three are drawn')
   check(row[1] == row[2] and row[2] == row[3], 'at equal widths',
         table.concat({ tostring(row[1]), tostring(row[2]), tostring(row[3]) }, '/'))
@@ -894,7 +894,7 @@ do -- clicking it imports there and then
   -- "nothing found" report without needing a fixture.
   app.st.cfg = config.starter()
   local before = #app.st.cfg.rules.track
-  optdialog({ Button = function(_, id) return id == '##Import SWS' end }, true)
+  optdialog({ Button = function(_, id) return id == '##Import from SWS' end }, true)
   reaper.ShowMessageBox = real
 
   check(asked ~= nil, 'the click runs the import')

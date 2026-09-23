@@ -365,17 +365,13 @@ function M.draw_options(FS)
   -- Third, so the two above keep the positions people already know. No '...':
   -- it acts, it does not open anything.
   ImGui.SameLine(ctx)
-  if theme.button('Import SWS', rw) then do_import() end
+  if theme.button('Import from SWS', rw) then do_import() end
   if ImGui.IsItemHovered(ctx) then
+    -- Two lines. The detail belongs on the documentation page, not in a
+    -- tooltip somebody is reading with the mouse already on the button.
     ImGui.SetTooltip(ctx,
-      'Adds the rules from SWS Auto Color BELOW your own, so nothing\n' ..
-      'you have now changes meaning.\n\n' ..
-      'SWS name filters are case-insensitive substrings and the first\n' ..
-      'matching rule wins -- both exactly how this tool works, so ordinary\n' ..
-      'rules come across unchanged.\n\n' ..
-      'Random, parent, palette-cycling and "ignore" colours, and the track\n' ..
-      'property filters like (record armed), have no equivalent here. Those\n' ..
-      'rules arrive switched off with the reason in their name.')
+      'Appends the rules from SWS Auto Color below your own.\n\n' ..
+      'Unsupported SWS modes are imported as inactive.')
   end
 
   ImGui.EndDisabled(ctx)

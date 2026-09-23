@@ -4,7 +4,7 @@ description: Move your SWS Auto Color rules across, and what does not survive th
 ---
 
 If you already colour tracks with **SWS Auto Color**, you do not have to retype anything.
-**Options ▸ Rules file ▸ Import SWS** reads its rules and turns them into rules here.
+**Options ▸ Rules file ▸ Import from SWS** reads its rules and turns them into rules here.
 
 It only ever **adds**, appending below your own rules, so nothing you already had changes meaning.
 That is also why it does not ask first: it cannot destroy anything, **Undo** takes it back while

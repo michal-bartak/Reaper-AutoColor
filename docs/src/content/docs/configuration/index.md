@@ -71,9 +71,9 @@ that act on the **whole** rule set, every tab rather than just the one you are l
 |---|---|
 | **Example rules** | Replaces everything with the built-in set, as written on first run. |
 | **Remove Rules** | Empties every tab. |
-| **Import SWS** | Adds the rules from SWS Auto Color, below your own. |
+| **Import from SWS** | Appends the rules from SWS Auto Color below your own. |
 
-The first two ask for confirmation; **Import SWS** does not, because it only adds. **Undo** takes
+The first two ask for confirmation; **Import from SWS** does not, because it only adds. **Undo** takes
 any of them back while the window is open.
 
 See **[Importing from SWS](/Reaper-AutoColor/configuration/import-sws/)** for what the import

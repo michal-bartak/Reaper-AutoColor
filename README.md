@@ -5,7 +5,7 @@ substring, glob, or **real regular expressions**. One ordered rule list per
 object kind, and within a kind the first rule that matches wins.
 
 SWS's Auto Color does case-insensitive substring matching only, and has no item
-support at all. If you already use it, **Options → Rules file → Import SWS**
+support at all. If you already use it, **Options → Rules file → Import from SWS**
 brings your rules across — matching and priority order carry over exactly,
 since SWS's substring-and-first-match-wins is a special case of this.
 
