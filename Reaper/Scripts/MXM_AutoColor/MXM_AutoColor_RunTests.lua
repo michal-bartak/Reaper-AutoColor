@@ -927,8 +927,6 @@ if FIX then
         'the marker rule keeps its filter and loses its "none" colour')
 
   check(res.disabled == 6, 'six rules could not be expressed', tostring(res.disabled))
-  check(#res.enabled_in_sws == 2, 'and SWS is reported as still switched on',
-        table.concat(res.enabled_in_sws, ','))
 
   -- Order is priority order on both sides, so it has to survive the trip.
   check(#t == 12, 'twelve of the sixteen entries are track rules', tostring(#t))

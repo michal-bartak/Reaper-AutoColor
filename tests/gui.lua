@@ -342,9 +342,9 @@ do -- and says so plainly when there is no selection at all
 end
 
 ------------------------------------------------------------- SWS import
--- app.import_sws is the whole feature minus the drawing, so this is where it
--- is actually exercised: reading the file, refusing when it should, and the
--- two merge modes.
+-- scan_sws + merge_sws are the whole feature minus the drawing, so this is
+-- where it is actually exercised: reading the file, refusing when it should,
+-- and scanning without touching anything.
 do
   local REPO = NC .. '/../../..'
   local function put(name)
@@ -356,7 +356,7 @@ do
     drop('sws-autocoloricon.ini')
     app.st.cfg = config.starter()
     local before = #app.st.cfg.rules.track
-    local res, err = app.import_sws()
+    local res, err = app.scan_sws()
     check(res == nil, 'a missing SWS file imports nothing')
     check(err and err:find('not found', 1, true) ~= nil, 'and says where it looked',
           tostring(err))
@@ -369,12 +369,17 @@ do
   do -- append
     app.st.cfg = config.starter()
     app.st.readonly = false
-    app.st.undo = app.st.undo or {}
+    app.st.undo = {}          -- earlier blocks left snapshots on it
     local before  = #app.st.cfg.rules.track
     local topmost = app.st.cfg.rules.track[1].pattern
-    local res = app.import_sws()
-    check(res ~= nil and res.imported == 14, 'the fixture imports fourteen rules',
+    local res = app.scan_sws()
+    check(res ~= nil and res.imported == 14, 'the fixture scans fourteen rules',
           res and tostring(res.imported))
+    -- Scanning alone must not touch anything: it is what the confirmation
+    -- dialog is built from, and cancelling has to leave no trace.
+    check(#app.st.cfg.rules.track == before, 'scanning alone changes nothing')
+    check(not app.can_undo(), 'and takes no snapshot')
+    app.merge_sws(res)
     check(#app.st.cfg.rules.track == before + 12, 'twelve of them are track rules',
           tostring(#app.st.cfg.rules.track))
     check(app.st.cfg.rules.track[1].pattern == topmost,
@@ -389,7 +394,7 @@ do
     local sel = app.st.cfg.rules.track[1].id
     app.st.sel_id = sel
     local mine, items = #app.st.cfg.rules.track, #app.st.cfg.rules.item
-    app.import_sws()
+    app.merge_sws(app.scan_sws())
     check(#app.st.cfg.rules.track > mine, 'the import adds')
     check(#app.st.cfg.rules.item == items, 'and touches no tab SWS has nothing for')
     check(app.st.sel_id == sel, 'the selection still points at the same rule')
@@ -399,7 +404,7 @@ do
     app.st.cfg = config.starter()
     app.st.readonly = true
     local before = #app.st.cfg.rules.track
-    local res, err = app.import_sws()
+    local res, err = app.scan_sws()
     check(res == nil, 'a read-only rule file refuses the import')
     check(err and err:find('read-only', 1, true) ~= nil, 'and says why', tostring(err))
     check(#app.st.cfg.rules.track == before, 'and nothing is destroyed')
@@ -409,7 +414,7 @@ do
   do -- end to end: an imported rule really colours something
     app.st.cfg = config.starter()
     app.st.cfg.rules = config.empty_rules()
-    app.import_sws()
+    app.merge_sws(app.scan_sws())
     P.advance(1)
     app.refresh_entries(true)
     app.recompute_preview()

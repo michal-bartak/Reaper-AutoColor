@@ -872,7 +872,8 @@ do -- the third button in the Rules file row, and all three hints
   check(rec.labels['Empties all four tabs.\n\nAsks for confirmation.'],
         'Remove Rules has a hint')
   check(rec.labels['Appends the rules from SWS Auto Color below your own.\n\n' ..
-                   'Unsupported SWS modes are imported as inactive.'],
+                   'Unsupported SWS modes are imported as inactive.\n\n' ..
+                   'Asks for confirmation.'],
         'Import from SWS has a hint')
 end
 
@@ -896,26 +897,63 @@ do -- three buttons have to FIT: the dialog is a fixed width and does not scroll
         tostring(row[1]))
 end
 
-do -- clicking it imports there and then
+do -- with no SWS file, the click reports and stops
   local real = reaper.ShowMessageBox
   local asked
   reaper.ShowMessageBox = function(msg, _, kind) asked = { msg = msg, kind = kind }; return 6 end
 
-  -- No SWS file in the mock resource path, so this exercises the click and the
-  -- "nothing found" report without needing a fixture.
   app.st.cfg = config.starter()
   local before = #app.st.cfg.rules.track
   optdialog({ Button = function(_, id) return id == '##Import from SWS' end }, true)
   reaper.ShowMessageBox = real
 
-  check(asked ~= nil, 'the click runs the import')
-  -- kind 0 is an OK box, not a yes/no. The import only ever adds, so there is
-  -- nothing to confirm: Undo covers it and the report says what arrived.
-  check(asked and asked.kind == 0, 'and asks nothing first -- it destroys nothing',
+  check(asked ~= nil, 'the click runs the scan')
+  check(asked and asked.kind == 0, 'and reports with an OK box, not a question',
         asked and tostring(asked.kind))
   check(asked and asked.msg:find('not found', 1, true) ~= nil,
-        'reporting the missing file', asked and asked.msg)
+        'naming the missing file', asked and asked.msg)
   check(#app.st.cfg.rules.track == before, 'and the rules are untouched')
+end
+
+do -- with a file, it asks BEFORE changing anything, and Cancel means cancel
+  os.execute('cp "' .. NC .. '/../../../tests/fixtures/sws-autocoloricon.ini" "' .. TMP .. '/"')
+
+  local real = reaper.ShowMessageBox
+  local asked
+  local function click(answer)
+    asked = nil
+    reaper.ShowMessageBox = function(msg, _, kind)
+      asked = { msg = msg, kind = kind }; return answer
+    end
+    optdialog({ Button = function(_, id) return id == '##Import from SWS' end }, true)
+    reaper.ShowMessageBox = real
+  end
+
+  app.st.cfg = config.starter()
+  app.st.undo = {}                           -- earlier blocks left snapshots on it
+  local before = #app.st.cfg.rules.track
+
+  click(7)                                   -- No
+  check(asked and asked.kind == 4, 'it asks a yes/no question first')
+  check(asked and asked.msg:find('Import 14 rules', 1, true) ~= nil,
+        'counting what it found', asked and asked.msg)
+  check(asked and asked.msg:find('12 tracks, 1 region, 1 marker', 1, true) ~= nil,
+        'broken down by kind', asked and asked.msg)
+  check(asked and asked.msg:find('6 of them switched off', 1, true) ~= nil,
+        'and saying how many arrive off', asked and asked.msg)
+  -- WHY they are off is a table in the manual, not something to read with a
+  -- Yes button waiting.
+  check(asked and asked.msg:find('equivalent', 1, true) == nil,
+        'without explaining why -- that is what the manual is for')
+  check(#app.st.cfg.rules.track == before, 'answering No imports nothing')
+  check(not app.can_undo(), 'and takes no snapshot')
+
+  click(6)                                   -- Yes
+  check(#app.st.cfg.rules.track == before + 12, 'answering Yes appends them',
+        tostring(#app.st.cfg.rules.track))
+  check(app.can_undo(), 'and that one is undoable')
+
+  os.remove(TMP .. '/sws-autocoloricon.ini')
 end
 
 do -- a click in a dropdown must not dismiss the dialog underneath it

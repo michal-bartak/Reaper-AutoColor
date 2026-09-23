@@ -88,64 +88,49 @@ local pending_font = nil
 local main_x, main_y, main_w, main_h = 0, 0, 78 * 14, 44 * 14
 
 ------------------------------------------------------------------ SWS import
---- Report what an import did.
+--- The confirmation: counts only.
 ---
---- A clean import gets a toast; anything switched off or skipped gets a real
---- message box. The toast is one auto-expiring line, and "some of your rules
---- arrived turned OFF, and turning them on is your call" does not fit in one --
---- nor should it vanish after six seconds.
-local function report_import(res)
+--- WHY a rule arrives switched off is a table in the documentation, not
+--- something to read in a modal with a Yes button waiting.
+local function confirm_text(res)
   local kinds = {}
   for _, k in ipairs({ 'track', 'region', 'marker' }) do
-    local n = (res.counts and res.counts[k]) or 0
+    local n = #(res.rules[k] or {})
     if n > 0 then
-      kinds[#kinds + 1] = n .. ' ' .. rulesmod.KIND_NOUN[k] ..
-                          (n == 1 and '' or 's')
+      kinds[#kinds + 1] = n .. ' ' .. rulesmod.KIND_NOUN[k] .. (n == 1 and '' or 's')
     end
   end
 
-  local headline = string.format('Imported %d rule%s from SWS Auto Color',
-                                 res.imported, res.imported == 1 and '' or 's')
-
-  if res.disabled == 0 and res.skipped == 0 then
-    app.toast(headline .. '.')
-    return
-  end
-
-  local parts = { headline .. ':\n  ' .. table.concat(kinds, ', ') }
+  local lines = { string.format('Import %d rule%s from SWS Auto Color?',
+                                res.imported, res.imported == 1 and '' or 's'),
+                  '', '  ' .. table.concat(kinds, ', ') }
   if res.disabled > 0 then
-    parts[#parts + 1] = string.format(
-      '%d of them arrived switched OFF -- this tool has no equivalent for what\n' ..
-      'they did in SWS. Each one says why in its name. Read them before you\n' ..
-      'switch any on.', res.disabled)
+    lines[#lines + 1] = string.format('  %d of them switched off', res.disabled)
   end
   if res.skipped > 0 then
-    parts[#parts + 1] = string.format('%d line%s could not be read and %s skipped.',
-                                      res.skipped, res.skipped == 1 and '' or 's',
-                                      res.skipped == 1 and 'was' or 'were')
+    lines[#lines + 1] = string.format('  %d line%s could not be read',
+                                      res.skipped, res.skipped == 1 and '' or 's')
   end
-  if #res.enabled_in_sws > 0 then
-    parts[#parts + 1] = 'SWS Auto Color is still switched on and will fight with\n' ..
-                        'this tool over the same objects. Turn one of them off:\n' ..
-                        'SWS > Auto Color/Icon/Layout.'
-  end
-
-  reaper.ShowMessageBox(table.concat(parts, '\n\n'), 'AutoColor', 0)
-  app.toast(headline .. '.')
+  lines[#lines + 1] = ''
+  lines[#lines + 1] = 'They are appended below your own rules.'
+  return table.concat(lines, '\n')
 end
 
---- The import is one button, not a menu: it only ever ADDS.
----
---- No confirmation either. It destroys nothing, Undo takes it back, and the
---- report at the end says what arrived. To swap your rules out entirely, use
---- Remove Rules first -- which does ask -- and then import into the empty set.
+--- One button. It reads SWS, says what it found, and only then changes
+--- anything -- so the dialog is the last chance to say no rather than a
+--- receipt for something already done.
 local function do_import()
-  local res, err = app.import_sws()
+  local res, err = app.scan_sws()
   if not res then
     reaper.ShowMessageBox(err, 'AutoColor', 0)
     return
   end
-  report_import(res)
+
+  if reaper.ShowMessageBox(confirm_text(res), 'AutoColor', 4) ~= 6 then return end
+
+  app.merge_sws(res)
+  app.toast(string.format('Imported %d rule%s from SWS.',
+                          res.imported, res.imported == 1 and '' or 's'))
 end
 
 --- The Options dialog.
@@ -381,7 +366,8 @@ function M.draw_options(FS)
     -- tooltip somebody is reading with the mouse already on the button.
     ImGui.SetTooltip(ctx,
       'Appends the rules from SWS Auto Color below your own.\n\n' ..
-      'Unsupported SWS modes are imported as inactive.')
+      'Unsupported SWS modes are imported as inactive.\n\n' ..
+      'Asks for confirmation.')
   end
 
   ImGui.EndDisabled(ctx)

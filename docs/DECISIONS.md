@@ -415,6 +415,18 @@ SWS it matches, leaves the object alone, and blocks every rule below it. The
 rest merely fail to colour something, so `(ignore)` gets a longer sentence in
 its name.
 
+**The import confirms before it acts, not after.** It reported what it had
+already done, which is a receipt, not a decision -- and the one number worth
+seeing beforehand is how many rules arrive switched off. Reading SWS is cheap
+and changes nothing, so the scan is split from the merge: `scan_sws()` parses,
+the dialog shows the counts, and `merge_sws()` runs only on a yes. Cancelling
+costs a parse and leaves no snapshot.
+
+The dialog counts; it does not explain. Why a rule could not come across is a
+table in the documentation, not something to read in a modal with a Yes button
+waiting -- the rule's own name still carries the reason, which is where it is
+useful.
+
 **The import only ever adds, and there is no replace mode.** It began as a menu
 offering Append or Replace, and the Replace half was all cost: it had to
 confirm, it had to explain that the Items tab would end up empty because SWS

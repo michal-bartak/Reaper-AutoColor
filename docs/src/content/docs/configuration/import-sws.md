@@ -6,9 +6,12 @@ description: Move your SWS Auto Color rules across, and what does not survive th
 If you already colour tracks with **SWS Auto Color**, you do not have to retype anything.
 **Options ▸ Rules file ▸ Import from SWS** reads its rules and turns them into rules here.
 
+It reads SWS first and shows you what it found — how many rules, how they split across tabs, how
+many will arrive switched off — and imports only if you say yes. Nothing changes if you cancel.
+
 It only ever **adds**, appending below your own rules, so nothing you already had changes meaning.
-That is also why it does not ask first: it cannot destroy anything, **Undo** takes it back while
-the window is open, and nothing reaches your project until you press **Apply**.
+**Undo** takes an import back while the window is open, and nothing reaches your project until you
+press **Apply**.
 
 To start from SWS's rules and nothing else, press **Remove Rules** first — that one does ask — and
 then import into the empty set.

@@ -384,15 +384,17 @@ end
 --- ImGui, the same split clear_colors uses. The window is left with the two
 --- things only it can do: asking, and saying what happened.
 ---
---- Always ADDS, below the existing rules. There is no replace mode: Remove
---- Rules already empties the set, and it asks first, so "replace" is those two
---- steps in the order the user can see.
+--- Read and convert SWS's rules WITHOUT touching the config.
+---
+--- Split from the merge so the window can show what an import would do and
+--- offer to cancel. Nothing here mutates anything, so abandoning at the
+--- confirmation costs only the parse.
 ---
 --- @return res  the parse result, or nil plus a reason string
-function M.import_sws()
+function M.scan_sws()
   -- A config from a newer version is loaded but never written back, and
-  -- M.flush drops the save silently. Mutating it here would destroy the user's
-  -- view of their rules and persist nothing.
+  -- M.flush drops the save silently. Importing into it would destroy the
+  -- user's view of their rules and persist nothing.
   if st.readonly then
     return nil, 'This rule file was written by a newer version of AutoColor, ' ..
                 'so it is open read-only. Nothing was imported.'
@@ -423,12 +425,20 @@ function M.import_sws()
       res.count, res.count == 1 and '' or 's')
   end
 
+  return res
+end
+
+--- Fold a scan_sws() result into the rule set. Always ADDS, below the existing
+--- rules -- there is no replace mode, because Remove Rules already empties the
+--- set and asks first.
+--- @return counts per kind
+function M.merge_sws(res)
+  if st.readonly or not res then return {} end
   M.snapshot()
   res.counts = swsimport.merge(st.cfg, res)
   -- st.sel_id needs no attention: appending cannot invalidate it.
   M.mark_dirty()
-
-  return res
+  return res.counts
 end
 
 -------------------------------------------------------------------- tester

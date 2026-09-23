@@ -340,19 +340,11 @@ function M.parse(sws_text, reaper_ini_text, opts)
     imported = 0,
     disabled = 0,
     skipped  = 0,
-    enabled_in_sws = {},
   }
 
   local ini = M.ini(sws_text)
   local sws = ini[M.SECTION]
   if not sws then return res end
-
-  for _, key in ipairs({ 'AutoColorEnable', 'AutoColorMarkerEnable',
-                         'AutoColorRegionEnable' }) do
-    if tonumber(sws[key]) == 1 then
-      res.enabled_in_sws[#res.enabled_in_sws + 1] = key
-    end
-  end
 
   local count = tonumber(sws.AutoColorCount)
   if not count then
