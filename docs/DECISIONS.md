@@ -415,17 +415,23 @@ SWS it matches, leaves the object alone, and blocks every rule below it. The
 rest merely fail to colour something, so `(ignore)` gets a longer sentence in
 its name.
 
-**Append lands at the end of each list.** The user's own rules are the ones
-they tuned; an SWS `(any)` catch-all arriving above them would repaint the
+**The import only ever adds, and there is no replace mode.** It began as a menu
+offering Append or Replace, and the Replace half was all cost: it had to
+confirm, it had to explain that the Items tab would end up empty because SWS
+has no item rules to refill it with, and it was the only way the feature could
+destroy something. Remove Rules already empties the set and already asks, so
+"replace" is those two buttons in the order the user can see. Dropping it took
+the confirm, the caveat and a whole branch of `merge()` with it, and left a
+feature that cannot lose a rule the user wrote.
+
+With one action left, the menu had nothing to offer either — the button acts
+directly. It keeps no `...`, which in this window means "opens something".
+
+**Imported rules land at the end of each list.** The user's own rules are the
+ones they tuned; an SWS `(any)` catch-all arriving above them would repaint the
 project on the next auto tick. The SWS rules keep their order among themselves,
 so their internal precedence survives, and dragging them higher is one gesture
 away.
-
-**Replace empties the Items tab**, which SWS cannot refill — it has no item
-rules. That is the honest reading of "replace" and it matches the two buttons
-beside it, which both clear all four tabs. A half-replace that quietly spared
-items would be the special case nobody remembers a year later, so the confirm
-text says it outright instead.
 
 **The colour decode does not go through `colors.lua`.** `colors.norm` masks
 `0x1FFFFFF`, which drops SWS's `PORTABLE_FLAG` at `0x2000000` and folds the
@@ -439,19 +445,20 @@ that one genuinely needs the machine's byte order.
 dependency, no file dialog and no shell-out anywhere; adding one for this would
 have been the first, and the file is always in the same place.
 
-### Two things that fell out of putting a popup in the Options dialog
+### Two things the third button turned up
 
 The row's `FS * 13` button width no longer fit three buttons — the dialog is
 `FS * 42` less `MODAL_PAD` each side — so the width is derived from the content
 region instead. That also survives the text-size slider, which sits three
 sections above it and a constant did not.
 
-More subtly: the dialog dismisses itself on any click that is not hovering it,
-and an ImGui popup is a separate **root** window, not a child. So choosing a
-menu item closed Options underneath, and Escape closed the dialog rather than
-the menu. Both dismissals are now suspended while a popup of ours is open, which
-covers the Folders combo in the same dialog too — nobody had reported it
-misbehaving, but it opens a popup by the same mechanism.
+The other came from the menu that no longer exists, and the guard was kept
+anyway. The dialog dismisses itself on any click that is not hovering it, and an
+ImGui popup is a separate **root** window, not a child — so a click inside one
+closed Options underneath, and Escape closed the dialog rather than the popup.
+Both dismissals are now suspended while any popup is open. The Folders dropdown
+in the same dialog opens a popup by the same mechanism; nobody had reported it
+misbehaving, but the guard is correct for it either way.
 
 ## GUI constraints worth knowing
 

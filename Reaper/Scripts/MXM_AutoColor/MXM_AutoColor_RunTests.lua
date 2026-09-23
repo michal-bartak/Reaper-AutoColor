@@ -957,7 +957,7 @@ if FIX then
   -- The regression that would otherwise only surface as a silently failed save.
   do
     local cfg = CF.defaults()
-    SI.merge(cfg, res, 'replace')
+    SI.merge(cfg, res)
     local enc = J.encode(CF.serializable(CF.normalize(cfg)))
     check(enc ~= nil, 'an imported rule set encodes')
     local ids = {}
@@ -985,19 +985,12 @@ do -- merge
   check(cfg.rules.track[2].pattern == 'Kick', 'with the imported ones below')
   check(#cfg.rules.item == 1, 'append leaves the item tab alone')
 
-  local cfg2 = CF.defaults()
-  cfg2.rules.track[1] = RU.new('track', { pattern = 'mine' })
-  cfg2.rules.item[1]  = RU.new('item',  { pattern = 'takes' })
-  SI.merge(cfg2, res, 'replace')
-  check(#cfg2.rules.track == 1 and cfg2.rules.track[1].pattern == 'Kick',
-        'replace swaps the list out')
-  check(#cfg2.rules.item == 0, 'and empties the item tab, which SWS cannot refill')
-
-  -- The one that would be a disaster: Replace against a file with no rules.
+  -- There is no replace mode, and that is the point: merge can only ever grow
+  -- a list, so no import can destroy a rule the user wrote.
   local cfg3 = CF.defaults()
   cfg3.rules.track[1] = RU.new('track', { pattern = 'mine' })
-  SI.merge(cfg3, SI.parse('[SWS]\nAutoColorCount=0\n'), 'replace')
-  check(#cfg3.rules.track == 1, 'replacing with nothing changes nothing')
+  SI.merge(cfg3, SI.parse('[SWS]\nAutoColorCount=0\n'))
+  check(#cfg3.rules.track == 1, 'importing nothing changes nothing')
 end
 
 do -- degenerate files

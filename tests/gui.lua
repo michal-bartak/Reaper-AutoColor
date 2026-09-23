@@ -356,7 +356,7 @@ do
     drop('sws-autocoloricon.ini')
     app.st.cfg = config.starter()
     local before = #app.st.cfg.rules.track
-    local res, err = app.import_sws('append')
+    local res, err = app.import_sws()
     check(res == nil, 'a missing SWS file imports nothing')
     check(err and err:find('not found', 1, true) ~= nil, 'and says where it looked',
           tostring(err))
@@ -372,7 +372,7 @@ do
     app.st.undo = app.st.undo or {}
     local before  = #app.st.cfg.rules.track
     local topmost = app.st.cfg.rules.track[1].pattern
-    local res = app.import_sws('append')
+    local res = app.import_sws()
     check(res ~= nil and res.imported == 14, 'the fixture imports fourteen rules',
           res and tostring(res.imported))
     check(#app.st.cfg.rules.track == before + 12, 'twelve of them are track rules',
@@ -384,24 +384,22 @@ do
     check(app.st.dirty, 'and is marked for saving')
   end
 
-  do -- replace
+  do -- importing can only ever ADD, so nothing the user wrote can be lost
     app.st.cfg = config.starter()
-    app.st.sel_id = app.st.cfg.rules.track[1].id
-    local res = app.import_sws('replace')
-    check(res ~= nil, 'replace imports')
-    check(#app.st.cfg.rules.track == 12, 'the track tab is only SWS\'s rules now',
-          tostring(#app.st.cfg.rules.track))
-    -- SWS has no item rules, so there is nothing to refill this with. Said
-    -- outright in the confirm text rather than quietly special-cased.
-    check(#app.st.cfg.rules.item == 0, 'and the item tab ends up empty')
-    check(app.st.sel_id == nil, 'the selection, which can only dangle now, is cleared')
+    local sel = app.st.cfg.rules.track[1].id
+    app.st.sel_id = sel
+    local mine, items = #app.st.cfg.rules.track, #app.st.cfg.rules.item
+    app.import_sws()
+    check(#app.st.cfg.rules.track > mine, 'the import adds')
+    check(#app.st.cfg.rules.item == items, 'and touches no tab SWS has nothing for')
+    check(app.st.sel_id == sel, 'the selection still points at the same rule')
   end
 
   do -- read-only config must not be touched: the save is dropped silently
     app.st.cfg = config.starter()
     app.st.readonly = true
     local before = #app.st.cfg.rules.track
-    local res, err = app.import_sws('replace')
+    local res, err = app.import_sws()
     check(res == nil, 'a read-only rule file refuses the import')
     check(err and err:find('read-only', 1, true) ~= nil, 'and says why', tostring(err))
     check(#app.st.cfg.rules.track == before, 'and nothing is destroyed')
@@ -411,7 +409,7 @@ do
   do -- end to end: an imported rule really colours something
     app.st.cfg = config.starter()
     app.st.cfg.rules = config.empty_rules()
-    app.import_sws('append')
+    app.import_sws()
     P.advance(1)
     app.refresh_entries(true)
     app.recompute_preview()

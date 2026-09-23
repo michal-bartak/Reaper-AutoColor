@@ -4,17 +4,14 @@ description: Move your SWS Auto Color rules across, and what does not survive th
 ---
 
 If you already colour tracks with **SWS Auto Color**, you do not have to retype anything.
-**Options ▸ Rules file ▸ Import SWS…** reads its rules and turns them into rules here.
+**Options ▸ Rules file ▸ Import SWS** reads its rules and turns them into rules here.
 
-The menu offers two things:
+It only ever **adds**, appending below your own rules, so nothing you already had changes meaning.
+That is also why it does not ask first: it cannot destroy anything, **Undo** takes it back while
+the window is open, and nothing reaches your project until you press **Apply**.
 
-| | |
-|---|---|
-| **Add SWS rules to mine** | Appends them below your own rules. Nothing you already had changes meaning. |
-| **Replace my rules with SWS's** | Clears every tab first, then fills it with SWS's rules. Asks before it does it. |
-
-**Undo** takes either one back while the window is open, and nothing is applied to your project
-until you press **Apply**.
+To start from SWS's rules and nothing else, press **Remove Rules** first — that one does ask — and
+then import into the empty set.
 
 ## What it reads
 
@@ -69,11 +66,6 @@ its own rule.
 
 Icons and TCP/MCP layouts are read and discarded — this tool only sets colours.
 
-:::caution[Replace empties the Items tab]
-SWS has no item rules, so there is nothing to refill that tab with. **Add SWS rules to mine**
-appends below your own instead, leaving everything you already had — and its precedence — intact.
-:::
-
 ## Afterwards
 
 Importing does not switch SWS off, and until you do, both are live colour engines fighting over the
@@ -83,7 +75,8 @@ same tracks. The window warns you in a banner while that is true. Turn SWS's off
 Then check the imported rules before applying:
 
 - Anything switched off is telling you something — read the reason in its name.
-- An SWS `(any)` catch-all matches *everything*, and if it sits above your own rules it will win
-  over all of them. Drag it down, or switch it off.
+- An SWS `(any)` catch-all matches *everything*. It lands below your own rules, so they still win
+  where they apply — but it will claim every object they leave over, which may be more than you
+  expect. Switch it off if that is not what you want.
 - **Hits** in the rule list tells you what each rule actually wins. See
   [Applying](/Reaper-AutoColor/usage/applying/).

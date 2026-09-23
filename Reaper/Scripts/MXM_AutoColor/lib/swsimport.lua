@@ -393,15 +393,15 @@ end
 
 ------------------------------------------------------------------------ merge
 --- Fold a parse result into a config's rule lists.
---- @param mode 'append' or 'replace'
+---
+--- Only ever ADDS. There is no replace mode and deliberately so: emptying the
+--- rule set is already a button of its own that asks first, so "replace" is
+--- those two steps in the order the user can see -- and it keeps this from
+--- ever being able to destroy anything.
 --- @return counts per kind
-function M.merge(cfg, res, mode)
+function M.merge(cfg, res)
   local counts = {}
-  -- Nothing to import changes nothing. In particular a Replace against an
-  -- empty or missing SWS file must not empty the user's rule set.
   if not res or res.imported == 0 then return counts end
-
-  if mode == 'replace' then cfg.rules = config.empty_rules() end
 
   for _, kind in ipairs(rulesmod.KINDS) do
     local src = res.rules[kind] or {}

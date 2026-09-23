@@ -384,9 +384,12 @@ end
 --- ImGui, the same split clear_colors uses. The window is left with the two
 --- things only it can do: asking, and saying what happened.
 ---
---- @param mode 'append' or 'replace'
+--- Always ADDS, below the existing rules. There is no replace mode: Remove
+--- Rules already empties the set, and it asks first, so "replace" is those two
+--- steps in the order the user can see.
+---
 --- @return res  the parse result, or nil plus a reason string
-function M.import_sws(mode)
+function M.import_sws()
   -- A config from a newer version is loaded but never written back, and
   -- M.flush drops the save silently. Mutating it here would destroy the user's
   -- view of their rules and persist nothing.
@@ -421,9 +424,8 @@ function M.import_sws(mode)
   end
 
   M.snapshot()
-  res.counts = swsimport.merge(st.cfg, res, mode)
-  -- After a replace the selection can only be pointing at a rule that is gone.
-  if mode == 'replace' then st.sel_id = nil end
+  res.counts = swsimport.merge(st.cfg, res)
+  -- st.sel_id needs no attention: appending cannot invalidate it.
   M.mark_dirty()
 
   return res

@@ -15,7 +15,6 @@ local ruletbl  = require 'gui.rule_table'
 local preview  = require 'gui.preview'
 local theme    = require 'gui.theme'
 local aboutmod = require 'about'
-local swsimport = require 'swsimport'
 
 local M = {}
 
@@ -95,7 +94,7 @@ local main_x, main_y, main_w, main_h = 0, 0, 78 * 14, 44 * 14
 --- message box. The toast is one auto-expiring line, and "some of your rules
 --- arrived turned OFF, and turning them on is your call" does not fit in one --
 --- nor should it vanish after six seconds.
-local function report_import(res, mode)
+local function report_import(res)
   local kinds = {}
   for _, k in ipairs({ 'track', 'region', 'marker' }) do
     local n = (res.counts and res.counts[k]) or 0
@@ -105,8 +104,7 @@ local function report_import(res, mode)
     end
   end
 
-  local headline = string.format('%s %d rule%s from SWS Auto Color',
-                                 mode == 'replace' and 'Replaced yours with' or 'Imported',
+  local headline = string.format('Imported %d rule%s from SWS Auto Color',
                                  res.imported, res.imported == 1 and '' or 's')
 
   if res.disabled == 0 and res.skipped == 0 then
@@ -136,58 +134,18 @@ local function report_import(res, mode)
   app.toast(headline .. '.')
 end
 
-local function do_import(mode)
-  if mode == 'replace' then
-    local ans = reaper.ShowMessageBox(
-      'Replace your current rules with the ones from SWS Auto Color?\n\n' ..
-      'Your existing rules will be gone, on all four tabs. SWS has no item ' ..
-      'rules, so the Items tab will end up empty.\n\n' ..
-      'This can be undone with the Undo button while the window is open.',
-      'AutoColor', 4)
-    if ans ~= 6 then return end
-  end
-  -- Append asks nothing. It destroys nothing, Undo covers it, and choosing the
-  -- menu item was already the second deliberate click.
-
-  local res, err = app.import_sws(mode)
+--- The import is one button, not a menu: it only ever ADDS.
+---
+--- No confirmation either. It destroys nothing, Undo takes it back, and the
+--- report at the end says what arrived. To swap your rules out entirely, use
+--- Remove Rules first -- which does ask -- and then import into the empty set.
+local function do_import()
+  local res, err = app.import_sws()
   if not res then
     reaper.ShowMessageBox(err, 'AutoColor', 0)
     return
   end
-  report_import(res, mode)
-end
-
-local function sws_popup()
-  if not ImGui.BeginPopup(ctx, 'swsimport') then return end
-
-  if ImGui.MenuItem(ctx, 'Add SWS rules to mine') then do_import('append') end
-  if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx,
-      'Appends them BELOW your own rules, so nothing you have now\n' ..
-      'changes meaning. Drag them higher if you want them to win.')
-  end
-
-  if ImGui.MenuItem(ctx, 'Replace my rules with SWS\'s...') then do_import('replace') end
-  if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx,
-      'Clears all four tabs first. SWS has no item rules, so the\n' ..
-      'Items tab ends up empty.')
-  end
-
-  ImGui.Separator(ctx)
-  ImGui.TextColored(ctx, rgba(COL_DIM), 'Reads ' .. swsimport.SOURCE)
-  if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx,
-      'SWS name filters are case-insensitive substrings, and the first\n' ..
-      'matching rule wins -- both exactly how this tool works, so ordinary\n' ..
-      'rules come across unchanged.\n\n' ..
-      'Random, parent, palette-cycling and "ignore" colours, and the track\n' ..
-      'property filters like (record armed), have no equivalent here. Those\n' ..
-      'rules arrive switched off with the reason in their name.\n\n' ..
-      'Icons and track layouts are ignored -- this tool only colours.')
-  end
-
-  ImGui.EndPopup(ctx)
+  report_import(res)
 end
 
 --- The Options dialog.
@@ -404,19 +362,23 @@ function M.draw_options(FS)
     end
   end
 
-  -- Third, so the two above keep the positions people already know.
+  -- Third, so the two above keep the positions people already know. No '...':
+  -- it acts, it does not open anything.
   ImGui.SameLine(ctx)
-  if theme.button('Import SWS...', rw) then ImGui.OpenPopup(ctx, 'swsimport') end
+  if theme.button('Import SWS', rw) then do_import() end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Adds the rules from SWS Auto Color BELOW your own, so nothing\n' ..
+      'you have now changes meaning.\n\n' ..
+      'SWS name filters are case-insensitive substrings and the first\n' ..
+      'matching rule wins -- both exactly how this tool works, so ordinary\n' ..
+      'rules come across unchanged.\n\n' ..
+      'Random, parent, palette-cycling and "ignore" colours, and the track\n' ..
+      'property filters like (record armed), have no equivalent here. Those\n' ..
+      'rules arrive switched off with the reason in their name.')
+  end
 
   ImGui.EndDisabled(ctx)
-
-  -- The menu is drawn OUTSIDE the disabled scope, though the button that opens
-  -- it is inside. A popup is a window of its own, and a window begun inside
-  -- BeginDisabled inherits the disable -- tooltips are the documented sole
-  -- exception -- so the menu would have come up dimmed and unclickable, with
-  -- no way to dismiss it. Nothing can open it while the buttons are disabled
-  -- anyway, so there is no case where drawing it here lets something through.
-  sws_popup()
 
   if app.st.readonly then
     ImGui.TextColored(ctx, rgba(COL_WARN),
@@ -430,11 +392,11 @@ function M.draw_options(FS)
   theme.center(bw)
   if theme.button('Close', bw) then st.options_open = false end
 
-  -- Both dismissals are suspended while any popup of ours is open. A popup is
-  -- a separate ROOT window, not a child, so `inside` above is false while the
-  -- mouse is over the Import menu -- and clicking a menu item would otherwise
-  -- close the dialog underneath it. Escape belongs to the menu too while one
-  -- is up, or the menu and the dialog would both go on one keystroke.
+  -- Both dismissals are suspended while any popup is open. A popup is a
+  -- separate ROOT window, not a child, so `inside` above is false while the
+  -- mouse is over the Folders dropdown -- and a click on one of its entries
+  -- would otherwise close the dialog underneath it. Escape belongs to the
+  -- dropdown too while it is up, or both would go on one keystroke.
   local popup = ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId
                                            | ImGui.PopupFlags_AnyPopupLevel)
 
