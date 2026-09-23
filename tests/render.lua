@@ -871,7 +871,7 @@ do -- the third button in the Rules file row, and all three hints
         'Example rules has a hint')
   check(rec.labels['Empties all four tabs.\n\nAsks for confirmation.'],
         'Remove Rules has a hint')
-  check(rec.labels['Appends the rules from SWS Auto Color below your own.\n\n' ..
+  check(rec.labels['Appends the rules from SWS Auto Color below existing rules.\n\n' ..
                    'Unsupported SWS modes are imported as inactive.\n\n' ..
                    'Asks for confirmation.'],
         'Import from SWS has a hint')

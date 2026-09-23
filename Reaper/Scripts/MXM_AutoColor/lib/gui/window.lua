@@ -112,7 +112,7 @@ local function confirm_text(res)
                                       res.skipped, res.skipped == 1 and '' or 's')
   end
   lines[#lines + 1] = ''
-  lines[#lines + 1] = 'They are appended below your own rules.'
+  lines[#lines + 1] = 'Appended below existing rules.'
   return table.concat(lines, '\n')
 end
 
@@ -365,7 +365,7 @@ function M.draw_options(FS)
     -- Two lines. The detail belongs on the documentation page, not in a
     -- tooltip somebody is reading with the mouse already on the button.
     ImGui.SetTooltip(ctx,
-      'Appends the rules from SWS Auto Color below your own.\n\n' ..
+      'Appends the rules from SWS Auto Color below existing rules.\n\n' ..
       'Unsupported SWS modes are imported as inactive.\n\n' ..
       'Asks for confirmation.')
   end

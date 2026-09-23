@@ -25,16 +25,16 @@ Metapackage: true
 Changelog:
   First public release.
 
-  - Colour tracks, items, regions and markers from their names -- substring,
-    glob or real regular expressions.
-  - One ordered rule list per object kind; the first rule that matches wins.
-  - Rules live outside Scripts/, so updating never touches them.
-  - The configuration window needs ReaImGui 0.10+. Every other action, Apply
-    and Clear included, works without it.
+  - Colour tracks, items, regions and markers by name -- substring, glob or
+    regular expressions.
+  - One ordered rule list per object kind; first match wins.
+  - Configuration stored outside the scripts location, to prevent overwriting
+    on update.
+  - Configuration window requires ReaImGui 0.10+.
 
-  Upgrading from 0.9.x: the scripts moved to Scripts/MXM Scripts/MXM_AutoColor/.
-  ReaPack moves the files, but toolbar buttons, shortcuts and custom actions
-  bound to the old path must be pointed at the new one.
+  Upgrading from 0.9.x: scripts moved to Scripts/MXM Scripts/MXM_AutoColor/.
+  ReaPack relocates the files; toolbar buttons, shortcuts and custom actions
+  bound to the old path must be repointed.
 Provides:
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua > ../MXM_AutoColor/
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoToggle.lua > ../MXM_AutoColor/

@@ -187,6 +187,15 @@ Prose is the thing I most often have to cut. Default to fewer words.
 - **Code comments earn their place** by explaining what the code cannot: a
   constraint discovered the hard way, why an obvious alternative was rejected.
   Not a paraphrase of the line below.
+- **Impersonal and purposive, not conversational.** State the fact, then the
+  purpose with "to ...". Write "Configuration stored outside the scripts
+  location, to prevent overwriting on update" -- not "Rules live outside
+  Scripts/, so updating never touches them." No chatty verbs, no reassurance
+  clauses, no addressing the reader where a statement will do. This is
+  strictest in the changelog, UI strings and commit subjects.
+- **Leave out anything the manual covers or the reader already assumes.** "The
+  configuration window needs ReaImGui 0.10+" is worth saying; "every other
+  action works without it" is not -- it follows, and the manual has it.
 - **Commit messages: subject plus a short paragraph.** What changed and why, in
   a few sentences. Not a walkthrough of the diff.
 - **The changelog is for users, in short bullets.** Group related changes into
