@@ -29,7 +29,10 @@ def main(path):
         desc = pkg.find("metadata/description")
         print("ABOUT")
         print()
-        print(rtf_to_text(desc.text or "").strip() if desc is not None else "(none)")
+        # Every RTF paragraph carries \sa180, space after it, which ReaPack shows
+        # as a gap; textutil drops it, so a blank line stands in for it.
+        text = rtf_to_text(desc.text or "") if desc is not None else "(none)"
+        print("\n\n".join(line for line in text.strip().splitlines() if line.strip()))
         print()
         print("HISTORY")
         for version in reversed(pkg.findall("version")):
