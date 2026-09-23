@@ -345,6 +345,11 @@ function M.draw_options(FS)
       app.toast('Loaded the example rules.')
     end
   end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Replaces every rule with the built-in example set.\n\n' ..
+      'Asks before it does it.')
+  end
 
   ImGui.SameLine(ctx)
   if theme.button('Remove Rules', rw) then
@@ -360,6 +365,11 @@ function M.draw_options(FS)
       app.mark_dirty()
       app.toast('Removed every rule.')
     end
+  end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Empties all four tabs.\n\n' ..
+      'Asks before it does it.')
   end
 
   -- Third, so the two above keep the positions people already know. No '...':

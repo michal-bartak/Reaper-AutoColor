@@ -857,12 +857,23 @@ do -- Remove Rules empties every kind, behind a confirmation
   check(app.can_undo(), 'and a snapshot taken, so Undo puts them back')
 end
 
-do -- the third button in the Rules file row
+do -- the third button in the Rules file row, and all three hints
   local _, _, rec = optdialog({ IsItemHovered = function() return true end }, true)
-  check(rec.labels['Import from SWS'], 'the rules file section offers Import SWS')
+  check(rec.labels['Import from SWS'], 'the rules file section offers Import from SWS')
   -- No '...': it acts rather than opening anything, so the label must not
   -- promise a dialog.
   check(not rec.labels['Import from SWS...'], 'without the ellipsis that means "opens a menu"')
+
+  -- Every button in the row says what it does. The exact strings, because a
+  -- tooltip that silently stopped being drawn would otherwise go unnoticed --
+  -- rec.seen.SetTooltip is true if ANY of them fires.
+  check(rec.labels['Replaces every rule with the built-in example set.\n\nAsks before it does it.'],
+        'Example rules has a hint')
+  check(rec.labels['Empties all four tabs.\n\nAsks before it does it.'],
+        'Remove Rules has a hint')
+  check(rec.labels['Appends the rules from SWS Auto Color below your own.\n\n' ..
+                   'Unsupported SWS modes are imported as inactive.'],
+        'Import from SWS has a hint')
 end
 
 do -- three buttons have to FIT: the dialog is a fixed width and does not scroll
