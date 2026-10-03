@@ -11,8 +11,8 @@ renames. Running the action again stops it. The toolbar button lights while it r
 - **It never reverts a hand-set colour or icon.** Once an object's colour stops matching what the
   tool last wrote, its name unchanged, the loop leaves that colour alone until the next rename. A
   track icon is tracked the same way, separately.
-- It adds **no undo points**, to keep a rename from shredding the undo history. *Create undo points
-  for automatic changes* in [Options](/Reaper-AutoColor/configuration/) enables them.
+- It adds **no undo points**, to keep a rename from shredding the undo history. *Undo points for
+  automatic changes* in [Options](/Reaper-AutoColor/configuration/) enables them.
 - It writes nothing when nothing changed, and pauses entirely **while recording**, record-pause
   included.
 - It sweeps tracks immediately. Items and regions follow once the project has settled, in
@@ -41,8 +41,7 @@ launch: **Never**, **Always**, or **Last** (default). The window and the
 runs `MXM_AutoColor_Startup.lua`.
 
 :::note[Uninstalling]
-The entry does nothing once the scripts are gone. To remove it, delete the lines between
-`-- MXM_AutoColor begin` and `-- MXM_AutoColor end` in `Scripts/__startup.lua`.
+The entry in `Scripts/__startup.lua` does nothing once the scripts are gone. To remove it, delete the lines between `-- MXM_AutoColor BEGIN` and `-- MXM_AutoColor END`.
 :::
 
 ## What it re-reads, and when
@@ -52,15 +51,16 @@ exactly like a rename. The loop works around that rather than re-reading everyth
 
 | | When it is re-read |
 |---|---|
-| **Tracks** | On every change, because a rename is visible only by reading names. Re-planned only when what it read differs. |
-| **Items and regions** | Only when something says they need it: one appeared or vanished, a track changed, or **Rescan items at most every (s)** has elapsed. |
+| **Tracks** | At the next check after any change, because a rename is visible only by reading names. Re-planned only when what it read differs. |
+| **Items, regions and markers** | Once the project has settled, and only when something says they need it: one appeared or vanished, a track changed, or **Item/marker rescan (s)** has elapsed. |
 
-The rescan interval is 5 s by default. The only thing waiting on it is an item **renamed in place**,
-which nothing cheaper can detect. 0 re-reads everything on every change: correct, and slow on a
+The rescan interval is 5 s by default. The only thing waiting on it is an item, region or marker
+**renamed in place**, which nothing cheaper can detect. 0 re-reads everything on every change: correct, and slow on a
 large project.
 
-`Check every (s)` and `Work budget (ms)` in [Options](/Reaper-AutoColor/configuration/) control how
-often the loop wakes and how long it may work before yielding.
+`Check frequency (s)` in [Options](/Reaper-AutoColor/configuration/) sets how often the
+project is checked, and so the delay before a track rename is picked up. `Work budget (ms)` limits
+how long one check may spend on items, regions and markers before yielding.
 
 :::caution[Gradients on items]
 A gradient cannot be computed incrementally: moving one member re-plans the whole range. A gradient

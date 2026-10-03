@@ -46,17 +46,13 @@ Recommended for **items**, where it makes an item follow its track live. Note th
 
 | Setting | Default | What it does |
 |---|---|---|
-| **Create undo points for automatic changes** | off | Adds an undo point per automatic recolour. Off by default, to keep a rename from shredding the undo history; the rules can always re-derive the colours. |
-| **Check every (s)** | 0.20 | How often the loop wakes. |
-| **Work budget (ms)** | 4 | How long it may work before yielding back to REAPER. |
-| **Rescan items at most every (s)** | 5 | The delay before an item *renamed in place* is noticed. `0` re-reads everything on every change. |
+| **Autostart** | Last | Behavior on Reaper start. Possible options: *Never*, *Always* or *Last*. [Auto-apply](/Reaper-AutoColor/usage/auto-apply/#starting-with-reaper) covers the `__startup.lua` entry it relies on. |
+| **Undo points for automatic changes** | off | Adds an undo point per automatic recolour. Off by default, to keep a rename from shredding the undo history; the rules can always re-derive the colours. |
+| **Check frequency (s)** | 0.20 | How often the project is checked: the only delay before a track rename is picked up. |
+| **Work budget (ms)** | 4 | How long one check may spend on items, regions and markers. The rest carries over to the next check. |
+| **Item/marker rescan (s)** | 5 | The delay before an item, region or marker *renamed in place* is noticed. `0` re-reads them on every change. [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) explains what the loop re-reads and why the rescan interval exists.|
 
-[Auto-apply](/Reaper-AutoColor/usage/auto-apply/) explains what the loop re-reads and why the rescan
-interval exists.
 
-**Autostart** is *Never*, *Always* or *Last* (default): the state at the last shutdown.
-[Auto-apply](/Reaper-AutoColor/usage/auto-apply/#starting-with-reaper) covers the `__startup.lua`
-entry it relies on.
 
 ## Window
 

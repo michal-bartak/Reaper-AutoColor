@@ -14,7 +14,7 @@ local config = require 'config'
 
 local M = {}
 
-local BEGIN, END = '-- MXM_AutoColor begin', '-- MXM_AutoColor end'
+local BEGIN, END = '-- MXM_AutoColor BEGIN', '-- MXM_AutoColor END'
 
 --- Where the scripts actually are. ReaPack installs them under a folder of its
 --- own choosing, so the path cannot be assumed.
@@ -55,14 +55,18 @@ local function read(p)
   return s
 end
 
---- The text with the marked block cut out, whether there was one, and the block.
+--- The text with the marked block cut out, whether there was one, the block,
+--- and whether a blank line (or the start of the file) precedes it.
 local function strip(text)
   local a = text:find(BEGIN, 1, true)
   if not a then return text, false end
   local _, e = text:find(END, a, true)
   if not e then return text, false end
+  local before = text:sub(1, a - 1)
+  local spaced = before == '' or before:match('\n\r?\n$') ~= nil
+  before = before:gsub('(\r?\n)\r?\n$', '%1')      -- the blank line install() adds
   local rest = text:sub(e + 1):gsub('^\r?\n', '')
-  return text:sub(1, a - 1) .. rest, true, text:sub(a, e)
+  return before .. rest, true, text:sub(a, e), spaced
 end
 
 function M.installed()
@@ -84,7 +88,10 @@ end
 function M.install()
   local s = read(M.path()) or ''
   s = strip(s)
-  if s ~= '' and not s:match('\n$') then s = s .. '\n' end
+  if s ~= '' then
+    if not s:match('\n$') then s = s .. '\n' end
+    s = s .. '\n'
+  end
   return write(M.path(), s .. block() .. '\n')
 end
 
@@ -94,9 +101,9 @@ end
 function M.ensure()
   local s = read(M.path())
   if s then
-    local _, had, found = strip(s)
+    local _, had, found, spaced = strip(s)
     -- Compared without carriage returns: the file may have been saved either way.
-    if had and (found:gsub('\r', '')) == block() then return false end
+    if had and spaced and (found:gsub('\r', '')) == block() then return false end
   end
   return pcall(M.install) and true or false
 end

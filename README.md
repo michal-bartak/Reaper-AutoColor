@@ -15,7 +15,7 @@ since SWS's substring-and-first-match-wins is a special case of this.
 
 | | |
 |---|---|
-| [Requirements](https://michal-bartak.github.io/Reaper-AutoColor/requirements/) | REAPER 7; ReaImGui 0.10+, for the configuration window only |
+| [Requirements](https://michal-bartak.github.io/Reaper-AutoColor/requirements/) | REAPER 7.03+; ReaImGui 0.10+, for the configuration window only |
 | [Installation](https://michal-bartak.github.io/Reaper-AutoColor/installation/) | ReaPack, or copy `Reaper/` over your resource path |
 | [Usage](https://michal-bartak.github.io/Reaper-AutoColor/usage/) | the rule list, matching, colours, applying, auto-apply |
 | [Configuration](https://michal-bartak.github.io/Reaper-AutoColor/configuration/) | options, the rules file, the REAPER preferences that interfere |

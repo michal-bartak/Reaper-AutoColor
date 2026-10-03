@@ -224,7 +224,8 @@ function M.draw(kind, FS, height)
   ImGui.TableSetupColumn(ctx, 'Match',  FIX, FS * 6 + 6)
   ImGui.TableSetupColumn(ctx, 'Pattern', STRETCH, 2.0)
   ImGui.TableSetupColumn(ctx, 'Aa',     FIX, FS * 2.2)
-  if has_only then ImGui.TableSetupColumn(ctx, 'Filter', FIX, FS * 9 + 4) end
+  -- Sized for the filter labels in Windows' wider UI font as well as macOS'.
+  if has_only then ImGui.TableSetupColumn(ctx, 'Filter', FIX, FS * 10.5 + 4) end
   if is_icon then
     ImGui.TableSetupColumn(ctx, 'Icon',     STRETCH, 1.0)
     ImGui.TableSetupColumn(ctx, 'Children', FIX, FS * 5)

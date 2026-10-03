@@ -21,12 +21,12 @@ About:
   MIT licensed. Source: <https://github.com/michal-bartak/Reaper-AutoColor>
 Metapackage: true
 Changelog:
-  - Track icons support.
-  - New track filters: has an instrument, has a MIDI input, has receives.
-  - SWS import.
-  - Auto-colouring can start with REAPER (Options > Autostart).
-  - Toolbar buttons toggle without the "already running" prompt; the window's
-    button lights while it is open.
+  - Requires Reaper 7.03 or later.
+  - Added: track icons support.
+  - Added: new track filters: has an instrument, has a MIDI input, has receives.
+  - Added: SWS import.
+  - Added: autostart at startup option (see Options > Autostart).
+  - Fixed: Toolbar buttons toggle without the "already running" prompt
   - Minor layout changes.
 
   Config file bumped to version 3. Earlier versions of AutoColor will open it
@@ -35,7 +35,6 @@ Changelog:
   An entry is added to Scripts/__startup.lua. By default, auto-colouring
   resumes at launch if it was running at shutdown.
 
-  Background auto-colouring requires REAPER 7.03 or later.
 Provides:
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua > ../MXM_AutoColor/
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoToggle.lua > ../MXM_AutoColor/

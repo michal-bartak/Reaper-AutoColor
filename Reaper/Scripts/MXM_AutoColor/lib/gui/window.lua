@@ -222,7 +222,7 @@ function M.draw_options(FS)
     ImGui.EndCombo(ctx)
   end
 
-  rv, v = theme.checkbox('Create undo points for automatic changes', o.auto_undo)
+  rv, v = theme.checkbox('Undo points for automatic changes', o.auto_undo)
   if rv then app.snapshot(); o.auto_undo = v; app.mark_dirty() end
   if ImGui.IsItemHovered(ctx) then
     ImGui.SetTooltip(ctx, 'Off by default: an undo point every time you rename\n' ..
@@ -230,27 +230,34 @@ function M.draw_options(FS)
                           'can always be re-derived from the rules.')
   end
 
+  ImGui.Spacing(ctx)
+  ImGui.Spacing(ctx)
   ImGui.SetNextItemWidth(ctx, FS * 10)
-  rv, v = ImGui.SliderDouble(ctx, 'Check every (s)', o.tick_interval, 0.05, 2.0, '%.2f')
+  rv, v = ImGui.SliderDouble(ctx, 'Check frequency (s)', o.tick_interval,
+                             0.05, 2.0, '%.2f')
   if rv then o.tick_interval = v; app.mark_dirty(true) end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, 'How often the project is checked.\n' ..
+                          'Lower reacts faster, at more CPU.')
+  end
 
   ImGui.SetNextItemWidth(ctx, FS * 10)
   rv, v = ImGui.SliderInt(ctx, 'Work budget (ms)', math.floor(o.cold_budget_ms), 1, 50)
   if rv then o.cold_budget_ms = v; app.mark_dirty(true) end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, 'Time per check for items, regions and\n' ..
+                          'markers. The rest carries over to the\n' ..
+                          'next check.')
+  end
 
   ImGui.SetNextItemWidth(ctx, FS * 10)
-  rv, v = ImGui.SliderInt(ctx, 'Rescan items at most every (s)',
+  rv, v = ImGui.SliderInt(ctx, 'Item/marker rescan (s)',
                           math.floor(o.cold_interval), 0, 60)
   if rv then o.cold_interval = v; app.mark_dirty(true) end
   if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx,
-      'Tracks are checked on every change. Items and regions are\n' ..
-      'much more numerous, so they are only re-read when something\n' ..
-      'says they need it -- one appeared or vanished, a track\n' ..
-      'changed, or this long has passed.\n\n' ..
-      'It is the delay before an item RENAMED in place is noticed;\n' ..
-      'nothing else waits on it. 0 re-reads everything on every\n' ..
-      'change, which is slow on a large project.')
+    ImGui.SetTooltip(ctx, 'Delay before an item, region or marker\n' ..
+                          'renamed in place is noticed. 0 rescans\n' ..
+                          'on every change: slow on a large project.')
   end
 
   theme.section('Window', true)

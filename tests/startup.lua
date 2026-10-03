@@ -37,6 +37,8 @@ local once = read(F)
 assert(startup.install())
 check(read(F) == once, 'a repeated install changes nothing')
 check(once:sub(1, 36) == '-- mine\nreaper.ShowConsoleMsg("hi")\n', 'existing content kept')
+check(once:find('("hi")\n\n-- MXM_AutoColor BEGIN', 1, true) ~= nil,
+      'a blank line separates the block', once)
 
 write(F, once .. '-- after\n')
 assert(startup.remove())
@@ -47,6 +49,14 @@ check(not startup.installed(), 'no longer installed')
 assert(startup.remove())
 check(startup.ensure() and startup.installed(), 'ensure adds a missing block')
 check(not startup.ensure(), 'ensure does nothing when the block is present')
+
+-- A block written before the blank line existed gets one.
+write(F, (read(F):gsub('\n\n%-%- MXM_AutoColor BEGIN', '\n-- MXM_AutoColor BEGIN')))
+check(startup.ensure(), 'ensure adds the blank line to a block without one')
+check(read(F):find('\n\n-- MXM_AutoColor BEGIN', 1, true) ~= nil, 'and it is there', read(F))
+-- Saved with CRLF by an editor: still current.
+write(F, (read(F):gsub('\r?\n', '\r\n')))
+check(not startup.ensure(), 'a CRLF copy of a current block is left alone')
 
 -- A block left by an older build, pointing at the wrong place, is replaced.
 write(F, (read(F):gsub('MXM_AutoColor_Startup%.lua', 'Elsewhere/Startup.lua')))

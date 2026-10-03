@@ -69,9 +69,9 @@ Run `MXM_AutoColor_AutoToggle.lua` once from the Action List. Until REAPER has r
 does not know its own command ID and the button can only report state. After that it starts and
 stops the loop.
 
-## An item renamed in place did not recolour
+## An item or marker renamed in place did not recolour
 
-Items and regions are re-read on a timer — **Rescan items at most every (s)**, 5 s by default —
+Items, regions and markers are re-read on a timer — **Item/marker rescan (s)**, 5 s by default —
 because REAPER reports only one project-wide "something changed" counter, and re-reading every item
 on every change is expensive. Renaming in place is the one edit nothing cheaper detects. A lower
 interval, or **Apply now**, resolves it. See
