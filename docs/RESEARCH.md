@@ -268,6 +268,16 @@ The full API reference ships locally with the extension:
 * `SetProjExtState` / `GetProjExtState` — not `SetProjectExtState`.
 * ExtState values **must not contain newlines**; documented.
 
+## Script re-launch
+
+`set_action_options(flag)` was added in REAPER 7.03 (release notes). Flags,
+from the help text in the 7.81 binary: `&1` terminates a running instance when the script is launched again;
+`&2` with `&1` then runs the new instance (otherwise the launch is ignored);
+`&4` / `&8` set the toggle state on / off. REAPER's own generated toggle scripts
+call it as `3 | (on and 4 or 8)`. `ReverseNamedCommandLookup(id)` gives a
+script's stable named ID (`RS…`), and `NamedCommandLookup('_' .. name)` the
+session's numeric one.
+
 ## Transport state
 
 `GetPlayState()` is a bitmask: `1` playing, `2` paused, `4` recording. The bits

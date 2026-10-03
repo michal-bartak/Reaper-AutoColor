@@ -20,6 +20,7 @@ local entrylib   = require 'entry'
 local regex      = require 'regex'
 local colors     = require 'colors'
 local swsimport  = require 'swsimport'
+local startup    = require 'startup'
 
 local M = {}
 
@@ -280,9 +281,10 @@ function M.set_auto_paused(paused)
 end
 
 --- The background script records its own command id the first time it runs;
---- without that there is no way for this window to invoke it.
+--- without that there is no way for this window to invoke it. The numeric id
+--- is the fallback for a record made before the named one existed.
 function M.auto_command_id()
-  return tonumber(reaper.GetExtState(SECT, 'auto_cmdid'))
+  return startup.toggle_command() or tonumber(reaper.GetExtState(SECT, 'auto_cmdid'))
 end
 
 --- Start it if stopped, stop it if running. The action is itself a toggle, so

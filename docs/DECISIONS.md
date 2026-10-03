@@ -751,28 +751,37 @@ So `lib/startup.lua` adds a marked block itself, whenever the window or the
 Toggle starts. Not recorded in the config: moving or deleting `__startup.lua` by
 hand is normal in REAPER, and a flag would then be wrong.
 
-**The block runs the bootstrap as an action, not via `loadfile` or `dofile`.**
-`__startup.lua` is one Lua state shared by every entry, so a loaded chunk would
-leave its `package.path` and cached modules (`config`, `json`, ...) behind: an
-earlier entry's `config` would be returned to us, and ours to a later entry.
-An action gets a state of its own. The block touches only `reaper.*` and checks
-`file_exists` first, so an uninstall that leaves it behind is a silent no-op.
+**The block is `loadfile` + `pcall`, never a bare `dofile`.** An uninstall leaves
+it behind; a missing file under `dofile` would raise and abort every entry after
+ours. As written it is a silent no-op.
+
+**The bootstrap loads its modules through a `require` of its own.**
+`__startup.lua` is one Lua state shared by every entry, so the plain `require`
+would leave our `package.path` and cached modules (`config`, `json`, ...)
+behind: an earlier entry's `config` would be returned to us, and ours to a later
+entry. Running the bootstrap as an action instead gives it a clean state, but
+registers it in the Action list.
 
 **The last state is a persisted ExtState (`active_last`), not config.** Writing
 `config.json` on every toggle would rewrite the rule file and bump `config_rev`.
 
-**The Toggle is a one-shot; the loop is a separate script.** A toggle that is
-itself the long-running `defer` script cannot record a stop. REAPER ends that
-instance on a toolbar click (or prompts, depending on a remembered choice), so
-the script's stop branch never runs, and its `atexit` cannot tell a stop from
+**The Toggle is the loop, with `set_action_options(3)`.** Without it, REAPER
+ends a running script on a toolbar click (or prompts, depending on a remembered
+choice), so the stop branch never runs, and `atexit` cannot tell a stop from
 REAPER quitting -- measured: the main window, the project and the API are all
-still valid in both cases. A one-shot is never "already running", so every click
-reaches its code; it writes `active_last` and starts or stops the loop, which
-never touches it.
+still valid in both cases. Flag 3 makes the click terminate the loop and then run
+the script again, and that run records the stop. `atexit` therefore leaves the
+token and heartbeat in place; both are session-only, so a quit leaves nothing to
+misread. A fresh heartbeat is what marks the run as a stop: a token left by a
+loop ended some other way is stale, and the click is a start. The earlier split
+into a one-shot Toggle and a separate loop script worked too, but put the loop
+in the Action list. Costs the REAPER 7.03 minimum.
 
-**The bootstrap runs the Toggle as an action**, via `AddRemoveReaScript`, because
-the Toggle has no start-only mode (a second run stops it) and `dofile` from
-`__startup.lua` would record the wrong command ID. `auto_boot` skips the SWS
+**The bootstrap runs the Toggle as an action**, found by the named command ID
+the Toggle records (numeric IDs of scripts can change between sessions),
+because the Toggle has no start-only mode and `dofile` from `__startup.lua`
+would run it without its command ID or relaunch options. Before the Toggle has ever run,
+`AddRemoveReaScript` returns the ID ReaPack registered. `auto_boot` skips the SWS
 conflict dialog on that launch.
 
 **Nothing locks `__startup.lua`.** ReaScripts share one thread, so only an outside

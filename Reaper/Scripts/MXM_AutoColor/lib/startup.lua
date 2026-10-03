@@ -4,11 +4,10 @@
   REAPER runs Scripts/__startup.lua at launch. install() adds a marked block to
   it that runs MXM_AutoColor_Startup.lua, which calls boot().
 
-  The block runs the bootstrap as an action, in a Lua state of its own:
-  __startup.lua is one state shared by every entry, and a loadfile there would
-  leave our package.path and cached modules (config, json, ...) to collide with
-  the others. The block itself touches only reaper.*, and is a no-op once the
-  bootstrap is gone.
+  The block checks for the file and runs it under pcall, so an uninstall that
+  leaves the block behind is a silent no-op that cannot break the entries
+  after it. The bootstrap keeps its modules out of the Lua state those entries
+  share; see its header.
 ]]
 
 local config = require 'config'
@@ -39,11 +38,8 @@ local function block()
   return table.concat({
     BEGIN,
     'do',
-    '  local f = ' .. expr,
-    '  if reaper.file_exists(f) then',
-    '    local id = reaper.AddRemoveReaScript(true, 0, f, true)',
-    '    if id and id > 0 then reaper.Main_OnCommand(id, 0) end',
-    '  end',
+    '  local chunk = loadfile(' .. expr .. ')',
+    '  if chunk then pcall(chunk) end',
     'end',
     END,
   }, '\n')
@@ -122,6 +118,16 @@ function M.should_start(mode, last)
   return mode == 'on' or (mode == 'last' and last == '1')
 end
 
+--- The Toggle's command id in this session, or nil before it has ever run.
+--- Numeric ids of scripts are allocated per session; the named id the Toggle
+--- records is the stable one.
+function M.toggle_command()
+  local name = reaper.GetExtState(config.EXT_SECTION, 'auto_cmd_name')
+  if name == '' then return nil end
+  local cmd = reaper.NamedCommandLookup('_' .. name)
+  return cmd and cmd > 0 and cmd or nil
+end
+
 --- Called from MXM_AutoColor_Startup.lua. Never raises.
 function M.boot(root)
   local ok, cfg = pcall(config.load)
@@ -133,10 +139,11 @@ function M.boot(root)
   -- The Toggle has no start-only mode: running it while the loop is up stops it.
   if reaper.GetExtState(sect, 'auto_instance') ~= '' then return false end
 
-  -- Registering is idempotent and returns the existing id, so this does not
-  -- depend on the action having been run once. Running it as an action keeps
-  -- its command id and toolbar state correct.
-  local cmd = reaper.AddRemoveReaScript(true, 0, root .. 'MXM_AutoColor_AutoToggle.lua', true)
+  -- Run as an action, so it has its own Lua state and its relaunch options
+  -- apply. Before the Toggle has ever run, registering returns the id ReaPack
+  -- already gave it.
+  local cmd = M.toggle_command()
+    or reaper.AddRemoveReaScript(true, 0, root .. 'MXM_AutoColor_AutoToggle.lua', true)
   if not cmd or cmd <= 0 then return false end
   reaper.SetExtState(sect, 'auto_boot', '1', false)
   reaper.Main_OnCommand(cmd, 0)

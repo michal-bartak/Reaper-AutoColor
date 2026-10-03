@@ -60,7 +60,6 @@ Installed in `Scripts/MXM Scripts/MXM_AutoColor`.
 | | `MXM_AutoColor_ApplySelection.lua` | Colour the selected tracks and items |
 | | `MXM_AutoColor_ClearColors.lua` | Reset colours to the theme default |
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> | `MXM_AutoColor_AutoToggle.lua` | Start/stop background auto-colouring |
-| | `MXM_AutoColor_AutoLoop.lua` | The background loop; started and stopped by the Toggle |
 | | `MXM_AutoColor_Startup.lua` | Run from `__startup.lua` to start auto-colouring with REAPER |
 | | `MXM_AutoColor_WhyThisColour.lua` | Explain the colour on the selected track or item |
 | | `MXM_AutoColor_Dump.lua` | Read-only diagnostic listing |

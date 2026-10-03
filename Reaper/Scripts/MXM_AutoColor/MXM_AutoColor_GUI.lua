@@ -5,7 +5,7 @@
 ]]
 
 local sep = package.config:sub(1, 1)
-local _, thisFile = reaper.get_action_context()
+local _, thisFile, sectionID, cmdID = reaper.get_action_context()
 local ROOT = thisFile:match('^(.*[\\/])')
 package.path = ROOT .. '?.lua;' .. ROOT .. 'lib' .. sep .. '?.lua;' .. package.path
 
@@ -45,6 +45,16 @@ if reaper.GetExtState(SECT, 'gui_open') == '1' then
 end
 reaper.SetExtState(SECT, 'gui_open', '1', false)
 
+-- Running the action again closes the window, instead of REAPER asking whether
+-- to terminate. The button lights while the window is open.
+if reaper.set_action_options then reaper.set_action_options(1) end
+local function set_toggle(state)
+  if sectionID and sectionID >= 0 and cmdID and cmdID ~= 0 then
+    reaper.SetToggleCommandState(sectionID, cmdID, state)
+    reaper.RefreshToolbar2(sectionID, cmdID)
+  end
+end
+
 ------------------------------------------------------------------- start up
 local app    = require 'gui.app'
 local window = require 'gui.window'
@@ -63,7 +73,9 @@ theme.init(ImGui, ctx)
 reaper.atexit(function()
   app.flush(true)                                -- never lose a pending edit
   reaper.DeleteExtState(SECT, 'gui_open', false)
+  set_toggle(0)
 end)
+set_toggle(1)
 
 ------------------------------------------------------------------ the frame
 local function frame()
