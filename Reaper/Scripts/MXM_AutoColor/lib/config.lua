@@ -19,7 +19,7 @@ local rulesmod = require 'rules'
 
 local M = {}
 
-M.VERSION     = 2
+M.VERSION     = 3
 M.EXT_SECTION = 'MXM_AutoColor'
 
 local function in_reaper()
@@ -152,8 +152,10 @@ local function normalize_options(o)
   for _, k in ipairs(rulesmod.KINDS) do
     if type(cu) == 'table' then
       out.clear_unmatched[k] = (cu[k] == true)
-    else
+    elseif k ~= 'icon' then            -- the boolean predates icon rules
       out.clear_unmatched[k] = (cu == true)
+    else
+      out.clear_unmatched[k] = false
     end
   end
 
@@ -167,7 +169,7 @@ end
 -- after the first preview. Only ever write a cleaned copy.
 local RULE_FIELDS = { 'id', 'label', 'enabled', 'mode', 'pattern', 'only',
                       'ci', 'invert', 'color', 'color2', 'note', 'cascade_items',
-                      'gradient_scope' }
+                      'gradient_scope', 'icon', 'children' }
 
 function M.serializable(cfg)
   local out = { version = cfg.version, options = {}, rules = {} }
@@ -249,6 +251,11 @@ migrations[1] = function(cfg)
   cfg.rules = out
   return cfg
 end
+
+--- v3 adds the icon rule list. normalize() creates it empty; the version bump
+--- is what makes an older build open a v3 file read-only instead of saving over
+--- it without the icon rules.
+migrations[2] = function(cfg) return cfg end
 
 --- Bring a config forward to the current version. Public so the test
 --- suite can exercise the v1 -> v2 split directly.

@@ -224,6 +224,38 @@ do
         'Clear releases a take colour even when the item had none')
 end
 
+------------------------------------------------------------ track icons
+do
+  local P5 = mock.install{ resource = TMP, script = NC .. '/MXM_AutoColor_ApplyAll.lua' }
+  package.loaded['targets'] = nil; package.loaded['apply'] = nil
+  local t_kick = P5.track('Kick In')
+  local t_pad  = P5.track('Pad', { instrument = true })
+  local t_vox  = P5.track('Vox', { icon = '/hand/picked.png' })
+
+  local c = config.defaults()
+  c.rules.icon[1] = rules.new('icon', { mode = 'substring', pattern = 'kick', icon = 'kick.png' })
+  c.rules.icon[2] = rules.new('icon', { pattern = '', only = 'instrument', icon = '/abs/synth.jpg' })
+  assert(config.save(c))
+
+  dofile(NC .. '/MXM_AutoColor_ApplyAll.lua')
+  check(t_kick.icon == TMP .. '/Data/track_icons/kick.png', 'Apply sets a track icon',
+        tostring(t_kick.icon))
+  check(t_pad.icon == '/abs/synth.jpg', 'an absolute icon, via the instrument filter')
+  check(t_vox.icon == '/hand/picked.png', 'an unmatched track keeps its icon')
+  check(P5.undo[#P5.undo] and P5.undo[#P5.undo].flags & 1 ~= 0,
+        'icon writes are in a track-config undo point')
+
+  local before = P5.icon_writes
+  dofile(NC .. '/MXM_AutoColor_ApplyAll.lua')
+  check(P5.icon_writes == before, 'a second Apply rewrites no icon',
+        (P5.icon_writes - before) .. ' writes')
+
+  c.options.clear_unmatched.icon = true
+  assert(config.save(c))
+  dofile(NC .. '/MXM_AutoColor_ApplyAll.lua')
+  check(t_vox.icon == '', 'reset when unmatched removes an icon')
+end
+
 ------------------------------------------------------------------- report
 print('\n=== integration (mock REAPER) ===')
 for _, f in ipairs(fails) do print('  FAIL  ' .. f) end

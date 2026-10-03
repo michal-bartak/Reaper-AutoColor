@@ -1,4 +1,4 @@
-.PHONY: help test icon docs docs-install docs-dev docs-build docs-preview docs-shots docs-shots-status docs-diagrams docs-diagrams-verify docs-clean
+.PHONY: help test reapack-text icon docs docs-install docs-dev docs-build docs-preview docs-diagrams docs-diagrams-verify docs-clean
 
 # The scripts themselves need no build step -- REAPER runs the .lua files where they sit. This
 # file is for the parts that do have a toolchain: the test suite, the icon, and the docs site.
@@ -15,8 +15,7 @@ help:
 	@echo "  make docs-dev           live-reload dev server, for writing"
 	@echo "  make docs-build         static build into docs/dist/"
 	@echo "  make docs-diagrams      redraw the computed colouring diagrams"
-	@echo "  make docs-shots         draw placeholders for any newly referenced screenshot"
-	@echo "  make docs-shots-status  list which screenshots are real and which are placeholders"
+	@echo "  make docs-diagrams-verify  diff those diagrams against the real apply.lua"
 	@echo "  make docs-clean         remove docs/dist and docs/.astro"
 	@echo ""
 	@echo "Icon:"
@@ -24,9 +23,15 @@ help:
 	@echo ""
 	@echo "Tests (need a standalone Lua: brew install lua):"
 	@echo "  make test               run the suite outside REAPER"
+	@echo ""
+	@echo "ReaPack:"
+	@echo "  make reapack-text       print the About text and History ReaPack shows, from index.xml"
 
 test:
 	./tests/run.sh
+
+reapack-text:
+	@python3 dev/reapack_text.py index.xml
 
 # Re-render the favicon, the README mark and the REAPER toolbar strips from the one master SVG.
 # Deliberately NOT a prerequisite of docs-build: the outputs are committed and the master changes
@@ -47,11 +52,11 @@ docs-install: $(DOCS_DIR)/node_modules
 docs: docs-preview
 
 # Live-reload dev server at http://localhost:4321/Reaper-AutoColor/
-docs-dev: $(DOCS_DIR)/node_modules docs-diagrams docs-shots
+docs-dev: $(DOCS_DIR)/node_modules docs-diagrams
 	cd $(DOCS_DIR) && npm run dev
 
 # Static build into docs/dist/
-docs-build: $(DOCS_DIR)/node_modules docs-diagrams docs-shots
+docs-build: $(DOCS_DIR)/node_modules docs-diagrams
 	cd $(DOCS_DIR) && npm run build
 
 # Serve the built site locally (builds first if needed)
@@ -59,12 +64,9 @@ docs-preview: docs-build
 	@echo "Serving the docs at $(DOCS_URL) -- Ctrl-C to stop"
 	cd $(DOCS_DIR) && npm run preview
 
-# Screenshots. Every figure references a real .png under docs/src/assets, so replacing one is
-# "overwrite the file, rebuild" -- no markdown edit. Files not captured yet hold a generated
-# placeholder naming itself, so the build never breaks on a missing shot. Drawing them needs
-# Pillow (pip3 install Pillow); without it this is a no-op and the committed ones still build.
-#   docs-shots         draw placeholders for any newly referenced image (runs on dev/build too)
-#   docs-shots-status  list which screenshots are real and which are still placeholders
+# Every figure references a real .png under docs/src/assets, so replacing a screenshot is
+# "overwrite the file, rebuild" -- no markdown edit.
+#
 # The colouring diagrams under docs/src/assets/usage/diagrams are GENERATED, not drawn:
 # scripts/diagrams.py computes every square from a port of lib/apply.lua. Redrawing on
 # every docs build is cheap (no dependencies) and keeps an edited scenario from shipping
@@ -75,12 +77,6 @@ docs-diagrams:
 
 docs-diagrams-verify:
 	cd $(DOCS_DIR) && npm run --silent diagrams:verify
-
-docs-shots:
-	cd $(DOCS_DIR) && npm run --silent shots
-
-docs-shots-status:
-	cd $(DOCS_DIR) && npm run --silent shots:status
 
 docs-clean:
 	rm -rf $(DOCS_DIR)/dist $(DOCS_DIR)/.astro

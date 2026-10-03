@@ -26,7 +26,9 @@ astro.config.mjs               site config and the sidebar
 src/content/docs/              the pages, as Markdown
 src/assets/<section>/          screenshots, referenced relatively from the pages
 src/styles/custom.css          accent colour, figures, the screenshot lightbox
-scripts/placeholders.py        the list of expected screenshots, and the stand-ins
+scripts/diagrams.py            the colouring diagrams, computed from a port of lib/apply.lua
+scripts/diagrams_verify.lua    runs the same scenarios through the real apply.lua, to diff
+scripts/icon.mjs               renders every icon output from icon/icon.svg
 ```
 
 Adding a page means creating the Markdown file **and** adding it to the `sidebar` array in
@@ -35,20 +37,14 @@ Adding a page means creating the Markdown file **and** adding it to the `sidebar
 ## Screenshots
 
 Every screenshot is taken by hand — the window is a ReaImGui script inside REAPER, so there is
-nothing for CI to drive. `scripts/placeholders.py` lists the shots the pages expect and draws a
-labelled grey card for any that is missing, so the site always builds and a gap is obvious on the
-page.
+nothing for CI to drive. They live under `src/assets/<section>/` and the pages reference them
+relatively, so replacing one is "save over the file, rebuild": no markdown edit.
 
-```bash
-make docs-shots            # fill in what is missing (runs on docs-dev and docs-build too)
-make docs-shots-status     # what is still a placeholder
-```
+A page that references an image which is not there fails the build, with
+`[ImageNotFound] Could not find requested image`. Add the figure and the file together.
 
-Drawing them needs Pillow (`pip3 install Pillow`). Without it the script is a no-op and says so —
-the committed placeholders still build.
-
-Replace one by saving a real screenshot over it, at the same path under `src/assets/`. The script
-never overwrites a file it did not draw.
+Markdown images go through Astro's image pipeline, which converts them to `webp` and stamps the
+width and height, so a PNG straight from REAPER is the right thing to commit.
 
 ## Not part of the site
 

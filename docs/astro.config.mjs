@@ -7,9 +7,11 @@ import starlightThemeRapide from 'starlight-theme-rapide';
 export default defineConfig({
   site: 'https://michal-bartak.github.io',
   base: '/Reaper-AutoColor',
+  // The page was rules-file until the file was renamed; old links still land.
+  redirects: { '/configuration/rules-file': '/Reaper-AutoColor/configuration/config-file/' },
   integrations: [
     starlight({
-      title: 'AutoColor — the REAPER extension',
+      title: 'AutoColor — REAPER script',
       description: 'Colour REAPER tracks, items, regions and markers from their names',
       plugins: [starlightThemeRapide()],
       // One transparent SVG serves both: the mark is mid-tone throughout, so it reads on the
@@ -35,6 +37,9 @@ export default defineConfig({
       // src/styles/custom.css.
       components: {
         ThemeSelect: '@astrojs/starlight/components/ThemeSelect.astro',
+        // Adds a REAPER link beside GitHub. `social` below only takes
+        // Starlight's own icon names, and REAPER is not one of them.
+        SocialIcons: './src/components/SocialIcons.astro',
       },
       // Renames the table-of-contents' top entry from "Overview" to the page title.
       routeMiddleware: './src/starlightRouteData.ts',
@@ -105,6 +110,7 @@ export default defineConfig({
             { label: 'The configuration window', link: '/usage/' },
             { label: 'Matching names', link: '/usage/matching/' },
             { label: 'Colours and gradients', link: '/usage/colours/' },
+            { label: 'Track icons', link: '/usage/icons/' },
             { label: 'Applying colours', link: '/usage/applying/' },
             { label: 'Auto-apply', link: '/usage/auto-apply/' },
             { label: 'Clearing colours', link: '/usage/clearing/' },
@@ -114,7 +120,8 @@ export default defineConfig({
           label: 'Configuration',
           items: [
             { label: 'Options', link: '/configuration/' },
-            { label: 'Rules file', link: '/configuration/rules-file/' },
+            { label: 'Config file', link: '/configuration/config-file/' },
+            { label: 'Importing from SWS', link: '/configuration/import-sws/' },
             { label: 'REAPER preferences', link: '/configuration/reaper-preferences/' },
           ],
         },

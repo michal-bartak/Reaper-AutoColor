@@ -15,20 +15,27 @@
 local M = {}
 
 -- Order here is the order shown in the GUI dropdown.
-M.LIST = { 'folder', 'children', 'unnamed' }
+M.LIST = { 'folder', 'children', 'instrument', 'midi_in', 'bus', 'unnamed' }
 
 M.LABEL = {
-  folder   = 'is a folder track',
-  children = 'is inside a folder',
-  unnamed  = 'has no name',
+  folder     = 'is a folder track',
+  children   = 'is inside a folder',
+  instrument = 'has an instrument',
+  midi_in    = 'has a MIDI input',
+  bus        = 'has receives',
+  unnamed    = 'has no name',
 }
 
 -- Which object kinds each predicate can meaningfully apply to. The GUI greys
 -- out the rest so a rule cannot be built that silently never matches.
+-- 'icon' is the icon rule list, whose objects are tracks.
 M.KINDS = {
-  folder   = { track = true },
-  children = { track = true },
-  unnamed  = { track = true, item = true, region = true, marker = true },
+  folder     = { track = true, icon = true },
+  children   = { track = true, icon = true },
+  instrument = { track = true, icon = true },
+  midi_in    = { track = true, icon = true },
+  bus        = { track = true, icon = true },
+  unnamed    = { track = true, item = true, region = true, marker = true, icon = true },
 }
 
 --- The predicates worth offering for a given object kind. Tracks have folder
@@ -54,9 +61,10 @@ function M.applies(only, kind)
 end
 
 --- Evaluate a predicate.
--- @param only  nil | 'folder' | 'children' | 'unnamed'
--- @param kind  'track' | 'item' | 'region' | 'marker'
--- @param info  { name=string, folderdepth=number, depth=number }
+-- @param only  nil | a key of M.LIST
+-- @param kind  'track' | 'item' | 'region' | 'marker' | 'icon'
+-- @param info  { name=string, folderdepth=number, depth=number,
+--                instrument=bool, midi_in=bool, bus=bool }
 function M.test(only, kind, info)
   if only == nil then return true end
 
@@ -65,12 +73,18 @@ function M.test(only, kind, info)
   end
 
   -- Everything else is track-only.
-  if kind ~= 'track' then return false end
+  if kind ~= 'track' and kind ~= 'icon' then return false end
 
   if only == 'folder' then
     return info.folderdepth == 1
   elseif only == 'children' then
     return (info.depth or 0) > 0
+  elseif only == 'instrument' then
+    return info.instrument == true
+  elseif only == 'midi_in' then
+    return info.midi_in == true
+  elseif only == 'bus' then
+    return info.bus == true
   end
 
   return false

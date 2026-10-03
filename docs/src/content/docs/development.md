@@ -8,7 +8,7 @@ description: Repository layout, running the tests, and building these docs
 ```
 Reaper/                     mirrors REAPER's resource path; this is what gets installed
   Scripts/MXM_AutoColor/
-    MXM_AutoColor_*.lua actions you add to REAPER's Action List
+    MXM_AutoColor_*.lua entry points, added to REAPER's Action List
     lib/                    the engine; lib/gui/ is the only part that uses ImGui
   Data/toolbar_icons/       the toolbar icon, at 1x, 150 and 200
 Color/                      the ReaPack manifest, and nothing else; the directory
@@ -42,7 +42,7 @@ checked against source rather than documentation. They exist so nobody has to re
 ## Tests
 
 `MXM_AutoColor_RunTests.lua` runs from REAPER's Action List and prints a summary to the ReaScript
-console. It touches no project state and never writes your config.
+console. It touches no project state and never writes the config.
 
 The full suite runs **outside** REAPER, against a mocked API:
 
@@ -51,8 +51,8 @@ brew install lua     # once; 5.4 or newer
 make test            # or ./tests/run.sh
 ```
 
-Expect `ALL GREEN`. The runner's exit status is meaningful, so it drops straight into CI or a
-pre-commit hook. It covers the engine, the action scripts end to end, the background loop, the GUI
+`ALL GREEN` is the expected result. The runner's exit status is meaningful, so it drops straight
+into CI or a pre-commit hook. It covers the engine, the action scripts end to end, the background loop, the GUI
 logic and its drawing paths — against a mock REAPER and a stub ImGui — plus a differential fuzz of
 the regex engine against Python's `re`. See
 [`tests/README.md`](https://github.com/michal-bartak/Reaper-AutoColor/blob/main/tests/README.md).
@@ -117,21 +117,12 @@ without one.
 
 ### Screenshots
 
-Every screenshot is taken by hand: the window is a ReaImGui script inside REAPER, so there is nothing
-to drive from CI. `scripts/placeholders.py` holds the list of shots the pages expect, and draws a
-labelled grey card for any that does not exist yet, so the site always builds and a missing shot is
-obvious on the page.
+Every screenshot is taken by hand: the window is a ReaImGui script inside REAPER, so there is
+nothing to drive from CI. They live under `docs/src/assets/<section>/`, and the pages reference them
+relatively, so replacing one is "save over the file, rebuild" — no markdown edit.
 
-```bash
-make docs-shots            # fill in what is missing (docs-dev and docs-build run it too)
-make docs-shots-status     # what is still a placeholder
-```
-
-To replace one, save a real screenshot over the placeholder at the same path under
-`docs/src/assets/`. The script never overwrites a file it did not draw, so a real shot stays put.
-
-Drawing new placeholders needs Pillow (`pip3 install Pillow`). Without it the script says so and does
-nothing, and the committed placeholders still build.
+A page that references an image which is not there fails the build, with
+`[ImageNotFound] Could not find requested image`. Add the figure and the file together.
 
 :::note
 Images in Markdown go through Astro's image pipeline, which converts them to `webp` and stamps the

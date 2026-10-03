@@ -18,6 +18,8 @@ local matcher    = require 'matcher'
 local json       = require 'json'
 local entrylib   = require 'entry'
 local regex      = require 'regex'
+local colors     = require 'colors'
+local swsimport  = require 'swsimport'
 
 local M = {}
 
@@ -57,7 +59,7 @@ function M.load()
   st.readonly = info.readonly == true
   st.preview_dirty = true
   if info.corrupt then
-    M.toast('Rule file was unreadable; kept as config.bad.json. Started from defaults.')
+    M.toast('Config file was unreadable; kept as config.bad.json. Started from defaults.')
   end
   return cfg
 end
@@ -151,7 +153,7 @@ function M.recompute_preview()
   -- way means it can disagree with Apply -- which it did: gradients were shown
   -- as the rule's primary colour, and tracks coloured by folder inheritance did
   -- not appear at all.
-  local _, _, desired, winner, from_track, _, direct =
+  local _, _, desired, winner, from_track, _, direct, icon =
     apply.plan(st.entries, st.cfg.rules, st.cfg.options)
 
   -- Bucketed by kind so the list can follow the selected tab. The 500 cap is
@@ -166,6 +168,17 @@ function M.recompute_preview()
   end
 
   for i, e in ipairs(st.entries) do
+    -- The Icons tab lists tracks, with the icon each will get.
+    if e.kind == 'track' and not e.context then
+      total.icon = total.icon + 1
+      if icon.desired[i] ~= nil and #list.icon < 500 then
+        list.icon[#list.icon + 1] = {
+          kind = 'icon', name = e.name, entry = e,
+          icon = icon.desired[i], rule = icon.winner[i],
+          inherited = (icon.direct[i] == nil),
+        }
+      end
+    end
     if not e.context and list[e.kind] then
       total[e.kind] = total[e.kind] + 1
       if desired[i] ~= nil and #list[e.kind] < 500 then
@@ -292,12 +305,22 @@ function M.apply_all()
   config.bump_override_rev()      -- the rules decide again, everywhere
   local stats = apply.run(0, st.cfg.rules, st.cfg.options, {}, 'Colorize by name')
   M.refresh_entries(true)
+  M.toast(M.applied_text(stats))
+end
+
+--- What an Apply did, for the status line.
+function M.applied_text(stats)
   if stats.written == 0 then
-    M.toast(stats.matched == 0 and 'No rule matched anything.' or 'Already up to date.')
-  else
-    M.toast(string.format('Coloured %d object%s.', stats.written,
-                          stats.written == 1 and '' or 's'))
+    return (stats.matched == 0 and (stats.icon_matched or 0) == 0)
+           and 'No rule matched anything.' or 'Already up to date.'
   end
+  local ni = stats.icons_written or 0
+  local nc = stats.written - ni
+  local parts = {}
+  if nc > 0 then parts[#parts + 1] = string.format('Coloured %d object%s', nc, nc == 1 and '' or 's') end
+  if ni > 0 then parts[#parts + 1] = string.format('set %d icon%s', ni, ni == 1 and '' or 's') end
+  local s = table.concat(parts, ', ') .. '.'
+  return s:sub(1, 1):upper() .. s:sub(2)
 end
 
 --- The scope for a selection action, once the cursor context has decided which
@@ -335,10 +358,13 @@ function M.apply_selection()
   local stats = apply.run(0, st.cfg.rules, st.cfg.options, scope,
                           'Colorize selection by name')
   M.refresh_entries(true)
+  local ni = stats.icons_written or 0
   M.toast(stats.scanned == 0 and 'Nothing is selected.'
-          or string.format('Coloured %d of %d selected %s%s.',
-                           stats.written, stats.scanned, noun,
-                           stats.scanned == 1 and '' or 's'))
+          or string.format('Coloured %d of %d selected %s%s%s.',
+                           stats.written - ni, stats.scanned, noun,
+                           stats.scanned == 1 and '' or 's',
+                           ni > 0 and string.format(', set %d icon%s', ni,
+                                                    ni == 1 and '' or 's') or ''))
 end
 
 --- scope: 'matched' | 'all' | 'selected'
@@ -373,6 +399,88 @@ function M.clear_colors(scope)
                         sel and noun or 'object',
                         written == 1 and '' or 's',
                         sel and ' in the selection' or ''))
+end
+
+--- scope: 'matched' | 'all' | 'selected'. Tracks only.
+function M.clear_icons(scope)
+  M.flush(true)
+  local sel = (scope == 'selected')
+  local entries = targets.tracks(0, sel and { selected_only = true } or {})
+  local ops = apply.plan_clear_icons(entries, st.cfg.rules, scope, st.cfg.options)
+  if #ops == 0 then
+    local n = 0
+    for _, e in ipairs(entries) do if not e.context then n = n + 1 end end
+    M.toast((sel and n == 0) and 'No track is selected.' or 'No icon to clear.')
+    return
+  end
+  local written = apply.commit(ops, sel and 'Clear track icons on selection'
+                                        or 'Clear track icons')
+  M.refresh_entries(true)
+  M.toast(string.format('Cleared %d icon%s.', written, written == 1 and '' or 's'))
+end
+
+---------------------------------------------------------------- SWS import
+--- Read SWS Auto Color's rules and fold them in.
+---
+--- Lives here rather than in the window so the whole thing is drivable without
+--- ImGui, the same split clear_colors uses. The window is left with the two
+--- things only it can do: asking, and saying what happened.
+---
+--- Read and convert SWS's rules WITHOUT touching the config.
+---
+--- Split from the merge so the window can show what an import would do and
+--- offer to cancel. Nothing here mutates anything, so abandoning at the
+--- confirmation costs only the parse.
+---
+--- @return res  the parse result, or nil plus a reason string
+function M.scan_sws()
+  -- A config from a newer version is loaded but never written back, and
+  -- M.flush drops the save silently. Importing into it would destroy the
+  -- user's view of their rules and persist nothing.
+  if st.readonly then
+    return nil, 'This config file was written by a newer version of AutoColor, ' ..
+                'so it is open read-only. Nothing was imported.'
+  end
+
+  local sws_path, rini_path = swsimport.paths()
+  local sws_text, rini_text = swsimport.read(sws_path, rini_path)
+  if not sws_text then
+    return nil, 'SWS Auto Color settings were not found.\n\nLooked for:\n  ' ..
+                tostring(sws_path) .. '\n\nNothing was imported.'
+  end
+
+  -- The only branch that needs the host: a colour SWS wrote before the format
+  -- became portable is in this machine's byte order.
+  local res = swsimport.parse(sws_text, rini_text, {
+    native_to_rgb = function(v)
+      local r, g, b = reaper.ColorFromNative(v)
+      return colors.pack(r, g, b)
+    end,
+  })
+
+  if res.count == 0 then
+    return nil, 'SWS Auto Color has no rules to import.'
+  end
+  if res.imported == 0 then
+    return nil, string.format(
+      'Found %d SWS rule%s, but none of them could be read.\n\nNothing was imported.',
+      res.count, res.count == 1 and '' or 's')
+  end
+
+  return res
+end
+
+--- Fold a scan_sws() result into the rule set. Always ADDS, below the existing
+--- rules -- there is no replace mode, because Remove Rules already empties the
+--- set and asks first.
+--- @return counts per kind
+function M.merge_sws(res)
+  if st.readonly or not res then return {} end
+  M.snapshot()
+  res.counts = swsimport.merge(st.cfg, res)
+  -- st.sel_id needs no attention: appending cannot invalidate it.
+  M.mark_dirty()
+  return res.counts
 end
 
 -------------------------------------------------------------------- tester
@@ -415,17 +523,19 @@ end
 -- The answer lives in a file on disk, and the banner asks for it on every
 -- frame. Nobody toggles SWS Auto Color mid-drag, so re-reading it once every
 -- few seconds is as live as this needs to be.
-local sws_text, sws_at = nil, nil
+local sws_on, sws_at = {}, nil
 
-function M.sws_warning()
+--- The SWS conflict for one tab, or nil.
+function M.sws_warning(kind)
   local now = reaper.time_precise()
-  if sws_at and now - sws_at < SWS_SETTLE then return sws_text end
-  sws_at = now
-
-  local clash, keys = entrylib.sws_conflict()
-  sws_text = clash and ('SWS Auto Color is enabled (' .. table.concat(keys, ', ') ..
-                        ') and will fight with this tool.') or nil
-  return sws_text
+  if not sws_at or now - sws_at >= SWS_SETTLE then
+    sws_at, sws_on = now, entrylib.sws_switches()
+  end
+  local key = entrylib.SWS_SWITCH[kind]
+  if not (key and sws_on[key]) then return nil end
+  local what = kind == 'icon' and 'SWS Auto Icon'
+               or ('SWS Auto Color for ' .. rulesmod.KIND_LABEL[kind]:lower())
+  return what .. ' is enabled and will fight these rules'
 end
 
 return M

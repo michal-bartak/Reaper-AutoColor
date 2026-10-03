@@ -1,0 +1,41 @@
+---
+// Starlight's header social links, plus a link to REAPER itself.
+//
+// An override is the only way in: the `social` config accepts Starlight's own
+// icon set by name, and REAPER is not in it. starlight-theme-rapide overrides
+// Pagination, Banner, PageTitle, ThemeSelect and LanguageSelect, but not this
+// one, so nothing here conflicts with the theme.
+//
+// The mark is REAPER's application icon, unmodified.
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+
+// public/ is served verbatim under the site's base path, which this prefixes
+// for us -- so a rename of the repository does not break the src.
+const icon = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/reaper.png`;
+---
+
+<Default><slot /></Default>
+
+<a href="https://www.reaper.fm/" class="sl-flex">
+  <span class="sr-only">REAPER</span>
+  <img src={icon} alt="" width="24" height="24" />
+</a>
+
+<style>
+  /* Same box as Starlight's own social links, so the row stays even. */
+  a {
+    color: var(--sl-color-text-accent);
+    padding: 0.5em;
+    margin: -0.5em;
+  }
+  a:hover {
+    opacity: 0.66;
+  }
+  /* 1em, the way Starlight sizes its SVG icons -- so this tracks their size
+     instead of pinning a number that would drift away from them. */
+  img {
+    width: 1em;
+    height: 1em;
+    display: block;
+  }
+</style>

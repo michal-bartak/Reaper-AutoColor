@@ -14,6 +14,7 @@ local matcher  = require 'matcher'
 local targets  = require 'targets'
 local app      = require 'gui.app'
 local theme    = require 'gui.theme'
+local iconbrowser = require 'gui.icon_browser'
 
 local M = {}
 
@@ -32,6 +33,57 @@ local KIND_TAG = { track = 'T', item = 'I', region = 'R', marker = 'M' }
 local last_mode, last_pattern, last_subject
 
 ------------------------------------------------------------------ the list
+--- The Icons tab: tracks, with the icon each one will get.
+local function draw_icon_rows(FS, rows, total)
+  local st = app.st
+  if total == 0 then
+    ImGui.TextColored(ctx, rgba(COL_DIM), 'This project has no tracks.')
+    return
+  end
+  if #rows == 0 then
+    ImGui.TextColored(ctx, rgba(COL_DIM), string.format(
+      'None of your icon rules match any of the %d tracks here.', total))
+    return
+  end
+  ImGui.TextColored(ctx, rgba(COL_DIM), string.format(
+    '%d of %d tracks get an icon%s -- click one to select it in the project',
+    #rows, total, #rows >= 500 and ' (first 500 shown)' or ''))
+  ImGui.Spacing(ctx)
+
+  local flags = ImGui.TableFlags_RowBg | ImGui.TableFlags_ScrollY
+              | ImGui.TableFlags_SizingStretchProp
+  if not ImGui.BeginTable(ctx, 'previewtbl_icon', 3, flags) then return end
+  local FIX = ImGui.TableColumnFlags_WidthFixed
+  ImGui.TableSetupColumn(ctx, '##i',  FIX, FS * 1.6)
+  ImGui.TableSetupColumn(ctx, 'Name', ImGui.TableColumnFlags_WidthStretch, 2.0)
+  ImGui.TableSetupColumn(ctx, 'Rule', ImGui.TableColumnFlags_WidthStretch, 1.0)
+  for i, p in ipairs(rows) do
+    ImGui.PushID(ctx, i)
+    ImGui.TableNextRow(ctx)
+    ImGui.TableSetColumnIndex(ctx, 0)
+    local img = p.icon ~= '' and iconbrowser.image(p.icon) or nil
+    if img then
+      ImGui.Image(ctx, img, FS, FS)
+    else
+      ImGui.Dummy(ctx, FS, FS)
+    end
+    ImGui.SetItemTooltip(ctx, p.icon ~= '' and p.icon or 'icon removed')
+
+    ImGui.TableSetColumnIndex(ctx, 1)
+    local shown = p.name ~= '' and p.name or '(unnamed)'
+    if ImGui.Selectable(ctx, shown, false, ImGui.SelectableFlags_SpanAllColumns) then
+      targets.reveal(p.entry)
+    end
+
+    ImGui.TableSetColumnIndex(ctx, 2)
+    local lbl = p.rule.label ~= '' and p.rule.label or p.rule.pattern
+    ImGui.TextColored(ctx, rgba(COL_DIM), p.inherited and ('from folder: ' .. lbl) or lbl)
+    if ImGui.IsItemClicked(ctx) then st.sel_id = p.rule.id end
+    ImGui.PopID(ctx)
+  end
+  ImGui.EndTable(ctx)
+end
+
 --- The list follows the selected tab: on the Items tab you see items, and so
 --- on. Items coloured by a track rule show up here, on the Items tab, labelled
 --- "from its track" -- they are items, whatever painted them.
@@ -45,6 +97,12 @@ function M.draw_list(FS, w, h)
   local total  = (st.preview_total or {})[kind] or 0
 
   theme.section('Objects preview')
+
+  if kind == 'icon' then
+    draw_icon_rows(FS, rows, total)
+    ImGui.EndChild(ctx)
+    return
+  end
 
   if total == 0 then
     ImGui.TextColored(ctx, rgba(COL_DIM),

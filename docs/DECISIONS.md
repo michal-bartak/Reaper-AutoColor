@@ -49,11 +49,37 @@ checkboxes. v2 has one list per kind, which:
 * makes precedence per-kind, so reordering track rules cannot change which
   region wins;
 * lets each tab offer only filters that mean something — folder filters exist on
-  Tracks and nowhere else;
+  Tracks and Icons and nowhere else;
 * removes the "targets nothing" state entirely.
 
 Migration splits a multi-target rule into one rule per kind, preserving relative
 order, with fresh ids for the copies.
+
+## Track icons are a list of their own
+
+Icons could have been a field on track rules. They are a fifth list instead
+(`rules.icon`, the **Icons** tab) so that icons have their own precedence: a
+track's colour and its icon often come from different rules, as they did in
+SWS, where a rule with no icon does not claim a track's icon. `rules.KINDS`
+includes `icon`, so config, the GUI tabs and the tallies pick it up; `apply.lua`
+keeps a colour-only kind list, and `plan()` appends the icon ops to the colour
+ops so every caller commits both.
+
+* **Folder propagation is per rule** (`children`: off / fill / force), where
+  colours have one global setting. A folder icon handed to every child says
+  less than a colour ramp does, so the common case is off, with the exception
+  chosen rule by rule. Both go through `apply.propagate(entries, direct,
+  mode_of)`: colours pass the global mode, icons each rule's. With one mode
+  for every rule the walk is exactly the old single-policy one.
+* **A folder whose rule does not propagate passes on what it inherited**, so an
+  outer fill still reaches the tracks inside it.
+* **No gradients and no items.** Both are colour concepts.
+* **Matching FX names was deferred.** "Kontakt → keys icon" is tempting, but
+  the FX name depends on the plugin and on the preset or rename the user
+  applied, neither of which the rules control. *has an instrument* covers the
+  robust part.
+* The config went to **v3** for the new list, so an older build opens a v3 file
+  read-only instead of saving it back without the icon rules.
 
 ## Two ways to make items follow their track, and they are not equal
 
@@ -375,6 +401,103 @@ character-class tables with integer keys, which is not encodable as a JSON
 object. That silently
 broke every save after the first preview until `config.serializable()` existed.
 
+## Importing SWS Auto Color
+
+Worth doing because the translation is genuinely exact, not a best effort: SWS
+matches with `stristr` — case-insensitive plain substring — and applies the
+first rule that matches. That is one specific point in this tool's matcher
+space (`mode='substring'`, `ci=true`) with this tool's own precedence, so an
+ordinary name rule crosses over unchanged. Retyping the list by hand was the
+biggest single reason not to switch.
+
+**Imported once, not read live.** Reading SWS's file on every apply would make
+it a second source of truth, and the point of importing is to stop using SWS —
+which the conflict banner already tells people to do.
+
+**What cannot be expressed arrives switched off, with the reason in the rule's
+NAME.** The rule list renders `label`; nothing in it renders `note`. Putting
+the explanation only in the note would have been an explanation nobody can
+read. Silently dropping those rules would have been worse: the user would have
+no idea which parts of their setup did not survive.
+
+**An unsupported rule keeps its keyword as its pattern**, rather than being
+emptied. An empty pattern with no predicate matches *every* object — the rule
+warnings say exactly that — so a user re-enabling one out of curiosity would
+repaint the whole project. `(MIDI input)` read as a substring matches nothing,
+which is the safe inert state, and it still shows what the rule used to be.
+
+**Gradient is the one sentinel that imports enabled**, because it maps exactly:
+SWS ramps its global `ColorGradients` across every track *that rule* matched,
+in track order, and `gradient_scope = 'all'` is already defined as one ramp
+across every match. First-match-wins on both sides makes "matched" and "won"
+the same set. Two differences are left alone: `colors.lerp` interpolates in HSL
+where SWS lerps per channel in RGB (identical for the default black-to-white,
+and the HSL ramp is the better one — see *Gradients restart per group*), and
+`propagate_folders` can hand a folder's rule to its children before grouping,
+which SWS has no equivalent for.
+
+**Losing `(ignore)` is the only loss that changes which *other* rule wins.** In
+SWS it matches, leaves the object alone, and blocks every rule below it. The
+rest merely fail to colour something, so `(ignore)` gets a longer sentence in
+its name.
+
+**The import confirms before it acts, not after.** It reported what it had
+already done, which is a receipt, not a decision -- and the one number worth
+seeing beforehand is how many rules arrive switched off. Reading SWS is cheap
+and changes nothing, so the scan is split from the merge: `scan_sws()` parses,
+the dialog shows the counts, and `merge_sws()` runs only on a yes. Cancelling
+costs a parse and leaves no snapshot.
+
+The dialog counts; it does not explain. Why a rule could not come across is a
+table in the documentation, not something to read in a modal with a Yes button
+waiting -- the rule's own name still carries the reason, which is where it is
+useful.
+
+**The import only ever adds, and there is no replace mode.** It began as a menu
+offering Append or Replace, and the Replace half was all cost: it had to
+confirm, it had to explain that the Items tab would end up empty because SWS
+has no item rules to refill it with, and it was the only way the feature could
+destroy something. Remove Rules already empties the set and already asks, so
+"replace" is those two buttons in the order the user can see. Dropping it took
+the confirm, the caveat and a whole branch of `merge()` with it, and left a
+feature that cannot lose a rule the user wrote.
+
+With one action left, the menu had nothing to offer either — the button acts
+directly. It keeps no `...`, which in this window means "opens something".
+
+**Imported rules land at the end of each list.** The user's own rules are the
+ones they tuned; an SWS `(any)` catch-all arriving above them would repaint the
+project on the next auto tick. The SWS rules keep their order among themselves,
+so their internal precedence survives, and dragging them higher is one gesture
+away.
+
+**The colour decode does not go through `colors.lua`.** `colors.norm` masks
+`0x1FFFFFF`, which drops SWS's `PORTABLE_FLAG` at `0x2000000` and folds the
+negative sentinels into large positives, so every "random" and "parent" rule
+would have read as a real colour. `colors.from_native` additionally answers
+`nil` for 0, which would have turned every *black* SWS rule into the default
+grey. Only the legacy unflagged branch goes through the host, and only because
+that one genuinely needs the machine's byte order.
+
+**Auto-detect only, no file picker.** The package has no JS_ReaScriptAPI
+dependency, no file dialog and no shell-out anywhere; adding one for this would
+have been the first, and the file is always in the same place.
+
+### Two things the third button turned up
+
+The row's `FS * 13` button width no longer fit three buttons — the dialog is
+`FS * 42` less `MODAL_PAD` each side — so the width is derived from the content
+region instead. That also survives the text-size slider, which sits three
+sections above it and a constant did not.
+
+The other came from the menu that no longer exists, and the guard was kept
+anyway. The dialog dismisses itself on any click that is not hovering it, and an
+ImGui popup is a separate **root** window, not a child — so a click inside one
+closed Options underneath, and Escape closed the dialog rather than the popup.
+Both dismissals are now suspended while any popup is open. The Folders dropdown
+in the same dialog opens a popup by the same mechanism; nobody had reported it
+misbehaving, but the guard is correct for it either way.
+
 ## GUI constraints worth knowing
 
 ReaImGui has effectively **one look, and it is dark** — no `StyleColorsLight`,
@@ -465,10 +588,12 @@ Each of these was silent, and each now has a test named after its failure mode.
    both wrong, which is the lesson: this file's own rule is to measure, and the
    answer in the end was to delete the mechanism rather than time it.
 
-   It is a `Begin` window now, with `NoTitleBar | NoResize | NoMove |
-   NoCollapse | NoDocking | NoSavedSettings | TopMost`, which looks exactly like
-   the popup did. Nothing closes a window behind your back, so there is nothing
-   to re-open and nothing to blink. What the popup gave away free now has to be
+   It is a `Begin` window now, with `NoCollapse | NoDocking | NoSavedSettings |
+   TopMost` (and `NoResize` where the content sets the size). It first copied
+   the popup's look with `NoTitleBar | NoMove`. Since the icon browser, all
+   three dialogs share `gui/dialog.lua` and have a title bar with a close
+   button, and they can be moved. Nothing closes a window behind your back, so
+   there is nothing to re-open and nothing to blink. What the popup gave away free now has to be
    asked for, and each has a test:
 
    * **`TopMost`.** An earlier window version left it out, and the *dimmed* main
@@ -479,10 +604,11 @@ Each of these was silent, and each now has a test named after its failure mode.
      it multiplies into `StyleVar_Alpha` and the content fades to 0.18 instead
      of `DIM_CONTENT`.
    * **Escape**, by hand.
-   * **Dismissal by a click on the window behind**, by hand: a left click, not
-     over the dialog, while some ImGui window has focus. That last test is what
-     keeps a click in REAPER's arrange from counting — it takes the click, no
-     ImGui window is focused, and the dialog stays put.
+   * Not **dismissal by a click on the window behind**. It was copied from the
+     popup and then dropped: the main window is dimmed and blocked anyway, and
+     a stray click cost a dialog its state, such as the icon browser's search.
+     It also had to be exempted from the resize grip, whose grab read as a
+     click outside.
 
    The dialog is drawn from the frame loop *after* `ImGui.End`, so it sits
    outside the dim at full opacity. That means `GetWindowPos` has no window left

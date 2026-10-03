@@ -6,7 +6,8 @@
   something the user actually needs to know.
 ]]
 
-local config = require 'config'
+local config    = require 'config'
+local swsimport = require 'swsimport'
 
 local M = {}
 
@@ -24,16 +25,35 @@ end
 --- are also applying, the two fight over the same tracks and markers and the
 --- result looks like a random flicker. Worth one cheap check.
 -- @return boolean, list of the enabled SWS keys
-function M.sws_conflict()
-  local path = reaper.GetResourcePath() .. '/sws-autocoloricon.ini'
-  local f = io.open(path, 'r')
-  if not f then return false end
-  local text = f:read('a') or ''
-  f:close()
+-- The SWS switch that competes with each rule list. SWS has no item rules.
+M.SWS_SWITCH = {
+  track  = 'AutoColorEnable',
+  region = 'AutoColorRegionEnable',
+  marker = 'AutoColorMarkerEnable',
+  icon   = 'AutoIconEnable',
+}
 
+--- Which SWS Auto Color/Icon switches are on.
+--- @return set of key -> true; empty when the file is missing
+function M.sws_switches()
+  -- Path and read live in swsimport, so the file this tool cares about is
+  -- named in exactly one place. The check stays a pattern match rather than a
+  -- full parse: it runs on a timer and only needs a few flags.
+  local path = swsimport.paths()
+  local text = swsimport.read(path)
+  local on = {}
+  if not text then return on end
+  for _, key in pairs(M.SWS_SWITCH) do
+    if text:match(key .. '%s*=%s*1') then on[key] = true end
+  end
+  return on
+end
+
+function M.sws_conflict()
+  local set = M.sws_switches()
   local on = {}
   for _, key in ipairs({ 'AutoColorEnable', 'AutoColorMarkerEnable', 'AutoColorRegionEnable' }) do
-    if text:match(key .. '%s*=%s*1') then on[#on + 1] = key end
+    if set[key] then on[#on + 1] = key end
   end
   if #on == 0 then return false end
   return true, on
@@ -56,14 +76,14 @@ function M.load_config()
   local cfg, info = config.load()
 
   if info.corrupt then
-    M.msg('Your rule file could not be read:\n\n  ' .. tostring(info.err) ..
+    M.msg('Your config file could not be read:\n\n  ' .. tostring(info.err) ..
           '\n\nIt has been kept as:\n  ' .. config.badpath() ..
           '\n\nStarting from defaults so nothing is lost.',
           'AutoColor: unreadable config')
   elseif info.created then
     M.console('AutoColor: created a starter rule set at ' .. config.path())
   elseif info.readonly then
-    M.msg('This rule file was written by a newer version of AutoColor.\n\n' ..
+    M.msg('This config file was written by a newer version of AutoColor.\n\n' ..
           'It will be used as-is, but not saved over, so no settings are lost.',
           'AutoColor: newer config')
   end
@@ -94,7 +114,7 @@ function M.summary(what, stats, opts)
     return
   end
 
-  if stats.matched == 0 then
+  if stats.matched == 0 and (stats.icon_matched or 0) == 0 then
     M.msg(what .. ':\n\nNone of your rules matched any of the ' .. stats.scanned ..
           ' object(s) scanned.\n\nOpen the AutoColor window to see which ' ..
           'rules match what.', 'AutoColor: no matches')
@@ -108,9 +128,11 @@ function M.summary(what, stats, opts)
     return
   end
 
-  M.console(string.format('AutoColor: %s -- %d coloured%s (%d matched of %d scanned)',
-                          what, stats.written,
+  local ni = stats.icons_written or 0
+  M.console(string.format('AutoColor: %s -- %d coloured%s%s (%d matched of %d scanned)',
+                          what, stats.written - ni,
                           stats.cleared > 0 and (', ' .. stats.cleared .. ' cleared') or '',
+                          ni > 0 and (', ' .. ni .. ' icons set') or '',
                           stats.matched, stats.scanned))
 end
 

@@ -341,6 +341,125 @@ do -- and says so plainly when there is no selection at all
         tostring(app.current_toast()))
 end
 
+------------------------------------------------------------- SWS import
+-- scan_sws + merge_sws are the whole feature minus the drawing, so this is
+-- where it is actually exercised: reading the file, refusing when it should,
+-- and scanning without touching anything.
+do
+  local REPO = NC .. '/../../..'
+  local function put(name)
+    os.execute('cp "' .. REPO .. '/tests/fixtures/' .. name .. '" "' .. TMP .. '/"')
+  end
+  local function drop(name) os.remove(TMP .. '/' .. name) end
+
+  do -- nothing there
+    drop('sws-autocoloricon.ini')
+    app.st.cfg = config.starter()
+    local before = #app.st.cfg.rules.track
+    local res, err = app.scan_sws()
+    check(res == nil, 'a missing SWS file imports nothing')
+    check(err and err:find('not found', 1, true) ~= nil, 'and says where it looked',
+          tostring(err))
+    check(#app.st.cfg.rules.track == before, 'and leaves the rules alone')
+  end
+
+  put('sws-autocoloricon.ini')
+  put('reaper.ini')
+
+  do -- append
+    app.st.cfg = config.starter()
+    app.st.readonly = false
+    app.st.undo = {}          -- earlier blocks left snapshots on it
+    local before  = #app.st.cfg.rules.track
+    local topmost = app.st.cfg.rules.track[1].pattern
+    local res = app.scan_sws()
+    check(res ~= nil and res.imported == 14, 'the fixture scans fourteen rules',
+          res and tostring(res.imported))
+    -- Scanning alone must not touch anything: it is what the confirmation
+    -- dialog is built from, and cancelling has to leave no trace.
+    check(#app.st.cfg.rules.track == before, 'scanning alone changes nothing')
+    check(not app.can_undo(), 'and takes no snapshot')
+    app.merge_sws(res)
+    check(#app.st.cfg.rules.track == before + 12, 'twelve of them are track rules',
+          tostring(#app.st.cfg.rules.track))
+    check(app.st.cfg.rules.track[1].pattern == topmost,
+          'appended BELOW the user\'s own, so nothing they had changes meaning')
+    check(#app.st.cfg.rules.item == 1, 'and the item tab is untouched')
+    check(app.can_undo(), 'an import is undoable')
+    check(app.st.dirty, 'and is marked for saving')
+  end
+
+  do -- importing can only ever ADD, so nothing the user wrote can be lost
+    app.st.cfg = config.starter()
+    local sel = app.st.cfg.rules.track[1].id
+    app.st.sel_id = sel
+    local mine, items = #app.st.cfg.rules.track, #app.st.cfg.rules.item
+    app.merge_sws(app.scan_sws())
+    check(#app.st.cfg.rules.track > mine, 'the import adds')
+    check(#app.st.cfg.rules.item == items, 'and touches no tab SWS has nothing for')
+    check(app.st.sel_id == sel, 'the selection still points at the same rule')
+  end
+
+  do -- read-only config must not be touched: the save is dropped silently
+    app.st.cfg = config.starter()
+    app.st.readonly = true
+    local before = #app.st.cfg.rules.track
+    local res, err = app.scan_sws()
+    check(res == nil, 'a read-only rule file refuses the import')
+    check(err and err:find('read-only', 1, true) ~= nil, 'and says why', tostring(err))
+    check(#app.st.cfg.rules.track == before, 'and nothing is destroyed')
+    app.st.readonly = false
+  end
+
+  do -- end to end: an imported rule really colours something
+    app.st.cfg = config.starter()
+    app.st.cfg.rules = config.empty_rules()
+    app.merge_sws(app.scan_sws())
+    P.advance(1)
+    app.refresh_entries(true)
+    app.recompute_preview()
+    local apply = require 'apply'
+    local ops = apply.plan(app.st.entries, app.st.cfg.rules, app.st.cfg.options)
+    local kick
+    for _, op in ipairs(ops) do
+      if op.entry.name == 'Kick In' then kick = op end
+    end
+    -- Fixture rule 2 is an "(any)" catch-all in black, and it sits ABOVE the
+    -- "Kick" rule. First match wins on both sides, so black is exactly what
+    -- SWS would have painted -- proving the file's priority order survived.
+    check(kick ~= nil and kick.rgb == 0x000000,
+          'the catch-all above it still wins, as it does in SWS',
+          kick and kick.rgb and string.format("%06X", kick.rgb) or "no op")
+
+    -- Switch the catch-all off and the rule below it takes over in SWS's own
+    -- green, which is the colour decode proved end to end.
+    for _, r in ipairs(app.st.cfg.rules.track) do
+      if r.pattern == "" and r.only == nil then r.enabled = false end
+    end
+    local ops2 = apply.plan(app.st.entries, app.st.cfg.rules, app.st.cfg.options)
+    local kick2
+    for _, op in ipairs(ops2) do
+      if op.entry.name == "Kick In" then kick2 = op end
+    end
+    check(kick2 ~= nil and kick2.rgb == 0x00A655,
+          'and the rule below it paints the colour SWS stored',
+          kick2 and kick2.rgb and string.format("%06X", kick2.rgb) or "no op")
+  end
+
+  do -- the conflict banner reads the same file, through the same module
+    local entry = require 'entry'
+    local clash, keys = entry.sws_conflict()
+    check(clash == true, 'the fixture reports SWS as switched on')
+    check(keys and #keys == 2, 'naming both of the switches that are on',
+          keys and table.concat(keys, ','))
+    drop('sws-autocoloricon.ini')
+    check(entry.sws_conflict() == false, 'and no file means no conflict')
+  end
+
+  drop('sws-autocoloricon.ini')
+  drop('reaper.ini')
+end
+
 print('\n=== gui logic (mock REAPER) ===')
 for _, f in ipairs(fails) do print('  FAIL  ' .. f) end
 print(string.format('%d passed, %d failed\n', pass, fail))

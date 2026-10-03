@@ -1,7 +1,7 @@
 --[[
   targets.lua -- the only module that knows how REAPER stores names and colours.
 
-  Everything else works on plain entry tables:
+  Everything else works on plain entry tables (track icons: see icons.lua):
 
     { kind    = 'track'|'item'|'region'|'marker',
       obj     = the REAPER object (or marker index bundle),
@@ -11,6 +11,8 @@
       -- tracks only:
       folderdepth = number, depth = number, idx = number,
       spacer_above = boolean,    -- a REAPER visual spacer sits above it
+      icon = string,             -- P_ICON as read: absolute, or '' for none
+      instrument, midi_in, bus = boolean,   -- for the filters
       -- items only:
       track_guid = string,       -- which track it sits on, for the cascade
       -- any kind:
@@ -179,11 +181,18 @@ function M.tracks(proj, opts)
     -- REAPER 7 visual spacers. Stored on the track BELOW the gap:
     --   I_SPACER : int * : 1=TCP track spacer above this track
     local spacer = reaper.GetMediaTrackInfo_Value(tr, 'I_SPACER') ~= 0
+    local _, icon = reaper.GetSetMediaTrackInfo_String(tr, 'P_ICON', '', false)
+    -- I_RECINPUT: < 0 is no input; bit 4096 set means a MIDI input.
+    local recin = floor(reaper.GetMediaTrackInfo_Value(tr, 'I_RECINPUT'))
 
     list[#list + 1] = {
       kind = 'track', obj = tr, idx = i,
       name = name,
       folderdepth = fd, depth = depth, spacer_above = spacer,
+      icon = icon or '',
+      instrument = reaper.TrackFX_GetInstrument(tr) >= 0,
+      midi_in = recin >= 0 and (recin & 4096) ~= 0,
+      bus = reaper.GetTrackNumSends(tr, -1) > 0,     -- -1: receives
       guid = reaper.GetTrackGUID(tr),
       color = reaper.GetMediaTrackInfo_Value(tr, 'I_CUSTOMCOLOR'),
       context = opts.selected_only
@@ -392,6 +401,15 @@ function M.set(entry, rgb)
   end
 
   return false, 'unknown kind ' .. tostring(kind)
+end
+
+--- Set or remove (path = '') a track's icon.
+--- @return true if the write happened, false if the track is gone.
+function M.set_icon(entry, path)
+  if entry.kind ~= 'track' then return false, 'icons are for tracks only' end
+  if not alive(entry.obj, 'MediaTrack*') then return false end
+  reaper.GetSetMediaTrackInfo_String(entry.obj, 'P_ICON', path, true)
+  return true
 end
 
 --- Select one object and bring it into view. Used by the GUI's preview list.

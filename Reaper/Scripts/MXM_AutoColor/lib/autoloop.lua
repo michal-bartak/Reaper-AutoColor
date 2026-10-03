@@ -33,7 +33,8 @@
     * If an object's colour differs from what we last wrote while its name is
       unchanged, the user recoloured it by hand. It is marked as overridden and
       left alone until it is renamed. Without this the tool would revert every
-      manual colour within a fifth of a second.
+      manual colour within a fifth of a second. A track's icon is tracked the
+      same way, separately: a hand-picked icon does not stop its colour.
     * "What we last wrote" means exactly that. A write that failed, or one still
       sitting in the queue, is not remembered as ours -- otherwise the next
       sweep reads the difference as a hand-picked colour and quietly retires the
@@ -44,6 +45,7 @@ local targets = require 'targets'
 local apply   = require 'apply'
 local colors  = require 'colors'
 local config  = require 'config'
+local icons   = require 'icons'
 
 local M = {}
 
@@ -54,7 +56,7 @@ local S = {
   proj      = nil,
   last_scc  = nil,
   prev_scc  = nil,
-  cache     = {},      -- guid -> { name, applied, override }
+  cache     = {},      -- guid -> { name, applied, override, icon, icon_override }
   rev       = nil,
   cfg       = nil,
   cold      = nil,     -- { ops, i }
@@ -84,7 +86,7 @@ local function note_and_check_override(e)
   if c.name ~= e.name then
     -- A rename is the user asking for the rules to decide again.
     c.name = e.name
-    c.override = false
+    c.override, c.icon_override = false, false
     return false
   end
 
@@ -95,12 +97,21 @@ local function note_and_check_override(e)
     end
   end
 
+  if not c.icon_override and c.icon ~= nil and not icons.same(e.icon, c.icon) then
+    c.icon_override = true
+  end
+
   return c.override
 end
 
 local function remember_applied(e, rgb)
   local c = S.cache[e.guid]
   if c then c.applied = rgb end
+end
+
+local function remember_icon(e, path)
+  local c = S.cache[e.guid]
+  if c then c.icon = path end
 end
 
 --- Record what actually landed. commit() sets `op.done` on every op it
@@ -112,7 +123,11 @@ local function remember_written(ops, from, stop)
   local n = 0
   for i = from, stop - 1 do
     local op = ops[i]
-    if op.done then remember_applied(op.entry, op.rgb); n = n + 1 end
+    if op.done then
+      if op.icon ~= nil then remember_icon(op.entry, op.icon)
+      else remember_applied(op.entry, op.rgb) end
+      n = n + 1
+    end
   end
   return n
 end
@@ -123,8 +138,8 @@ end
 --- colour, see it differs, and immediately set the flag again.
 function M.clear_overrides()
   for _, c in pairs(S.cache) do
-    c.override = false
-    c.applied  = nil
+    c.override, c.icon_override = false, false
+    c.applied,  c.icon          = nil, nil
   end
 end
 
@@ -171,6 +186,10 @@ local function same_snapshot(prev, cur)
     or a.folderdepth  ~= b.folderdepth
     or a.depth        ~= b.depth
     or a.spacer_above ~= b.spacer_above
+    or a.icon         ~= b.icon
+    or a.instrument   ~= b.instrument
+    or a.midi_in      ~= b.midi_in
+    or a.bus          ~= b.bus
     or a.take_color   ~= b.take_color
     or a.track_guid   ~= b.track_guid then
       return false
@@ -205,14 +224,16 @@ end
 -- @return number of writes
 local function sweep(entries, chunked)
   local cfg = S.cfg
-  local ops, _, desired = apply.plan(entries, cfg.rules, cfg.options)
+  local ops, _, desired, _, _, _, _, icon = apply.plan(entries, cfg.rules, cfg.options)
 
   -- An op means the object does NOT yet have the colour the rules want, so the
   -- desired value is not something we can claim to have written. Everything
   -- else already carries it, and recording that is what makes a later manual
   -- change detectable even on a sweep with nothing to write.
-  local pending = {}
-  for _, op in ipairs(ops) do pending[op.entry] = true end
+  local pending, pending_icon = {}, {}
+  for _, op in ipairs(ops) do
+    if op.icon ~= nil then pending_icon[op.entry] = true else pending[op.entry] = true end
+  end
 
   for i = 1, #entries do
     local e = entries[i]
@@ -221,13 +242,18 @@ local function sweep(entries, chunked)
       if desired[i] ~= nil and not overridden and not pending[e] then
         remember_applied(e, desired[i])
       end
+      local c = S.cache[e.guid]
+      if icon.desired[i] ~= nil and not c.icon_override and not pending_icon[e] then
+        remember_icon(e, e.icon)
+      end
     end
   end
 
   local keep = {}
   for _, op in ipairs(ops) do
     local c = S.cache[op.entry.guid]
-    if c and c.override then
+    local held = c and (op.icon ~= nil and c.icon_override or op.icon == nil and c.override)
+    if held then
       S.stats.skipped = S.stats.skipped + 1
     else
       keep[#keep + 1] = op

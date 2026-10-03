@@ -11,21 +11,21 @@ description: One colour per rule, a second for a gradient, and what a ramp sprea
 </figure>
 
 
-In general colouring tracks follows a sequence:
-1. Find tracks matching a **pattern** and a **filter**
-1. Expand selection to folders (if configured)
-1. If solid color is set to the rule, set solid color to all of them
-1. If grandient is set to the rule, cover them by gradients
-   - apply gradient splits based on settings
+Colouring proceeds in a fixed sequence:
 
+1. Find the objects matching the rule's **pattern** and **filter**.
+1. Extend the set to folder children, where configured.
+1. With one colour on the rule, write it to all of them.
+1. With two, spread a gradient across them, split according to the rule's
+   [spread setting](#spread-across).
 
-To better understand possible scenarios, following page visualizes most possible combos of settings.
+The diagrams below cover the combinations of settings this produces.
 
 :::note[Reading the diagrams]
 
 | Element | Meaning |
 |---|---|
-| Square | One object (ie track). Its name reflects the colour a rule should give it. |
+| Square | One object, typically a track. Its name states the colour a rule should give it. |
 | Light grey square | No rule reached the track. |
 | Banded square | One square for several cases with the same result. The dark band is a REAPER visual spacer, which is not a track. |
 | Raised square | A track inside a folder. The track that opens the folder stays on the baseline. |
@@ -34,8 +34,8 @@ To better understand possible scenarios, following page visualizes most possible
 
 ## Solid fills
 
-A rule with one colour writes that colour to every object it wins. Project order and the number of
-matches make no difference.
+A rule with one colour writes that colour to every object it wins, regardless of project order or
+the number of matches.
 
 <figure class="shot diagram">
 
@@ -46,8 +46,8 @@ matches make no difference.
 
 ### Folders
 
-A folder's colour can reach children that matched no rule of their own. Set this for the whole rule
-set under **Options → Folders**.
+A folder's colour can reach children that matched no rule of their own. Configured for the whole
+rule set under **Options → Folders**.
 
 | Setting | Effect |
 |---|---|
@@ -79,14 +79,10 @@ The diagrams below use one folder, `red`. Its children `green` and `blue` match 
 <figcaption><strong>force</strong>: the folder&rsquo;s rule takes the whole folder.</figcaption>
 </figure>
 
-See [folder colours](/Reaper-AutoColor/usage/colours/#folders) for which setting
-to choose, and for what else is inherited.
-
 ## Gradients
 
-A rule with two colours spreads the objects it wins evenly along a ramp between them. Objects
-follow **project order**, and each kind ramps separately. Ten tracks matching one rule give ten
-shades.
+A rule with two colours spreads the objects it wins evenly along a ramp between them, in **project
+order**, each kind ramping separately. Ten tracks matching one rule give ten shades.
 
 <figure class="shot diagram">
 
@@ -97,7 +93,7 @@ shades.
 
 ### Spread across
 
-Set how far one ramp reaches per rule, in the box beside the second colour.
+How far one ramp reaches is set per rule, in the box beside the second colour.
 
 <figure class="shot">
 
@@ -135,7 +131,7 @@ A run ends at anything the rule does not win:
 - a track another rule won;
 - a REAPER visual spacer.
 
-A folder edge does not end a run. Use **folders** or **runs & folders** for that.
+A folder edge does not end a run; that is what **folders** and **runs & folders** are for.
 
 <figure class="shot diagram">
 
@@ -146,14 +142,14 @@ A folder edge does not end a run. Use **folders** or **runs & folders** for that
 
 ### Subfolders
 
-A nested folder can either end the color range or allow the gradient be applied to all tracks within top-level folder.
+A nested folder either ends the colour range, or lets one ramp cover every track in the top-level
+folder. Controlled globally by **Options → Folders → subfolder splits the parent's colour range**.
 
-The behaviour is controlled by **Options → Folders → subfolder splits the parent's colour range** global setting.
+**On** (default): the tracks after a subfolder start a new ramp rather than resuming the one before.
+A top-level folder does the same to the tracks around it.
 
-
-If On (default), tracks after it start a new ramp instead of resuming the one before. A top-level folder does the same to the tracks around it.
-
-If disabled, one ramp covers whole folder level, covering tracks before subfolders, and continuing the ramp after subfolder, however deep the nesting.
+**Off**: one ramp covers the whole folder level, spanning the tracks before a subfolder and
+continuing after it, however deep the nesting.
 
 <figure class="shot diagram">
 
@@ -181,7 +177,7 @@ throughout.
 <figcaption>Five of these seven tracks are alone in their range, so five get the first colour.</figcaption>
 </figure>
 
-For such a layout, turn *subfolder splits the parent's colour range* off, or do not spread across
+Such a layout wants *subfolder splits the parent's colour range* off, or a spread other than
 folders.
 :::
 
@@ -221,7 +217,7 @@ reaches the children, so every parent is alone in its range and gets the first c
 warns about this.
 :::
 
-### Supported type of objects
+### Defaults per object kind
 
 | Kind | Default spread |
 |---|---|
@@ -234,8 +230,8 @@ For items, a ramp never spans more than one track. Even **all matches** restarts
 
 Regions and markers default to **all matches** because regions are usually interleaved —
 `Verse, Chorus, Verse, Chorus`. A rule matching one of them rarely wins two in a row, so **runs**
-would leave every range with one member and no visible gradient. Set them to **runs** where regions
-do come in blocks.
+would leave every range with one member and no visible gradient. **runs** suits regions that come
+in blocks.
 
 
 ### Costs
@@ -243,9 +239,9 @@ do come in blocks.
 Both apply to gradients only. A solid fill writes one value to every match, whatever the project
 layout.
 
-- A gradient is **position dependent**. Inserting an object into a range reshuffles that range. A
-  narrower spread limits the change to one range instead of every match, but each member then moves
-  further, because the ranges are smaller. Edits at a boundary change membership: renaming the
+- A gradient is **position dependent**: inserting an object into a range reshuffles that range. A
+  narrower spread limits the change to one range instead of every match, though each member then
+  moves further, the ranges being smaller. Edits at a boundary change membership — renaming the
   separating `Bus` to `String Bus` merges two ranges and recolours both.
 - A gradient cannot be computed incrementally. A gradient rule aimed at **items** is expensive on
   very large projects.
@@ -254,15 +250,15 @@ layout.
 
 REAPER decides an item's colour from the item itself:
 
-- An item with **no colour of its own** is drawn in its **track's** colour, live. Move it to another
-  track and it takes that track's colour at once.
-- An item **with** a colour keeps it. Move it to another track and the colour goes with it.
+- An item with **no colour of its own** is drawn in its **track's** colour, live: moved to another
+  track, it takes that track's colour at once.
+- An item **with** a colour keeps it, and the colour travels with it.
 
-Three settings decide which of the two an item is in.
+Three settings decide which of the two states an item is in.
 
 | Setting | What it does to the item |
 |---|---|
-| **Items** on a track rule | Writes the track's colour onto every item on that track, whatever the item is called. REAPER then draws the item from that stored colour, not from the track it sits on. |
+| **Items** on a track rule | Writes the track's colour onto every item on that track, regardless of the item's name. REAPER then draws the item from that stored colour, not from the track it sits on. |
 | A rule on the **Items** tab | Writes that rule's colour onto the item. |
 | **Reset to the default colour when no rule matches**, ticked for items | Removes the item's colour, so REAPER draws it from the track again. |
 
@@ -278,21 +274,21 @@ Precedence for one item:
 The reset never touches an item that step 1 or step 2 claimed.
 
 :::tip[For "items should look like their track", prefer the reset]
-Both the **Items** switch and the reset make an item match its track today. They differ after a
-move.
+Both the **Items** switch and the reset make an item match its track immediately. They differ after
+a move.
 
-The switch leaves a stored colour on the item, so the item arrives on the new track still showing
-the old one. An apply corrects it only if the new track's rule also has **Items** on. If it does
-not, nothing corrects it.
+The switch leaves a stored colour on the item, which then arrives on the new track still showing the
+old one. An apply corrects it only where the new track's rule also has **Items** on; otherwise
+nothing does.
 
-The reset leaves the item with no colour, so REAPER draws it from whatever track it is on, with no
+The reset leaves the item with no colour, so REAPER draws it from whatever track it sits on, with no
 apply needed.
 
-Use the **Items** switch when you want an item to differ from its track, or when your theme does not
-tint item backgrounds by track colour.
+The **Items** switch suits an item that should differ from its track, or a theme that does not tint
+item backgrounds by track colour.
 :::
 
-Whether any of this is visible depends on two
+Visibility of any of this depends on two
 [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/).
 
 ### Takes
@@ -302,15 +298,15 @@ AutoColor writes colours to the **item**, never to a take. Writing a colour to a
 colour entirely.
 
 :::caution
-If you colour takes deliberately, do not use this tool on items: it will clear those colours.
+Deliberate take colours and item colouring are incompatible — colouring an item clears them.
 :::
 
 There are no rules for takes.
 
 ## The master track
 
-AutoColor never scans or colours the master track. REAPER does not honour a custom colour on it, not
-through this tool and not through its own track-colour action.
+The master track is never scanned or coloured. REAPER does not honour a custom colour on it,
+through this tool or through its own track-colour action.
 
 ## Where to go next
 

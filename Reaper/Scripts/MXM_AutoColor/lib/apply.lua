@@ -18,6 +18,7 @@ local matcher    = require 'matcher'
 local predicates = require 'predicates'
 local colors     = require 'colors'
 local targets    = require 'targets'
+local icons      = require 'icons'
 
 local M = {}
 
@@ -25,6 +26,7 @@ local M = {}
 local UNDO_TRACKCFG, UNDO_ITEMS, UNDO_MISCCFG = 1, 4, 8
 
 local KINDS = { 'track', 'item', 'region', 'marker' }
+local ALL_KINDS = { 'track', 'item', 'region', 'marker', 'icon' }
 
 local KIND_UNDO = {
   track = UNDO_TRACKCFG, item = UNDO_ITEMS,
@@ -35,10 +37,12 @@ local KIND_UNDO = {
 --- First enabled rule in `list` whose filter passes and whose pattern matches.
 --- `list` is the rule list for the entry's own kind, so there is no target
 --- check to do: a rule in the track list only ever sees tracks.
-local function resolve(entry, list)
+--- @param kind  the list's kind when it is not the entry's own -- 'icon'
+local function resolve(entry, list, kind)
+  kind = kind or entry.kind
   for i = 1, #list do
     local r = list[i]
-    if r.enabled and predicates.test(r.only, entry.kind, entry) then
+    if r.enabled and predicates.test(r.only, kind, entry) then
       local hit, why = matcher.test(r, entry.name)
       if why == 'budget' then r._timeouts = (r._timeouts or 0) + 1 end
       if r.invert then hit = not hit end
@@ -49,6 +53,50 @@ local function resolve(entry, list)
 end
 
 M.resolve = resolve
+
+--- Folders hand a rule down to their children. `direct[i]` is the rule entry
+--- i matched on its own; the result is the rule that applies to it.
+---
+--- `mode_of(rule)` says how a rule that won a folder treats the children:
+---   'off'    -- it does not reach them
+---   'force'  -- it overrides theirs; among nested ones the OUTERMOST wins
+---   anything else -- it fills the children that have no rule of their own
+--- Colours pass one global mode; icon rules each carry their own.
+---
+--- A folder whose rule does not propagate passes on what it inherited, so an
+--- outer 'fill' still reaches through it. With one mode for every rule this is
+--- exactly the old single-policy walk: every non-nil winner propagates.
+local function propagate(entries, direct, mode_of)
+  local winner, stack = {}, {}
+  for i = 1, #entries do
+    local e = entries[i]
+    if e.kind == 'track' then
+      local own = direct[i]
+      local inh = stack[#stack]
+      local fr
+      if inh ~= nil and mode_of(inh) == 'force' then fr = inh
+      elseif own ~= nil                        then fr = own
+      else                                          fr = inh end
+      winner[i] = fr
+
+      local push = (fr ~= nil and mode_of(fr) ~= 'off') and fr or inh
+      local fd = e.folderdepth or 0
+      if fd >= 1 then
+        for _ = 1, fd do stack[#stack + 1] = push end
+      elseif fd < 0 then
+        for _ = 1, -fd do
+          if #stack == 0 then break end
+          stack[#stack] = nil
+        end
+      end
+    else
+      winner[i] = direct[i]
+    end
+  end
+  return winner
+end
+
+M.propagate = propagate
 
 --- Map each track entry to the innermost folder containing it; 0 = not in one.
 --- A folder PARENT belongs to the folder it opens, together with its children,
@@ -111,7 +159,7 @@ end
 M.folder_groups = folder_groups
 
 local function prepare_all(rules)
-  for _, kind in ipairs(KINDS) do
+  for _, kind in ipairs(ALL_KINDS) do
     local list = rules[kind] or {}
     for _, r in ipairs(list) do r._timeouts = nil end
     matcher.prepare(list)
@@ -119,6 +167,50 @@ local function prepare_all(rules)
 end
 
 M.prepare_all = prepare_all
+
+---------------------------------------------------------------------- icons
+--- The icon half of plan(). Tracks only, own rule list, own precedence; no
+--- gradients and no items. Ops carry `icon` (the path to write, '' to remove)
+--- instead of `rgb`, which is how commit() tells them apart.
+--- @return { desired, winner, direct }, number of tracks matched
+local function plan_icons(entries, list, clear_unmatched, ops)
+  local out = { desired = {}, winner = {}, direct = {} }
+  if #list == 0 and not clear_unmatched then return out, 0 end
+
+  local direct, matched = out.direct, 0
+  for i = 1, #entries do
+    local e = entries[i]
+    if e.kind == 'track' then
+      local r = resolve(e, list, 'icon')
+      if r then
+        direct[i] = r
+        if not e.context then matched = matched + 1 end
+      end
+    end
+  end
+
+  local winner = propagate(entries, direct, function(r) return r.children end)
+  out.winner = winner
+
+  for i = 1, #entries do
+    local e = entries[i]
+    if e.kind == 'track' then
+      local r = winner[i]
+      local cur = e.icon or ''
+      if r then out.desired[i] = icons.resolve(r.icon) end
+      if not e.context then
+        if r then
+          if not icons.same(out.desired[i], cur) then
+            ops[#ops + 1] = { entry = e, icon = out.desired[i], cur_icon = cur, rule = r }
+          end
+        elseif clear_unmatched and cur ~= '' then
+          ops[#ops + 1] = { entry = e, icon = '', cur_icon = cur, clear = true }
+        end
+      end
+    end
+  end
+  return out, matched
+end
 
 ---------------------------------------------------------------------- plan
 --- Work out what every entry's colour should be.
@@ -150,7 +242,7 @@ function M.plan(entries, rules, options)
   local clear_unmatched = {}
   do
     local cu = options.clear_unmatched
-    for _, k in ipairs(KINDS) do
+    for _, k in ipairs(ALL_KINDS) do
       clear_unmatched[k] = (type(cu) == 'table') and (cu[k] == true) or (cu == true)
     end
   end
@@ -178,7 +270,7 @@ function M.plan(entries, rules, options)
   local split = options.subfolder_splits_range ~= false
   local fg = needs_folders and folder_groups(entries, split) or nil
 
-  local winner, rank, groupsize, gid = {}, {}, {}, {}
+  local rank, groupsize, gid = {}, {}, {}
   local groups = {}   -- rule id -> { [group id] = count }. Nested rather than a
                       -- concatenated string key: this loop runs over every
                       -- track on every auto-loop tick, and per-entry string
@@ -228,44 +320,11 @@ function M.plan(entries, rules, options)
   --
   --     Order within a folder is project order, and the parent is the first
   --     step of its own ramp.
+  local winner = propagate(entries, direct, function() return policy end)
   local cascade = {}
-  if policy ~= 'off' then
-    local ownstack = {}
-    for i = 1, #entries do
-      local e = entries[i]
-      if e.kind == 'track' then
-        local own = direct[i]
-        local inh = ownstack[#ownstack]
-        local fr
-        -- 'force' keeps the OUTERMOST coloured ancestor, as the colour-copying
-        -- version did: each level pushed the colour it had itself just been
-        -- given, so the outer one travelled all the way down.
-        if policy == 'force' and inh ~= nil then fr = inh
-        elseif own ~= nil                    then fr = own
-        else                                      fr = inh end
-
-        winner[i]  = fr
-        cascade[i] = (fr and fr.cascade_items) == true
-
-        local fd = e.folderdepth or 0
-        if fd >= 1 then
-          for _ = 1, fd do ownstack[#ownstack + 1] = fr end
-        elseif fd < 0 then
-          for _ = 1, -fd do
-            if #ownstack == 0 then break end
-            ownstack[#ownstack] = nil
-          end
-        end
-      else
-        winner[i] = direct[i]
-      end
-    end
-  else
-    for i = 1, #entries do
-      winner[i] = direct[i]
-      if entries[i].kind == 'track' then
-        cascade[i] = (direct[i] and direct[i].cascade_items) == true
-      end
+  for i = 1, #entries do
+    if entries[i].kind == 'track' then
+      cascade[i] = (winner[i] and winner[i].cascade_items) == true
     end
   end
 
@@ -389,16 +448,21 @@ function M.plan(entries, rules, options)
     end
   end
 
+  -- 6. icons, appended to the same ops so every caller commits them too
+  local icon, icon_matched = plan_icons(entries, rules.icon or {},
+                                        clear_unmatched.icon, ops)
+
   local stats = {
     scanned = scanned, matched = matched, unchanged = unchanged,
-    writes = #ops, cleared = cleared,
+    writes = #ops, cleared = cleared, icon_matched = icon_matched,
   }
 
   -- `desired`, `winner`, `from_track` and `grad` are parallel to `entries`. The auto
   -- loop needs `desired` to tell "the user recoloured this" from "we set it";
   -- the GUI preview needs all three so it can show what Apply will ACTUALLY do
-  -- rather than re-deriving a guess.
-  return ops, stats, desired, winner, from_track, grad, direct
+  -- rather than re-deriving a guess. `icon` holds the same for icons:
+  -- { desired = resolved path, winner, direct }, also parallel to `entries`.
+  return ops, stats, desired, winner, from_track, grad, direct, icon
 end
 
 --- Per-rule match counts under true first-match-wins, plus how many objects
@@ -407,24 +471,30 @@ end
 function M.tally(entries, rules)
   prepare_all(rules)
   local won, shadowed = {}, {}
-  for _, kind in ipairs(KINDS) do
+  for _, kind in ipairs(ALL_KINDS) do
     for _, r in ipairs(rules[kind] or {}) do won[r.id], shadowed[r.id] = 0, 0 end
   end
 
+  local function count(e, list, kind)
+    local taken = false
+    for _, r in ipairs(list) do
+      if r.enabled and predicates.test(r.only, kind, e) then
+        local hit = matcher.test(r, e.name)
+        if r.invert then hit = not hit end
+        if hit then
+          if taken then shadowed[r.id] = shadowed[r.id] + 1
+          else won[r.id] = won[r.id] + 1; taken = true end
+        end
+      end
+    end
+  end
+
+  local icon_list = rules.icon or {}
   for i = 1, #entries do
     local e = entries[i]
     if not e.context then
-      local taken = false
-      for _, r in ipairs(rules[e.kind] or {}) do
-        if r.enabled and predicates.test(r.only, e.kind, e) then
-          local hit = matcher.test(r, e.name)
-          if r.invert then hit = not hit end
-          if hit then
-            if taken then shadowed[r.id] = shadowed[r.id] + 1
-            else won[r.id] = won[r.id] + 1; taken = true end
-          end
-        end
-      end
+      count(e, rules[e.kind] or {}, e.kind)
+      if e.kind == 'track' and #icon_list > 0 then count(e, icon_list, 'icon') end
     end
   end
   return won, shadowed
@@ -461,8 +531,27 @@ function M.plan_clear(entries, rules, mode, options)
   return ops
 end
 
+--- Plan removing track icons. Same modes as plan_clear.
+function M.plan_clear_icons(entries, rules, mode, options)
+  local claimed
+  if mode == 'matched' then
+    local icon = select(8, M.plan(entries, rules or {}, options or {}))
+    claimed = icon.desired
+  end
+  local ops = {}
+  for i = 1, #entries do
+    local e = entries[i]
+    if e.kind == 'track' and not e.context and (e.icon or '') ~= ''
+       and (mode ~= 'matched' or claimed[i] ~= nil) then
+      ops[#ops + 1] = { entry = e, icon = '', cur_icon = e.icon, clear = true }
+    end
+  end
+  return ops
+end
+
 -------------------------------------------------------------------- commit
---- Write the planned ops. The ONLY function in the project that changes colours.
+--- Write the planned ops. The ONLY function in the project that changes colours
+--- or icons.
 -- @param options { no_undo = bool, from = int, deadline = number }
 --        no_undo  -- for the auto loop, which must not add an undo point every
 --                    time a track is renamed.
@@ -493,7 +582,9 @@ function M.commit(ops, desc, options)
   local i = from
   while i <= n do
     local op = ops[i]
-    local ok, err = targets.set(op.entry, op.rgb)
+    local ok, err
+    if op.icon ~= nil then ok, err = targets.set_icon(op.entry, op.icon)
+    else                   ok, err = targets.set(op.entry, op.rgb) end
     op.done = ok == true
     if ok then
       written = written + 1
@@ -531,6 +622,9 @@ function M.run(proj, rules, options, scope, desc)
   local written, failures = M.commit(ops, desc, options)
   stats.written = written
   stats.failures = failures
+  local n = 0
+  for _, op in ipairs(ops) do if op.icon ~= nil and op.done then n = n + 1 end end
+  stats.icons_written = n
   return stats
 end
 
