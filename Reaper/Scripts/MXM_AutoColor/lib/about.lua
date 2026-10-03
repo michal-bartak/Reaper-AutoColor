@@ -12,7 +12,7 @@ return {
   -- Inside REAPER the tool is "AutoColor"; the repository and the docs site are
   -- "Reaper AutoColor". Both names are deliberate.
   NAME    = 'AutoColor',
-  VERSION = '1.1.0beta1',
+  VERSION = '1.1.0beta2',
   AUTHOR  = 'Michal MaXyM Bartak',
   LICENCE = 'MIT',
   COPYRIGHT = 'Copyright (c) 2026 Michal Bartak',
