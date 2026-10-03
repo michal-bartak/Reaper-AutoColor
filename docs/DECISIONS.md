@@ -751,9 +751,12 @@ So `lib/startup.lua` adds a marked block itself, whenever the window or the
 Toggle starts. Not recorded in the config: moving or deleting `__startup.lua` by
 hand is normal in REAPER, and a flag would then be wrong.
 
-**The block is `loadfile` + `pcall`, never a bare `dofile`.** An uninstall leaves
-it behind; a missing file under `dofile` would raise and abort every entry after
-ours. As written it is a silent no-op.
+**The block runs the bootstrap as an action, not via `loadfile` or `dofile`.**
+`__startup.lua` is one Lua state shared by every entry, so a loaded chunk would
+leave its `package.path` and cached modules (`config`, `json`, ...) behind: an
+earlier entry's `config` would be returned to us, and ours to a later entry.
+An action gets a state of its own. The block touches only `reaper.*` and checks
+`file_exists` first, so an uninstall that leaves it behind is a silent no-op.
 
 **The last state is a persisted ExtState (`active_last`), not config.** Writing
 `config.json` on every toggle would rewrite the rule file and bump `config_rev`.

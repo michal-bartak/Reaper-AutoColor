@@ -5,9 +5,8 @@
 ]]
 
 local sep = package.config:sub(1, 1)
-local ROOT = debug.getinfo(1, 'S').source:match('^@(.*[\\/])')
-if not ROOT then return end
+local _, thisFile = reaper.get_action_context()
+local ROOT = thisFile:match('^(.*[\\/])')
 package.path = ROOT .. '?.lua;' .. ROOT .. 'lib' .. sep .. '?.lua;' .. package.path
 
-local ok, startup = pcall(require, 'startup')
-if ok then pcall(startup.boot, ROOT) end
+require('startup').boot(ROOT)

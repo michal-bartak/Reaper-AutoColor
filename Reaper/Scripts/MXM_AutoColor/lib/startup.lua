@@ -4,9 +4,11 @@
   REAPER runs Scripts/__startup.lua at launch. install() adds a marked block to
   it that runs MXM_AutoColor_Startup.lua, which calls boot().
 
-  The block checks for the file and runs it under pcall, so an uninstall that
-  leaves the block behind is a silent no-op that cannot break the entries
-  after it.
+  The block runs the bootstrap as an action, in a Lua state of its own:
+  __startup.lua is one state shared by every entry, and a loadfile there would
+  leave our package.path and cached modules (config, json, ...) to collide with
+  the others. The block itself touches only reaper.*, and is a no-op once the
+  bootstrap is gone.
 ]]
 
 local config = require 'config'
@@ -37,8 +39,11 @@ local function block()
   return table.concat({
     BEGIN,
     'do',
-    '  local chunk = loadfile(' .. expr .. ')',
-    '  if chunk then pcall(chunk) end',
+    '  local f = ' .. expr,
+    '  if reaper.file_exists(f) then',
+    '    local id = reaper.AddRemoveReaScript(true, 0, f, true)',
+    '    if id and id > 0 then reaper.Main_OnCommand(id, 0) end',
+    '  end',
     'end',
     END,
   }, '\n')

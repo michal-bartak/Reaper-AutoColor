@@ -57,10 +57,36 @@ check(not startup.ensure(), 'then leaves it alone')
 local nc = (NC:gsub('\\', '/'))
 check(read(F):find(nc, 1, true) ~= nil, 'block names the real script folder', read(F))
 
--- The block must run cleanly with the bootstrap absent.
+-- The block runs with nothing but reaper.* in reach: __startup.lua is a state
+-- shared with other entries, so package, require and globals are off limits.
 assert(startup.install())
-local ok, err = pcall(load(read(F), '=startup', 't', setmetatable({}, { __index = _G })))
-check(ok, 'block is a no-op when the bootstrap is missing', tostring(err))
+local function run_block(exists)
+  local calls = {}
+  local env = { reaper = {
+    GetResourcePath = reaper.GetResourcePath,
+    file_exists = function(p) calls.checked = p; return exists end,
+    AddRemoveReaScript = function(add, sec, p, commit)
+      calls.registered = p; return 99 end,
+    Main_OnCommand = function(id) calls.ran = id end,
+  } }
+  local ok, err = pcall(load(read(F), '=startup', 't', env))
+  return ok, err, calls, env
+end
+
+local ok, err, calls = run_block(false)
+check(ok, 'block runs with only reaper.* available', tostring(err))
+check(calls.registered == nil and calls.ran == nil,
+      'block is a no-op when the bootstrap is missing')
+
+local ok2, err2, calls2, env2 = run_block(true)
+check(ok2, 'block runs when the bootstrap is present', tostring(err2))
+check(calls2.registered == calls2.checked
+      and calls2.checked:find('MXM_AutoColor_Startup.lua', 1, true) ~= nil,
+      'block registers the bootstrap it checked', tostring(calls2.registered))
+check(calls2.ran == 99, 'and runs it as an action')
+local leaked = {}
+for k in pairs(env2) do if k ~= 'reaper' then leaked[#leaked + 1] = k end end
+check(#leaked == 0, 'block leaves no globals behind', table.concat(leaked, ', '))
 
 --------------------------------------------------------------------- decision
 check(startup.should_start('on', ''),  'always starts')
