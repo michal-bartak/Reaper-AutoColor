@@ -43,7 +43,8 @@ overwriting it.
     "tick_interval": 0.2,
     "cold_budget_ms": 4,
     "cold_interval": 5,
-    "font_size": 14
+    "font_size": 14,
+    "autostart": "last"
   },
   "rules": {
     "track":  [ { "label": "Bass", "mode": "regex", "pattern": "^(sub )?bass", "color": 8142034 } ],

@@ -51,8 +51,9 @@ local window = require 'gui.window'
 local theme  = require 'gui.theme'
 
 app.load()
+require('startup').ensure()
 
-local ctx  = ImGui.CreateContext('AutoColor')
+local ctx = ImGui.CreateContext('AutoColor')
 local FONT = ImGui.CreateFont('sans-serif')      -- 0.10: no size here
 ImGui.Attach(ctx, FONT)
 

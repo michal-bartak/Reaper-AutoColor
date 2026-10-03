@@ -42,7 +42,7 @@ Recommended for **items**, where it makes an item follow its track live. Note th
 **tracks**, where it also strips hand-set colours.
 :::
 
-## Background auto-colouring
+## System
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -53,6 +53,10 @@ Recommended for **items**, where it makes an item follow its track live. Note th
 
 [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) explains what the loop re-reads and why the rescan
 interval exists.
+
+**Autostart** is *Never*, *Always* or *Last* (default): the state at the last shutdown.
+[Auto-apply](/Reaper-AutoColor/usage/auto-apply/#starting-with-reaper) covers the `__startup.lua`
+entry it relies on.
 
 ## Window
 

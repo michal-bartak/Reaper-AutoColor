@@ -34,7 +34,7 @@ echo "== unit (regex, matcher, colours, config, apply) =="
 [ $? -eq 0 ] || rc=1
 tail -n 3 "$SP/unit.out"
 
-for t in integration autoloop gui render; do
+for t in integration autoloop startup gui render; do
   echo "== $t =="
   run lua "$TESTS/$t.lua"
 done

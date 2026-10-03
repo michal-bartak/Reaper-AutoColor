@@ -19,6 +19,12 @@ local dialog   = require 'gui.dialog'
 local icons    = require 'icons'
 local aboutmod = require 'about'
 
+local AUTOSTART_LABEL = {
+  off  = 'Never',
+  on   = 'Always',
+  last = 'Last',
+}
+
 local M = {}
 
 local ImGui, ctx
@@ -203,7 +209,19 @@ function M.draw_options(FS)
     end
   end
 
-  theme.section('Background auto-colouring', true)
+  theme.section('System', true)
+  -- Label on the right, like the sliders below: the control and its label then
+  -- share a baseline without any manual offset.
+  ImGui.SetNextItemWidth(ctx, FS * 10)
+  if ImGui.BeginCombo(ctx, 'Autostart', AUTOSTART_LABEL[o.autostart]) then
+    for _, k in ipairs({ 'off', 'on', 'last' }) do
+      if ImGui.Selectable(ctx, AUTOSTART_LABEL[k], o.autostart == k) then
+        app.snapshot(); o.autostart = k; app.mark_dirty()
+      end
+    end
+    ImGui.EndCombo(ctx)
+  end
+
   rv, v = theme.checkbox('Create undo points for automatic changes', o.auto_undo)
   if rv then app.snapshot(); o.auto_undo = v; app.mark_dirty() end
   if ImGui.IsItemHovered(ctx) then

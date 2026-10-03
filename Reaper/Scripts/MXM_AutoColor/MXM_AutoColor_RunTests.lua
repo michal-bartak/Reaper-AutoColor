@@ -626,6 +626,9 @@ do -- option coercion
   check(c.options.font_size == 8, 'font size clamps to min')
   check(CF.normalize{ options = { font_size = 99 } }.options.font_size == 20,
         'and to max, so a config written before the cap is brought down')
+  check(c.options.autostart == 'last', 'autostart defaults to last')
+  check(CF.normalize{ options = { autostart = 'on' } }.options.autostart == 'on',
+        'autostart accepts "on"')
   check(c.options.clear_unmatched.track == false, 'non-boolean coerces to false per kind')
   check(type(c.options.clear_unmatched) == 'table', 'clear_unmatched is a per-kind table')
 end

@@ -33,6 +33,18 @@ ID.
 Opening the configuration window does **not** stop or pause the loop. The window reports status and
 offers its own **Pause**; only the `AutoToggle` action starts and stops the loop.
 
+## Starting with REAPER
+
+*Autostart* in [Options](/Reaper-AutoColor/configuration/) decides whether the loop starts at
+launch: **Never**, **Always**, or **Last** (default). The window and the
+`AutoToggle` action add a marked entry to `Scripts/__startup.lua` when it is missing, and that entry
+runs `MXM_AutoColor_Startup.lua`.
+
+:::note[Uninstalling]
+The entry does nothing once the scripts are gone. To remove it, delete the lines between
+`-- MXM_AutoColor begin` and `-- MXM_AutoColor end` in `Scripts/__startup.lua`.
+:::
+
 ## What it re-reads, and when
 
 REAPER reports a single project-wide "something changed" counter, so a fader move arrives looking

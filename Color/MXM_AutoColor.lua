@@ -1,6 +1,6 @@
 --[[
 Description: AutoColor
-Version: 1.1.0beta1
+Version: 1.1.0beta2
 Author: Michal MaXyM Bartak
 Links:
   GitHub https://github.com/michal-bartak/Reaper-AutoColor
@@ -24,18 +24,24 @@ Changelog:
   - Track icons support.
   - New track filters: has an instrument, has a MIDI input, has receives.
   - SWS import.
+  - Auto-colouring can start with REAPER (Options > Autostart).
   - Minor layout changes.
 
   Config file bumped to version 3. Earlier versions of AutoColor will open it
   in read-only mode.
+
+  An entry is added to Scripts/__startup.lua. By default, auto-colouring
+  resumes at launch if it was running at shutdown.
 Provides:
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua > ../MXM_AutoColor/
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoToggle.lua > ../MXM_AutoColor/
+  [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoLoop.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_ApplyAll.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_ApplySelection.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_ClearColors.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_Dump.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_RunTests.lua > ../MXM_AutoColor/
+  [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_Startup.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_WhyThisColour.lua > ../MXM_AutoColor/
   [nomain] /Reaper/Scripts/MXM_AutoColor/lib/*.lua > ../MXM_AutoColor/lib/
   [nomain] /Reaper/Scripts/MXM_AutoColor/lib/gui/*.lua > ../MXM_AutoColor/lib/gui/

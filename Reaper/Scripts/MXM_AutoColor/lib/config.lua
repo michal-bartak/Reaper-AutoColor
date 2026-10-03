@@ -54,6 +54,10 @@ local OPTION_SPEC = {
   -- change, which is what it did before the gate existed.
   cold_interval          = { default = 5,    kind = 'number', min = 0,    max = 60 },
   font_size              = { default = 14,   kind = 'number', min = 8,    max = 20 },
+  -- Whether REAPER start-up launches the auto-apply loop. 'last' resumes
+  -- whatever state it was in at shutdown.
+  autostart              = { default = 'last',
+                             enum = { off = true, on = true, last = true } },
 }
 
 --- Which kinds have their unmatched objects reset to the default colour.

@@ -742,3 +742,35 @@ move. `GetSetRegionOrMarkerInfo_String` exposes `"GUID"` (read-only) and that is
 what a marker keeps across a move. The old key remains the fallback on a build
 without it. The extra call per marker per scan is the obvious trade for the one
 kind a project holds few enough of.
+
+## Starting with REAPER
+
+**ReaPack cannot edit `__startup.lua`.** It installs files from the index and has
+no hook to change an existing one; shipping our own would overwrite the user's.
+So `lib/startup.lua` adds a marked block itself, whenever the window or the
+Toggle starts. Not recorded in the config: moving or deleting `__startup.lua` by
+hand is normal in REAPER, and a flag would then be wrong.
+
+**The block is `loadfile` + `pcall`, never a bare `dofile`.** An uninstall leaves
+it behind; a missing file under `dofile` would raise and abort every entry after
+ours. As written it is a silent no-op.
+
+**The last state is a persisted ExtState (`active_last`), not config.** Writing
+`config.json` on every toggle would rewrite the rule file and bump `config_rev`.
+
+**The Toggle is a one-shot; the loop is a separate script.** A toggle that is
+itself the long-running `defer` script cannot record a stop. REAPER ends that
+instance on a toolbar click (or prompts, depending on a remembered choice), so
+the script's stop branch never runs, and its `atexit` cannot tell a stop from
+REAPER quitting -- measured: the main window, the project and the API are all
+still valid in both cases. A one-shot is never "already running", so every click
+reaches its code; it writes `active_last` and starts or stops the loop, which
+never touches it.
+
+**The bootstrap runs the Toggle as an action**, via `AddRemoveReaScript`, because
+the Toggle has no start-only mode (a second run stops it) and `dofile` from
+`__startup.lua` would record the wrong command ID. `auto_boot` skips the SWS
+conflict dialog on that launch.
+
+**Nothing locks `__startup.lua`.** ReaScripts share one thread, so only an outside
+editor can race the write; the file is re-read immediately before it.
