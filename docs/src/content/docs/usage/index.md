@@ -54,7 +54,7 @@ The **Icons** tab sets track icons rather than colours; see
 | **Aa** | Ignore case (ASCII only). |
 | **Filter** | An extra condition on top of the pattern — see [Filters](/Reaper-AutoColor/usage/matching/#filters). |
 | **Colour** | The rule's colour, and optionally a [second one](/Reaper-AutoColor/usage/colours/#gradients) for a gradient. |
-| **Items** | Tracks tab only: [write the track's colour onto the items](/Reaper-AutoColor/usage/colours/#items) on the tracks this rule matches, instead of leaving REAPER to draw them from the track. |
+| **Items** | Tracks tab only. Instead of leaving default color (always inheriting from the track), [write the track's colour onto the items](/Reaper-AutoColor/usage/colours/#items) of the tracks this rule matches. |
 | **Hits** | How many objects this rule wins in this project. |
 | menu | Duplicate, Delete, and Move to top / up / down / bottom. |
 

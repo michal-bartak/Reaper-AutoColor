@@ -7,6 +7,8 @@ The **Icons** tab sets each track's icon from its name, the same way the Tracks 
 colour. It is a list of its own, with its own precedence: the first icon rule that matches wins, so
 a track can take its colour from one rule and its icon from another.
 
+![The icons tab](../../../assets/usage/icons-overview.png)
+
 Icon rules match tracks only. They have the same **Name**, **Match**, **Pattern**, **Aa** and
 [**Filter**](/Reaper-AutoColor/usage/matching/#filters) columns as the Tracks tab. **Icon** and
 **Children** replace **Colour** and **Items**.
@@ -18,8 +20,9 @@ Icon rules match tracks only. They have the same **Name**, **Match**, **Pattern*
 
 ## The icon browser
 
-The browser lists every PNG and JPEG under `Data/track_icons` in the REAPER resource folder,
-subfolders included, ordered by path.
+The browser lists every PNG and JPEG under `Data/track_icons` in the REAPER resource folder, subfolders included, ordered by path.
+
+![The icons tab](../../../assets/usage/icons-browser.png)
 
 - **Search** narrows the grid to file names containing the text, subfolder names included. Case is
   ignored.
