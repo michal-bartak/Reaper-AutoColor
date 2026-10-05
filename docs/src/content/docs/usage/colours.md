@@ -16,8 +16,7 @@ Colouring proceeds in a fixed sequence:
 1. Find the objects matching the rule's **pattern** and **filter**.
 1. Extend the set to folder children, where configured.
 1. With one colour on the rule, write it to all of them.
-1. With two, spread a gradient across them, split according to the rule's
-   [spread setting](#spread-across).
+1. With two, spread a gradient across them, split according to the rule's [spread setting](#spread-across).
 
 The diagrams below cover the combinations of settings this produces.
 
@@ -34,8 +33,7 @@ The diagrams below cover the combinations of settings this produces.
 
 ## Solid fills
 
-A rule with one colour writes that colour to every object it wins, regardless of project order or
-the number of matches.
+A rule with one colour writes it to every object it wins.
 
 <figure class="shot diagram">
 
@@ -46,8 +44,7 @@ the number of matches.
 
 ### Folders
 
-A folder's colour can reach children that matched no rule of their own. Configured for the whole
-rule set under **Options → Folders**.
+A folder's colour can reach children that matched no rule of their own. Configured for the whole rule set under **Options → Folders**.
 
 | Setting | Effect |
 |---|---|
@@ -55,8 +52,7 @@ rule set under **Options → Folders**.
 | **force** | The folder's colour overrides matched children too. |
 | **off** | No inheritance. |
 
-The diagrams below use one folder, `red`. Its children `green` and `blue` match rules of their own;
-`bass` matches nothing.
+The diagrams below use one folder, `red`. Its children `green` and `blue` match rules of their own; `bass` matches nothing.
 
 <figure class="shot diagram">
 
@@ -81,8 +77,7 @@ The diagrams below use one folder, `red`. Its children `green` and `blue` match 
 
 ## Gradients
 
-A rule with two colours spreads the objects it wins evenly along a ramp between them, in **project
-order**, each kind ramping separately. Ten tracks matching one rule give ten shades.
+A rule with two colours spreads the objects it wins evenly along a ramp between them, in **project order**, each object type separately.
 
 <figure class="shot diagram">
 
@@ -142,14 +137,11 @@ A folder edge does not end a run; that is what **folders** and **runs & folders*
 
 ### Subfolders
 
-A nested folder either ends the colour range, or lets one ramp cover every track in the top-level
-folder. Controlled globally by **Options → Folders → subfolder splits the parent's colour range**.
+A nested folder either ends the colour range, or lets one ramp cover every track in the top-level folder. Controlled globally by **Options → Folders → subfolder splits the parent's colour range**.
 
-**On** (default): the tracks after a subfolder start a new ramp rather than resuming the one before.
-A top-level folder does the same to the tracks around it.
+**On** (default): the tracks after a subfolder start a new ramp rather than resuming the one before. A top-level folder does the same to the tracks around it.
 
-**Off**: one ramp covers the whole folder level, spanning the tracks before a subfolder and
-continuing after it, however deep the nesting.
+**Off**: one ramp covers the whole folder level, spanning the tracks before a subfolder and continuing after it, however deep the nesting.
 
 <figure class="shot diagram">
 
@@ -166,9 +158,7 @@ continuing after it, however deep the nesting.
 </figure>
 
 :::caution[It can flatten a folder]
-A range holding one track gets the **first** colour, because there is nothing for a ramp to spread
-across. A folder that is mostly subfolders, with a single track between each, comes out one colour
-throughout.
+A range holding one track gets the **first** colour, because there is nothing for a ramp to spread across. A folder that is mostly subfolders, with a single track between each, comes out one colour throughout.
 
 <figure class="shot diagram">
 
@@ -177,12 +167,10 @@ throughout.
 <figcaption>Five of these seven tracks are alone in their range, so five get the first colour.</figcaption>
 </figure>
 
-Such a layout wants *subfolder splits the parent's colour range* off, or a spread other than
-folders.
+For such a layout, turn *subfolder splits the parent's colour range* off, or use a spread other than **folders**.
 :::
 
-An inherited range breaks the same way a flat one does. A child the rule does not win interrupts
-it, and under a spread that counts **runs** that child splits the ramp in two.
+An inherited range breaks the same way a flat one does. A child the rule does not win interrupts it, and under a spread that counts **runs** that child splits the ramp in two.
 
 <figure class="shot diagram">
 
@@ -198,28 +186,22 @@ it, and under a spread that counts **runs** that child splits the ramp in two.
 <figcaption><strong>runs</strong>: <code>blue1</code> ends a run, so <code>red1&ndash;red3</code> and <code>red4&ndash;red6</code> each get a full ramp.</figcaption>
 </figure>
 
-In both diagrams the rule's pattern is `red1`, the folder's own name. No child matches it, so every
-child reaches the range by inheritance. `blue1` matches a rule of its own and stays out.
+In both diagrams the rule's pattern is `red1`, the folder's own name. No child matches it, so every child reaches the range by inheritance. `blue1` matches a rule of its own and stays out.
 
 Two settings decide whether this happens at all:
 
-- **Folders.** Under `force` the folder's rule wins every child, `blue1` included, so nothing interrupts the range.
-  Under `off` nothing inherits, so there is no range to interrupt.
-- **Spread across.** Only **runs** and **runs & folders** split the range. **all matches** and
-  **folders** leave one ramp, one step shorter.
+- **Folders.** Under `force` the folder's rule wins every child, `blue1` included, so nothing interrupts the range. Under `off` nothing inherits, so there is no range to interrupt.
+- **Spread across.** Only **runs** and **runs & folders** split the range. **all matches** and **folders** leave one ramp, one step shorter.
 
-With a single folder, **runs & folders** gives the same picture as **runs**: there is no second
-folder for the folder edge to act on.
+With a single folder, **runs & folders** gives the same picture as **runs**: there is no second folder for the folder edge to act on.
 
 :::caution[One combination still flattens a gradient]
-Spread across **folders**, with an *is a folder track* filter and folder colours **off**. Nothing
-reaches the children, so every parent is alone in its range and gets the first colour. The rule
-warns about this.
+Spread across **folders**, with an *is a folder track* filter and folder colours **off**. Nothing reaches the children, so every parent is alone in its range and gets the first colour. The rule warns about this.
 :::
 
-### Defaults per object kind
+### Defaults per object type
 
-| Kind | Default spread |
+| Object type | Default spread |
 |---|---|
 | Tracks | **runs** |
 | Items | **runs** |
@@ -228,30 +210,21 @@ warns about this.
 
 For items, a ramp never spans more than one track. Even **all matches** restarts on each track.
 
-Regions and markers default to **all matches** because regions are usually interleaved —
-`Verse, Chorus, Verse, Chorus`. A rule matching one of them rarely wins two in a row, so **runs**
-would leave every range with one member and no visible gradient. **runs** suits regions that come
-in blocks.
+Regions and markers default to **all matches** because they are usually interleaved — `Verse, Chorus, Verse, Chorus` — which leaves **runs** with one region per ramp and no visible gradient. **runs** suits regions that come in blocks.
 
 
 ### Costs
 
-Both apply to gradients only. A solid fill writes one value to every match, whatever the project
-layout.
+Gradients only; a solid fill does not depend on project layout.
 
-- A gradient is **position dependent**: inserting an object into a range reshuffles that range. A
-  narrower spread limits the change to one range instead of every match, though each member then
-  moves further, the ranges being smaller. Edits at a boundary change membership — renaming the
-  separating `Bus` to `String Bus` merges two ranges and recolours both.
-- A gradient cannot be computed incrementally. A gradient rule aimed at **items** is expensive on
-  very large projects.
+- A gradient is **position dependent**: inserting an object into a range recolours the whole range. A narrower spread limits the change to one range. Renaming the object that separates two ranges can merge them.
+- A gradient rule on **items** can be slow on very large projects.
 
 ## Items
 
 REAPER decides an item's colour from the item itself:
 
-- An item with **no colour of its own** is drawn in its **track's** colour, live: moved to another
-  track, it takes that track's colour at once.
+- An item with **no colour of its own** is drawn in its **track's** colour, live: moved to another track, it takes that track's colour at once.
 - An item **with** a colour keeps it, and the colour travels with it.
 
 Three settings decide which of the two states an item is in.
@@ -262,8 +235,7 @@ Three settings decide which of the two states an item is in.
 | A rule on the **Items** tab | Writes that rule's colour onto the item. |
 | **Reset to the default colour when no rule matches**, ticked for items | Removes the item's colour, so REAPER draws it from the track again. |
 
-The **Items** switch travels down folders with the colour, so a cascading folder rule also colours
-the items on its child tracks.
+The **Items** switch travels down folders with the colour, so a cascading folder rule also colours the items on its child tracks.
 
 Precedence for one item:
 
@@ -274,28 +246,16 @@ Precedence for one item:
 The reset never touches an item that step 1 or step 2 claimed.
 
 :::tip[For "items should look like their track", prefer the reset]
-Both the **Items** switch and the reset make an item match its track immediately. They differ after
-a move.
+Both make an item match its track immediately. They differ after the item moves to another track: with the **Items** switch it keeps the old colour until an apply, and only where the new track's rule also has **Items** on; with the reset it takes the new track's colour at once.
 
-The switch leaves a stored colour on the item, which then arrives on the new track still showing the
-old one. An apply corrects it only where the new track's rule also has **Items** on; otherwise
-nothing does.
-
-The reset leaves the item with no colour, so REAPER draws it from whatever track it sits on, with no
-apply needed.
-
-The **Items** switch suits an item that should differ from its track, or a theme that does not tint
-item backgrounds by track colour.
+The **Items** switch suits an item that should differ from its track, or a theme that does not tint item backgrounds by track colour.
 :::
 
-Visibility of any of this depends on two
-[REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/).
+Whether item colours are visible at all depends on two [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/).
 
 ### Takes
 
-AutoColor writes colours to the **item**, never to a take. Writing a colour to an item also
-**resets** the colour on every take it holds, because a custom take colour can hide the item's
-colour entirely.
+AutoColor writes colours to the **item**, never to a take. Writing a colour to an item also **resets** the colour on every take it holds, because a custom take colour can hide the item's colour entirely.
 
 :::caution
 Deliberate take colours and item colouring are incompatible — colouring an item clears them.
@@ -305,8 +265,7 @@ There are no rules for takes.
 
 ## The master track
 
-The master track is never scanned or coloured. REAPER does not honour a custom colour on it,
-through this tool or through its own track-colour action.
+The master track is never scanned or coloured. REAPER does not honour a custom colour on it, through this tool or through its own track-colour action.
 
 ## Where to go next
 

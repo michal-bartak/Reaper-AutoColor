@@ -3,8 +3,7 @@ title: The configuration window
 description: Tabs, the rule row, the action bar, and the preview panes
 ---
 
-`MXM_AutoColor_GUI.lua` opens AutoColor's configuration window. It holds the rules, a preview of
-what they currently hit, and the buttons that write the colours into the project.
+`MXM_AutoColor_GUI.lua` opens AutoColor's configuration window. It holds the rules, a preview of what they currently match, and the buttons that apply them to the project.
 
 <figure class="shot">
 
@@ -13,11 +12,9 @@ what they currently hit, and the buttons that write the colours into the project
 <figcaption>The configuration window</figcaption>
 </figure>
 
-Every edit is saved to the [config file](/Reaper-AutoColor/configuration/config-file/) immediately;
-there is no Save button. **Undo**, or `Cmd`/`Ctrl`+`Z` while the window has focus, steps back
-through changes to the **rules**. Colour changes in the project use REAPER's own undo.
+Every edit is saved to the [config file](/Reaper-AutoColor/configuration/config-file/) immediately; there is no Save button. **Undo**, or `Cmd`/`Ctrl`+`Z` while the window has focus, steps back through changes to the **rules**. Colour changes in the project use REAPER's own undo.
 
-## One tab per object kind
+## One tab per object type
 
 <figure class="shot">
 
@@ -26,14 +23,11 @@ through changes to the **rules**. Colour changes in the project use REAPER's own
 <figcaption>Tracks, Items, Regions and Markers, with their rule counts</figcaption>
 </figure>
 
-Each tab holds its own ordered list. Within a tab, **the first rule that matches wins**, so
-reordering changes precedence, like firewall rules.
+Each tab holds its own ordered list. Within a tab, **the first rule that matches wins**, so reordering changes precedence. Rules on one tab never affect another.
 
-Precedence is **per tab**: reordering track rules cannot change which region wins. Each tab offers
-only the controls that apply to it — the folder filters exist on Tracks and Icons and nowhere else.
+Each tab offers only the filters that apply to its object type — the folder filters exist on Tracks and Icons only.
 
-The **Icons** tab sets track icons rather than colours; see
-[Track icons](/Reaper-AutoColor/usage/icons/).
+The **Icons** tab sets track icons rather than colours; see [Track icons](/Reaper-AutoColor/usage/icons/).
 
 ## The rule row
 
@@ -46,7 +40,7 @@ The **Icons** tab sets track icons rather than colours; see
 
 | Column | What it is |
 |---|---|
-| handle | Drag to reorder. Click to highlight the rule — the target Objects preview jumps to when a rule name is clicked there. |
+| handle | Drag to reorder. Click to highlight the rule; clicking a rule name in Objects preview does the same. |
 | on/off | Switches the rule off without deleting it. A tab whose rules are all off says so. |
 | **Name** | A label for the rule, shown only in this window. |
 | **Match** | `contains`, `glob` or `regex` — see [Matching names](/Reaper-AutoColor/usage/matching/). |
@@ -54,13 +48,12 @@ The **Icons** tab sets track icons rather than colours; see
 | **Aa** | Ignore case (ASCII only). |
 | **Filter** | An extra condition on top of the pattern — see [Filters](/Reaper-AutoColor/usage/matching/#filters). |
 | **Colour** | The rule's colour, and optionally a [second one](/Reaper-AutoColor/usage/colours/#gradients) for a gradient. |
-| **Items** | Tracks tab only. Instead of leaving default color (always inheriting from the track), [write the track's colour onto the items](/Reaper-AutoColor/usage/colours/#items) of the tracks this rule matches. |
+| **Items** | Tracks tab only. Instead of leaving the items' default colour (always inheriting from the track), [write the track's colour onto the items](/Reaper-AutoColor/usage/colours/#items) of the tracks this rule matches. |
 | **Hits** | How many objects this rule wins in this project. |
-| menu | Duplicate, Delete, and Move to top / up / down / bottom. |
+| [...] | Menu button; Duplicate, Delete, and Move to top / up / down / bottom. |
 
 :::tip[Hits reads 0 but objects are still coloured]
-**Hits** counts what the rule *wins*, not what its pattern matches. An earlier rule that claimed
-the same objects leaves this one on 0. Move it up to give it precedence.
+**Hits** counts what the rule *wins*, not what its pattern matches. An earlier rule that claimed the same objects leaves this one on 0. Move it up to give it precedence.
 :::
 
 ## The preview panes
@@ -72,9 +65,7 @@ the same objects leaves this one on 0. Move it up to give it precedence.
 <figcaption>Objects preview and Pattern tester</figcaption>
 </figure>
 
-**Objects preview** lists what the rules on the open tab claim in *this* project. It is resolved by
-the same code Apply runs, so it is not an approximation. Each row carries the colour the object will
-get, its name, and the rule responsible:
+**Objects preview** lists what the rules on the open tab claim in *this* project — exactly what an apply would do. Each row carries the colour the object will get, its name, and the rule responsible:
 
 | The Rule column says | Meaning |
 |---|---|
@@ -82,14 +73,9 @@ get, its name, and the rule responsible:
 | `from track: …` | No item rule matched, so the item takes its track's colour. That track's rule has *also colour items* on. |
 | `from folder` | No rule of its own; inherited from the folder parent. |
 
-The list follows the open tab. Clicking a **name** reveals that object in the project.
+Clicking a **name** reveals that object in the project.
 
-**Pattern tester** is a scratch pad with its own mode, pattern and subject. It reports whether the
-pattern matches, which part of the name it matched, and what each group captured.
-
-:::tip[Independent of the rule list]
-Deliberately so. Nothing typed here is saved, and nothing it does reaches the project.
-:::
+**Pattern tester** tests a pattern against a name, with its own mode, pattern and subject. It shows whether the pattern matches, which part of the name it matched, and what each group captured. Nothing typed there is saved or applied.
 
 ## The action bar
 
@@ -102,7 +88,7 @@ Deliberately so. Nothing typed here is saved, and nothing it does reaches the pr
 
 | Button | What it does |
 |---|---|
-| **+ *kind* rule** | Adds a rule to the open tab. |
+| **+ *type* rule** | Adds a rule to the open tab. |
 | **Undo** | Steps back through changes to the rules. |
 | **Apply now** | Colours the whole project, in one undo point. See [Applying colours](/Reaper-AutoColor/usage/applying/). |
 | **Selection** | Colours the selection only. |
@@ -111,16 +97,12 @@ Deliberately so. Nothing typed here is saved, and nothing it does reaches the pr
 | **Options** | Folders, scope, the background loop's timing, text size, config file. See [Options](/Reaper-AutoColor/configuration/). |
 | **ⓘ** | About: the installed version, links to the source and these docs, the author, and the licence. |
 
-The foot of the window keeps one line for status messages: what an Apply coloured, why a clear did
-nothing, whether a save failed. The line is permanent, to keep the layout from jumping.
+The bottom line of the window shows status messages: what an apply coloured, why a clear did nothing, whether a save failed.
 
 ## Warnings
 
-- **SWS Auto Color (or Auto Icon) is enabled**, shown under the rule table of each tab whose kind SWS
-  is also set to handle, while that tab has rules. The two will fight; switch one off, see
-  [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
-- **This config file was written by a newer version**, at the top of the window. Editing is allowed
-  but nothing is saved, to prevent an older build from destroying a config it does not understand.
+- **SWS Auto Color (or Auto Icon) is enabled**, shown on each tab whose object type SWS also colours, while that tab has rules. Switch one of them off — see [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
+- **This config file was written by a newer version**, at the top of the window. Editing is allowed but nothing is saved, to prevent an older version from overwriting a config it does not understand.
 
 ## Where to go next
 

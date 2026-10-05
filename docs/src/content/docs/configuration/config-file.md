@@ -15,12 +15,10 @@ Every project shares one global rule set:
 | Windows | `%AppData%\REAPER\MXM_AutoColor\config.json` |
 | Linux | `~/.config/REAPER/MXM_AutoColor/config.json` |
 
-*Options → Show REAPER resource path in explorer/finder* opens the parent directory. The **Rules
-file** section of [Options](/Reaper-AutoColor/configuration/) also prints the path.
+*Options → Show REAPER resource path in explorer/finder* opens the parent directory. The **Config file** section of [Options](/Reaper-AutoColor/configuration/) also prints the path.
 
 :::note[Why it is not in `Scripts/`]
-Stored **outside** the script folder, to prevent reinstalling or updating the scripts from
-overwriting it.
+Stored **outside** the script folder, to prevent reinstalling or updating the scripts from overwriting it.
 :::
 
 ## The files beside it
@@ -56,7 +54,7 @@ overwriting it.
 }
 ```
 
-`rules` holds one ordered list per kind, and the order **is** the precedence.
+`rules` holds one ordered list per object type, and the order **is** the precedence.
 
 ### Rule fields
 
@@ -79,23 +77,17 @@ overwriting it.
 
 ## Editing it by hand
 
-Close the configuration window first. It holds the rule set in memory and writes it back on every
-edit, overwriting changes made underneath it.
+Close the configuration window first. It holds the rule set in memory and writes it back on every edit, overwriting changes made underneath it.
 
 :::tip
-The file is plain JSON, so it diffs and merges cleanly, and it is the entire configuration — copying
-it to another machine is the whole of "sync".
+The file is plain JSON and holds the entire configuration; copying it to another machine copies the setup.
 :::
 
 ## Version handling
 
 `version` is the schema version, and is what makes upgrading safe in both directions:
 
-- An **older** file is migrated on load, the previous one kept as `config.bak.json`. The single-list
-  layout becomes one list per kind, preserving relative order within each kind. Version 3 adds the
-  `icon` list.
-- A **newer** file loads read-only. The window shows a banner and allows editing but saves nothing,
-  to prevent an older build from rewriting a config it does not understand.
+- An **older** file is migrated on load, the previous one kept as `config.bak.json`. The single-list layout becomes one list per object type, preserving the order within each. Version 3 adds the `icon` list.
+- A **newer** file loads read-only. The window shows a banner and allows editing but saves nothing, to prevent an older version from overwriting a config it does not understand.
 
-A rule using a feature this build has dropped is **disabled** on load, with the reason in its
-`note`, rather than silently losing the setting.
+A rule using a feature this build has dropped is **disabled** on load, with the reason in its `note`.

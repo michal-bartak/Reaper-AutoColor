@@ -3,35 +3,25 @@ title: Importing from SWS
 description: Moving an SWS Auto Color setup across, and what does not survive the trip
 ---
 
-**Options ▸ Config file ▸ Import from SWS** converts an existing **SWS Auto Color** setup into rules
-here, so nothing has to be retyped.
+**Options ▸ Config file ▸ Import from SWS** converts an existing **SWS Auto Color** setup into AutoColor rules.
 
-It reads SWS first and reports what it found — how many rules, how they split across tabs, how many
-will arrive switched off — and imports only on confirmation. Cancelling changes nothing.
+It reads SWS first and reports what it found — how many rules, how they split across tabs, how many will arrive switched off — and imports only on confirmation. Cancelling changes nothing.
 
-It only ever **adds**, appending below existing rules, so nothing already configured changes
-meaning. **Undo** takes an import back while the window is open, and nothing reaches the project
-until **Apply** runs.
+It only ever **adds**, appending below existing rules. **Undo** takes an import back while the window is open, and the project is not recoloured until the next apply.
 
-For SWS's rules alone, **Remove Rules** first — that one also asks — then import into the empty
-set.
+To keep SWS's rules alone, use **Remove Rules** first, then import.
 
 ## What it reads
 
-`sws-autocoloricon.ini`, in the REAPER resource folder — *Options ▸ Show REAPER resource path* in
-REAPER's own menu. The location is found automatically; with SWS never installed, the import reports
-that and changes nothing.
+`sws-autocoloricon.ini`, in the REAPER resource folder — *Options ▸ Show REAPER resource path* in REAPER's own menu. The location is found automatically; with SWS never installed, the import reports that and changes nothing.
 
-Gradient colours come from `reaper.ini`, where SWS keeps them. With none set, the import falls back
-to SWS's own default of black to white.
+Gradient colours come from `reaper.ini`, where SWS keeps them. With none set, the import falls back to SWS's own default of black to white.
 
 Both files are only ever read. No part of the SWS setup is changed or removed.
 
 ## What comes across exactly
 
-SWS matches on a **case-insensitive piece of the name**, and the first matching rule wins. Both are
-exactly how this tool works, so an ordinary SWS rule arrives unchanged: same colour, same position
-in the list, same behaviour.
+SWS matches a **case-insensitive substring** of the name, and the first matching rule wins, as here, so an ordinary SWS rule arrives unchanged.
 
 | In SWS | Here |
 |---|---|
@@ -44,8 +34,7 @@ in the list, same behaviour.
 
 ## What does not
 
-Some SWS features have no equivalent. Those rules are **still imported**, but they arrive
-**switched off**, with the reason added to the rule's name, to make them findable in the list:
+Some SWS features have no equivalent. Those rules are **still imported**, but they arrive **switched off**, with the reason added to the rule's name:
 
 | In SWS | Why it does not come across |
 |---|---|
@@ -57,32 +46,22 @@ Some SWS features have no equivalent. Those rules are **still imported**, but th
 | `(master)` | REAPER [ignores a custom colour on the master track](/Reaper-AutoColor/troubleshooting/#the-master-track-is-never-coloured), so this never did anything visible in SWS either. |
 | `(record armed)`, `(audio input)`, `(audio output)`, `(MIDI output)`, `(vca master)` | No equivalent filter. |
 
-Those rules keep the SWS keyword as their pattern, which matches nothing, so leaving them switched
-off is harmless. They are worth reading before switching any on: a rule whose pattern is
-`(record armed)` will not do what its name suggests.
+Those rules keep the SWS keyword as their pattern, matched as plain text. Check them before switching any on: `(record armed)` as a pattern does not match armed tracks.
 
 :::caution[Ignore rules change more than themselves]
-In SWS, an **Ignore** rule matched a track, left it alone, **and stopped every rule below it**. The
-blocking is the part with no equivalent here, so the rules *underneath* an Ignore rule may now
-colour tracks they never used to — the only one of these losses that affects anything beyond its own
-rule.
+In SWS, an **Ignore** rule matched a track, left it alone, **and stopped every rule below it**. The blocking is the part with no equivalent here, so the rules *underneath* an Ignore rule may now colour tracks they never used to.
 :::
 
 TCP/MCP layouts are read and discarded.
 
-An icon rule does not lose what its colour lost: in SWS the two are decided separately, so an
-**Ignore** or **Random** colour still leaves its icon rule switched on.
+An icon rule does not lose what its colour lost: in SWS the two are decided separately, so an **Ignore** or **Random** colour still leaves its icon rule switched on.
 
 ## Afterwards
 
-Importing does not switch SWS off. Until it is, both are live colour engines fighting over the same
-tracks, and each affected tab shows a warning while that holds. SWS's is switched off under
-**SWS ▸ Auto Color/Icon/Layout**.
+Importing does not switch SWS off. Switch it off under **SWS ▸ Auto Color/Icon/Layout**; until then both recolour the same tracks, and each affected tab shows a warning.
 
-Worth checking before applying:
+Before applying, check:
 
 - Anything switched off carries its reason in its name.
-- An SWS `(any)` catch-all matches *everything*. It lands below the existing rules, so those still
-  win where they apply, but it claims every object they leave over — often more than intended.
-- **Hits** in the rule list reports what each rule actually wins. See
-  [Applying](/Reaper-AutoColor/usage/applying/).
+- An SWS `(any)` catch-all matches *everything*. It lands below the existing rules and claims every object they leave unmatched.
+- **Hits** in the rule list reports what each rule actually wins. See [Applying](/Reaper-AutoColor/usage/applying/).

@@ -12,20 +12,16 @@ Every rule tests one thing: the object's **name**. The **Match** mode decides ho
 | **regex** | anywhere, unless anchored | `^(kick\|snare\|hh)\b` |
 
 :::caution[contains and glob are not the same thing]
-Globs are anchored to the whole name, so `bass` as a **glob** matches only a track named exactly
-"bass". As **contains**, it matches "Sub Bass DI". A glob rule unexpectedly on 0 hits is almost
-always this; wrap it in `*`.
+Globs are anchored to the whole name, so `bass` as a **glob** matches only a track named exactly "bass". As **contains**, it matches "Sub Bass DI". A glob rule unexpectedly on 0 hits is almost always this; wrap it in `*`.
 :::
 
-**Aa** on the row makes the comparison case-insensitive. On by default, since track names are
-typed casually and a rule missing "Bass" because it was written `bass` is a poor default. Folding
-is **ASCII only**: `Č` and `č` are not equated.
+**Aa** on the row makes the comparison case-insensitive, on by default. It covers **ASCII only**: `Č` and `č` are not equated.
 
 ## Pattern Syntax
 
-The Pattern tester at the foot of the window works a pattern out before it goes into a rule. It has
-its own mode, pattern and subject, reports where the match landed and what each group captured, and
-touches neither the rules nor the project.
+:::note
+You can test patterns before they goes into rules with the **Pattern tester**.
+:::
 
 ### Regex
 
@@ -42,16 +38,14 @@ touches neither the rules nor the project.
 (?i)                        case-insensitive, at the very start only
 ```
 
-Backreferences, lookaround and named groups are **not** supported. A pattern using them is rejected
-with a message on the row, rather than misbehaving silently.
+Backreferences, lookaround and named groups are **not** supported. A pattern using them is rejected with a message on the row.
 
 :::note[Non-ASCII names]
 Byte classes accept non-ASCII, so `\w+` matches `Kytara_hlavní`. Only case *folding* is ASCII-only.
 :::
 
 :::caution[Patterns that are too slow]
-A step budget cuts off a pathological pattern — `(a+)+$` and similar — to prevent it hanging
-REAPER. The rule is flagged and treated as a no-match. Nested quantifiers are the usual cause.
+A pattern that takes too long — `(a+)+$` and similar — is stopped, to prevent REAPER from hanging. The rule is flagged and treated as a no-match. Nested quantifiers are the usual cause.
 :::
 
 ### Glob
@@ -65,11 +59,16 @@ A glob is anchored to the **whole** name. Four things are special:
 | `[abc]` | one character from the set. `[a-c]` is a range |
 | `[!abc]` | one character not in the set. `[^abc]` does the same |
 
-Every other character is literal, so `.`, `+`, `(` and `|` match themselves.
+All other characters match themselves, so a name like `Gtr.1 (DI)` needs no special treatment.
 
-There is no escape character. A literal `*` or `?` goes in a class: `x[*]y` matches `x*y` and
-nothing else. A `[` with no closing `]` is a literal `[`. A `]` inside a class must come first, as
-in `[]x]`.
+To match a special character itself, put it in brackets:
+
+| To match | Write | Example |
+|---|---|---|
+| `*` | `[*]` | `x[*]y` matches `x*y` only |
+| `?` | `[?]` | `Take[?]` matches `Take?` only |
+| `[` | `[[]` | `[[]1]` matches `[1]` |
+| `]` in a set | `]` first | `[]x]` matches `]` or `x` |
 
 ## Filters
 
@@ -77,18 +76,16 @@ A rule can carry one optional non-name filter that **narrows** what it matches.
 
 | Filter | Applies to | Matches |
 |---|---|---|
-| **is a folder track** | tracks, items | a track that is the parent of a folder |
-| **is inside a folder** | tracks, items | any track nested under a folder parent |
-| **has an instrument** | tracks, items | a track with an instrument plugin in its FX chain, as REAPER classes it |
-| **has a MIDI input** | tracks, items | a track whose record input is MIDI |
-| **has receives** | tracks, items | a track with at least one receive, such as a bus or a return |
-| **has no name** | all kinds | an object with an empty name |
+| **is a folder track** | tracks, icons | a track that is the parent of a folder |
+| **is inside a folder** | tracks, icons | any track nested under a folder parent |
+| **has an instrument** | tracks, icons | a track with an instrument plugin in its FX chain, as REAPER classes it |
+| **has a MIDI input** | tracks, icons | a track whose record input is MIDI |
+| **has receives** | tracks, icons | a track with at least one receive, such as a bus or a return |
+| **has no name** | all types | an object with an empty name |
 
-The filter and the pattern combine with **and**: both must hold. An empty **pattern** matches on the
-filter alone — an empty pattern with *is a folder track* means "every folder track", while `^Drums`
-with the same filter means "folder tracks named Drums…".
+The filter and the pattern combine with **and**: both must hold. An empty **pattern** matches on the filter alone — an empty pattern with *is a folder track* means "every folder track", while `^Drums` with the same filter means "folder tracks named Drums…".
 
-A tab offers only the filters its kind can use, to prevent building a rule that never matches.
+A tab offers only the filters its object type can use.
 
 ## A worked example
 
@@ -100,9 +97,7 @@ Rules on the **Tracks** tab, top to bottom:
 | 2 | Drums | regex | `^(kick\|snare\|hh)\b` | — | the drum tracks by name |
 | 3 | Anything in a folder | contains | *(empty)* | is inside a folder | everything else nested |
 
-Rule 3 has no pattern, so without the filter it would match every track. Sitting last, it gets only
-what rules 1 and 2 did not claim. That is the normal shape: specific rules at the top, a catch-all
-at the bottom.
+Rule 3 has no pattern, so without the filter it would match every track. Sitting last, it gets only what rules 1 and 2 did not claim. That is the normal shape: specific rules at the top, a catch-all at the bottom.
 
 ## Where to go next
 

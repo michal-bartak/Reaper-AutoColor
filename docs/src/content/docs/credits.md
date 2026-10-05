@@ -16,10 +16,7 @@ Created by Michal Bartak, assisted by [Claude](https://claude.ai).
 
 ## Prior art
 
-AutoColor grew out of [SWS/S&M's](https://www.sws-extension.org/) Auto Color. SWS matches
-case-insensitive substrings only and has no item support; this covers tracks, items, regions and
-markers in one ordered rule list, with real regular expressions. Do not run both at once — see
-[Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
+AutoColor grew out of [SWS/S&M's](https://www.sws-extension.org/) Auto Color. SWS matches case-insensitive substrings only and has no item support; AutoColor covers tracks, items, regions and markers, one ordered rule list per object type, with regular expressions. Do not run both at once — see [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
 
 ## License
 

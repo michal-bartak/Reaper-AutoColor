@@ -18,15 +18,13 @@ ReaPack adds two actions to the Action List and dedicated [toolbar icons](#the-t
 * <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> `MXM_AutoColor_AutoToggle.lua` - Start/stop background auto-colouring
 
 :::note
-Both can be added to any toolbar with the icons supplied. Search `autocolor` or `mxm` to find the
-actions and the icons.
+Both can be added to any toolbar with the icons supplied. Search `autocolor` or `mxm` to find the actions and the icons.
 :::
 
 <details>
 <summary>Manual installation steps</summary>
 
-1. Open *Options → Show REAPER resource path in explorer/finder*. Everything below goes into that
-   folder:
+1. Open *Options → Show REAPER resource path in explorer/finder*. Everything below goes into that folder:
 
    | OS | Resource path |
    |----|------|
@@ -41,11 +39,8 @@ actions and the icons.
    Reaper/Data/toolbar_icons/         ->  <resource path>/Data/toolbar_icons/
    ```
 
-   The scripts and the [toolbar icons](#the-toolbar-icons) land in the right places together.
-
 In REAPER:
-* *Actions → Show action list → New action → Load ReaScript*, and load at least the two scripts
-  listed above.
+* *Actions → Show action list → New action → Load ReaScript*, and load at least the two scripts listed above.
 * Add them to a toolbar, with the icons supplied.
 </details>
 
@@ -65,9 +60,7 @@ Installed in `Scripts/MXM Scripts/MXM_AutoColor`.
 | | `MXM_AutoColor_Dump.lua` | Read-only diagnostic listing |
 | | `MXM_AutoColor_RunTests.lua` | Self-test, prints to the ReaScript console |
 
-The two with an icon are the everyday ones, and ReaPack registers them in the Action List
-automatically; a manual install registers them by hand. The rest are called internally or serve
-diagnostics.
+The two with an icon are the everyday ones, and ReaPack registers them in the Action List automatically; a manual install registers them by hand. The rest are used internally or for diagnostics.
 
 
 ### The toolbar icons
@@ -79,7 +72,7 @@ Two toolbar icons ship with the package, for the two main scripts.
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> | `mxm_toolbar_autocolor` | `MXM_AutoColor_AutoToggle.lua` |
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor-gui.svg" alt="Window toolbar icon"> | `mxm_toolbar_autocolor_gui` | `MXM_AutoColor_GUI.lua` |
 
-Three sizes each, in `<resource path>/Data/toolbar_icons/`:
+Icons are stored in `<resource path>/Data/toolbar_icons/`: and provided in 3 sizes:
 
 ```
 mxm_toolbar_autocolor.png            90x30
@@ -92,13 +85,10 @@ mxm_toolbar_autocolor_gui.png        90x30
 
 ## First run
 
-Run `MXM_AutoColor_GUI.lua`. The first run writes a **starter rule set**, so the window opens with
-something in it, and reports the location:
+Run `MXM_AutoColor_GUI.lua`. The first run writes a **starter rule set** and reports its location:
 
 ```
 <REAPER resource path>/MXM_AutoColor/config.json
 ```
 
-One global rule set, shared by every project, stored **outside** `Scripts/` to prevent
-reinstalling or updating from overwriting it. See
-[Config file](/Reaper-AutoColor/configuration/config-file/).
+One global rule set, shared by every project, stored **outside** `Scripts/` to prevent reinstalling or updating from overwriting it. See [Config file](/Reaper-AutoColor/configuration/config-file/).
