@@ -3,11 +3,10 @@ title: Overview
 description: Colour REAPER tracks, items, regions and markers from their names
 ---
 
-AutoColor colours **tracks, items, regions and markers** from their **names**, and sets **track
-icons** the same way, matching on a plain substring, a glob, or a real regular expression.
+AutoColor colours **tracks, items, regions and markers** and sets **track
+icons** mby atching their names against either plain substring, a glob, or a regular expression.
 
-Rules are global: one set, shared by every project. A track named `Sub Bass DI` turns purple as
-soon as it is named, and the items on it follow.
+Rules are global, shared by every project, though changed to properties of Reaper objects are stored with the project. 
 
 <figure class="shot">
 
@@ -17,26 +16,17 @@ soon as it is named, and the items on it follow.
 </figure>
 
 ## Main features
-
-- **One ordered list per object kind.** Tracks, Items, Regions and Markers each have a tab. Within
-  a tab the first rule that matches wins, like firewall rules.
+- **Background auto-colouring.** A loop keeps the objects being automatically updated, leaving manually set colours and icons alone.
+- **One ordered list per object type.** Tracks, Items, Regions, Markers and Icons - each have a tab. Within a tab the first rule that matches wins.
 - **Three match modes.** `contains`, `glob` and full `regex`, per rule.
-- **Non-name filters.** A rule can be narrowed to folder tracks, tracks inside a folder, tracks
-  with an instrument, a MIDI input or receives, or unnamed objects.
-- **Track icons.** An Icons tab sets each track's icon by name, from a searchable browser, with its
-  own precedence.
-- **Gradients.** A rule with a second colour spreads its matches along a ramp, grouped by runs, by
-  folders, or not at all.
+- **Non-name filters.** A rule can be narrowed to folder tracks, tracks inside a folder, tracks with an instrument, a MIDI input or receives, or unnamed objects.
+- **Gradients.** A rule with a second colour spreads its matches along a ramp. It might generate multiple ramps if matched objects are interrupted by unmatched objects or by folders.
 - **Items follow their track.** A track rule can colour the items on it, whatever they are called.
-- **Background auto-colouring.** A loop keeps the project in step with renames, adding no undo
-  points and leaving manually set colours and icons alone.
-- **Live preview.** Every rule shows its hit count, and the panes at the foot of the window list the
-  objects it claims in this project.
+- **Live preview.** GUI shows hit count, and the matched tracks preview yet before applied.
 
 :::tip[SWS Auto Color]
 SWS matches case-insensitive substrings only, and has no item support.
-[Matching names](/Reaper-AutoColor/usage/matching/) covers what the three modes do differently. Do
-not run both at once — see [Troubleshooting](/Reaper-AutoColor/troubleshooting/).
+[Matching names](/Reaper-AutoColor/usage/matching/) covers what the three modes do differently. Do not run both extensions at once — see [Troubleshooting](/Reaper-AutoColor/troubleshooting/).
 :::
 
 ## How a colour is decided
@@ -45,14 +35,12 @@ not run both at once — see [Troubleshooting](/Reaper-AutoColor/troubleshooting
 1. The **first** rule that matches wins. Its colour becomes the object's colour.
 1. If that rule has a second colour, the object's shade comes from its place in the
    [gradient](/Reaper-AutoColor/usage/colours/#gradients).
-1. An item that no item rule claims can take its **track's** colour, where the track's rule is set
-   to [cascade](/Reaper-AutoColor/usage/colours/#items).
 1. A track that no rule claims can inherit from its **folder parent**, depending on the
    [folder setting](/Reaper-AutoColor/usage/colours/#folders).
-1. Otherwise the object is left alone, unless unmatched objects of that kind are set to
-   [reset](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects).
+1. Otherwise the object is left alone, unless unmatched objects of that kind are set to [reset](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects).
+1. An item that no item rule claims takes its **track's** colour automatically being not explicitelly coloured or might be coloured by [colour of its track](/Reaper-AutoColor/usage/colours/#items).
 
-Nothing reaches the project until **Apply** runs, or the background loop does.
+The configuration is applied to project by ressing the **Apply** buton, or (if enabled) by performing changes to the Reaper objects (adding/renaming tracks etc).
 
 ## Where to go next
 
