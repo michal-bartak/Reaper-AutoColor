@@ -182,7 +182,13 @@ repo:
 
 ## Writing: short, and in the right place
 
-Prose is the thing I most often have to cut. Default to fewer words.
+Prose is the thing I most often have to cut. Default to fewer words — in UI
+text, commits, the changelog, code comments and replies.
+
+**The user documentation is the exception.** Pages under
+`docs/src/content/docs/` follow `docs/CLAUDE.md`: written for a user who knows
+REAPER but not this code, explicit over compressed, clarity over brevity. Read
+it before editing any page there.
 
 - **UI text is the tightest.** A tooltip is two or three short lines. A dialog
   states what will happen and stops. Neither explains *why* something works the

@@ -1,49 +1,64 @@
 ---
 title: Overview
-description: Colour REAPER tracks, items, regions and markers from their names
+description: Colour REAPER tracks, items, regions and markers, and set track icons, from their names
 ---
 
-AutoColor colours **tracks, items, regions and markers** and sets **track icons** by matching their names against a plain substring, a glob, or a regular expression.
+AutoColor is a REAPER script that colours **tracks, items, regions and markers** according to their names. It can also set **track icons** the same way. For example, every track whose name contains `kick` can be coloured red, and every track whose name contains `vox` green, without picking either colour by hand.
 
-Rules are global, shared by every project, though the colours and icons they set are stored with the project.
+You describe which names get which colour once. AutoColor then colours every matching track, item, region and marker in the project, and can keep doing so as you add and rename them.
 
 <figure class="shot">
 
-![The configuration window](../../assets/usage/window-overview.png)
+![The configuration window](../../assets/usage/overview.png)
 
 <figcaption>The configuration window</figcaption>
 </figure>
 
+:::tip[Coming from SWS Auto Color]
+SWS Auto Color matches names by case-insensitive substring only, and does not colour items. AutoColor offers three ways to match a name, including regular expressions, and colours items as well. [Matching names](/Reaper-AutoColor/usage/matching/) explains the three ways. An existing SWS setup can be brought across with [Import from SWS](/Reaper-AutoColor/configuration/import-sws/).
+
+Do not run SWS Auto Color and AutoColor at the same time; see [Colours keep changing back](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
+:::
+
+## Concepts
+
+**Object type.** AutoColor works on four object types: tracks, items, regions and markers. In this documentation, an *object* is any track, item, region or marker. Each object type has its own tab in the configuration window. Track icons have a fifth tab, **Icons**.
+
+**Rule.** A rule pairs a name pattern with a colour, or on the Icons tab with an icon. For example, a rule with the pattern `vox` and the colour green colours every track whose name contains `vox` green.
+
+**Match.** A rule matches an object when the object's name fits the rule's pattern. A rule can also have a **filter**, an extra condition that does not depend on the name, such as "is a folder track". When a rule has a filter, the object must also meet that condition.
+
+**Rule order.** The rules on each tab form an ordered list. AutoColor tests an object against the rules on its own tab from top to bottom, and the first rule that matches decides the colour. Rules further down the list are not considered for that object. To give one rule precedence over another, move it higher in the list.
+
+**Applying.** Editing a rule does not change the project by itself. AutoColor writes colours and icons into the project when the rules are **applied**. You apply the rules by clicking **Apply now** in the configuration window, or by running one of the apply actions.
+
+**Auto-apply.** When auto-apply is on, AutoColor applies the rules automatically whenever the project changes, for example when a track is added or renamed. While auto-apply is running, it does not overwrite a colour or icon that you set by hand. See [Colours and icons set by hand](/Reaper-AutoColor/usage/auto-apply/#colours-and-icons-set-by-hand).
+
+**Rules are shared, colours are saved per project.** There is one set of rules, shared by every project. The colours and icons that the rules set are saved in each project, like any colour set by hand.
+
 ## Main features
 
-- **Background auto-colouring.** A loop keeps objects updated automatically, leaving manually set colours and icons alone.
-- **One ordered list per object type.** Tracks, Items, Regions, Markers and Icons each have a tab. Within a tab the first rule that matches wins.
-- **Three match modes.** `contains`, `glob` and full `regex`, per rule.
-- **Non-name filters.** A rule can be narrowed to folder tracks, tracks inside a folder, tracks with an instrument, a MIDI input or receives, or unnamed objects.
-- **Gradients.** A rule with a second colour spreads its matches along a ramp. Matches interrupted by other objects or by folders can get a ramp each.
-- **Items follow their track.** A track rule can colour the items on it, whatever they are called.
-- **Live preview.** The window shows each rule's hit count, and the matched objects before anything is applied.
-
-:::tip[SWS Auto Color]
-SWS matches case-insensitive substrings only, and has no item support. [Matching names](/Reaper-AutoColor/usage/matching/) covers what the three modes do differently. Do not run SWS Auto Color and AutoColor at once — see [Troubleshooting](/Reaper-AutoColor/troubleshooting/).
-:::
+- **Automatic colouring.** With [auto-apply](/Reaper-AutoColor/usage/auto-apply/) on, new and renamed objects are coloured as you work.
+- **Three match modes per rule.** `contains` finds text anywhere in the name. `glob` compares the entire name against a pattern with wildcards such as `*`. `regex` uses a regular expression.
+- **Filters that do not depend on the name.** A track rule can be limited to folder tracks, tracks inside a folder, tracks with an instrument, tracks with a MIDI input, or tracks with receives. A rule on any tab can be limited to objects that have no name. See [Filters](/Reaper-AutoColor/usage/matching/#filters).
+- **Gradients.** A rule with a second colour gives its matches a range of shades between the two colours. The range can restart in each folder, or after each interruption by an object the rule does not match. See [Gradients](/Reaper-AutoColor/usage/colours/#gradients).
+- **Items in their track's colour.** A track rule can also colour the items on the matching tracks, whatever those items are called. See [Items](/Reaper-AutoColor/usage/colours/#items).
+- **Live preview.** Before anything is applied, the window lists the objects each rule matches and the colour each object will get, and shows how many objects each rule colours.
 
 ## How a colour is decided
 
-1. AutoColor tests the object's name against the rules on **its own tab**, top to bottom.
-1. The **first** rule that matches wins. Its colour becomes the object's colour.
-1. If that rule has a second colour, the object's shade comes from its place in the [gradient](/Reaper-AutoColor/usage/colours/#gradients).
-1. A track that no rule claims can inherit from its **folder parent**, depending on the [folder setting](/Reaper-AutoColor/usage/colours/#folders).
-1. Otherwise the object is left alone, unless unmatched objects of that type are set to [reset](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects).
-1. An item that no item rule claims shows its **track's** colour: REAPER draws it so while the item has no colour of its own, or the track's rule [writes the colour onto it](/Reaper-AutoColor/usage/colours/#items).
+[How a rule's colour is chosen](/Reaper-AutoColor/usage/colours/#how-a-rules-colour-is-chosen) describes, step by step, how AutoColor decides the colour of each object. Track icons are decided in the same way, by the rules on the Icons tab, independently of the track's colour.
 
-The rules are applied to the project by pressing **Apply now**, or, with [auto-apply](/Reaper-AutoColor/usage/auto-apply/) on, whenever objects change — a track added or renamed, for example.
+## Limitations
+
+- The master track is never coloured, because REAPER does not show a custom colour on it. See [The master track is never coloured](/Reaper-AutoColor/troubleshooting/#the-master-track-is-never-coloured).
+- Takes have no rules of their own, and AutoColor removes take colours from the items it colours. See [Takes](/Reaper-AutoColor/usage/colours/#takes).
 
 ## Where to go next
 
-- [Requirements](/Reaper-AutoColor/requirements/) — the REAPER version and the one extension required.
-- [Installation](/Reaper-AutoColor/installation/) — install through ReaPack, or copy the folder in by hand.
-- [The configuration window](/Reaper-AutoColor/usage/) — the tabs, the rule row, the action bar.
-- [Matching names](/Reaper-AutoColor/usage/matching/) — modes, supported regex, filters.
-- [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) — the background loop and what it leaves alone.
-- [Troubleshooting](/Reaper-AutoColor/troubleshooting/) — when the colour is not the expected one.
+- [Requirements](/Reaper-AutoColor/requirements/): the REAPER version and the ReaImGui extension that the configuration window needs.
+- [Installation](/Reaper-AutoColor/installation/): installing through ReaPack, or copying the files by hand.
+- [The configuration window](/Reaper-AutoColor/usage/): the tabs, the rule list, the preview and the buttons.
+- [Matching names](/Reaper-AutoColor/usage/matching/): the three match modes, the supported regular expressions, and the filters.
+- [Auto-apply](/Reaper-AutoColor/usage/auto-apply/): keeping the project coloured automatically, and what auto-apply leaves alone.
+- [Troubleshooting](/Reaper-AutoColor/troubleshooting/): what to check when an object does not get the expected colour.

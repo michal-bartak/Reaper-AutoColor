@@ -1,6 +1,6 @@
 ---
 title: Credits
-description: Author, tools, and license
+description: Author, tools, prior art and licence
 ---
 
 ## Author
@@ -11,14 +11,14 @@ Created by Michal Bartak, assisted by [Claude](https://claude.ai).
 
 - [REAPER](https://www.reaper.fm/) and its ReaScript Lua API.
 - [ReaImGui](https://codeberg.org/cfillion/reaimgui) by cfillion, for the configuration window.
-- A hand-written regex engine. No external Lua dependencies at all.
-- [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/), for these docs.
+- A regular-expression engine written for AutoColor. AutoColor has no other Lua dependencies.
+- [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/), for this documentation.
 
 ## Prior art
 
-AutoColor grew out of [SWS/S&M's](https://www.sws-extension.org/) Auto Color. SWS matches case-insensitive substrings only and has no item support; AutoColor covers tracks, items, regions and markers, one ordered rule list per object type, with regular expressions. Do not run both at once — see [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
+AutoColor grew out of the Auto Color feature of [SWS/S&M](https://www.sws-extension.org/).
 
-## License
+## Licence
 
 Released under the MIT License. © 2026 Michal Bartak.
 
