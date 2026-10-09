@@ -1,6 +1,6 @@
 ---
-title: Applying colours
-description: Apply now, Selection, and the actions that do the same without the window
+title: Applying colours and icons
+description: Apply now, Selection, and the actions that write colours and icons into the project
 ---
 
 AutoColor rules determine which colour each track, item, region and marker should have, and which icon each track should have. Tracks, items, regions and markers are called *objects* in the window and on this page. Editing a rule does not change the project. The rules take effect only when they are applied.

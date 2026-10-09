@@ -1,6 +1,6 @@
 ---
 title: Colours and gradients
-description: The colour a rule gives to what it matches, gradients between two colours, folder colours, and how items take their colour
+description: The colour a rule gives to what it matches, gradients between two colours, and folder colours
 ---
 
 Every rule on the **Tracks**, **Items**, **Regions** and **Markers** tabs has a colour. AutoColor gives that colour to the tracks, items, regions or markers that the rule matches. This page explains which colour each of them receives.
@@ -10,9 +10,9 @@ A rule can have one colour or two:
 - With one colour, everything the rule matches receives that same colour.
 - With two colours, the rule creates a *gradient*: a sequence of shades that changes step by step from the first colour to the second. Gradients make related tracks look like a group while keeping each track distinguishable.
 
-Other settings on this page decide whether the tracks inside a folder also receive the folder track's colour, and how items get their colour.
+The folder setting on this page decides whether the tracks inside a folder also receive the folder track's colour.
 
-The colours are written into the project when the rules are applied: with **Apply now** or **Selection** in the configuration window, with the apply actions, or automatically while auto-apply is running. See [Applying colours](/Reaper-AutoColor/usage/applying/).
+The colours are written into the project when the rules are applied: with **Apply now** or **Selection** in the configuration window, with the apply actions, or automatically while auto-apply is running. See [Applying colours and icons](/Reaper-AutoColor/usage/applying/).
 
 In this documentation, *object* is the general word for a track, an item, a region or a marker.
 
@@ -34,7 +34,7 @@ When the rules are applied, AutoColor works out the colours for each rule in thi
 1. If the rule has one colour, every one of these objects receives it.
 1. If the rule has two colours, the objects receive shades of a gradient. The rule's [spread setting](#spread-across) decides how the gradient is divided among them.
 
-An object that no rule colours keeps the colour it already has, unless the option [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches) is on for its object type. Items have additional ways to get a colour; see [Items](#items).
+An object that no rule colours keeps the colour it already has, unless the option [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches) is on for its object type. Items have additional ways to get a colour; see [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour).
 
 The diagrams on this page show the result of different combinations of these settings.
 
@@ -287,60 +287,7 @@ These points apply to gradients only. A rule with one colour gives the same resu
 - If an object that separates two runs is renamed so that the rule now colours it, the two runs join into one ramp.
 - A gradient rule on the **Items** tab can be slow in very large projects. The window shows a warning when such a rule is selected.
 
-## Items
-
-In REAPER, an item is drawn in one of two ways:
-
-- An item with **no colour of its own** is drawn in its **track's** colour. The item follows its track: if you move the item to another track, REAPER draws it in the new track's colour at once.
-- An item **with a colour of its own** keeps that colour. If you move the item to another track, the colour moves with it.
-
-AutoColor can put an item into either state. Three settings decide which:
-
-| Setting | What it does to the item |
-|---|---|
-| A rule on the **Items** tab | Gives the item the colour of that rule. The rule matches the name of the item's active take. |
-| The **Items** checkbox on a rule on the **Tracks** tab | Gives every item on the tracks that the rule colours the track's colour, whatever the items are called. The item then has a colour of its own, so REAPER no longer draws it from the track it sits on. |
-| **Options → Scope → Reset to the default colour when no rule matches**, ticked for **Items** | Removes the colour from every item that the first two settings do not colour, so REAPER draws those items in their track's colour again. See [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches). |
-
-For a single item, AutoColor checks these settings in order:
-
-1. If a rule on the **Items** tab matches the item, the item receives that rule's colour.
-1. Otherwise, if the item's track is coloured by a rule with **Items** ticked, the item receives the track's colour.
-1. Otherwise, if the reset is ticked for **Items**, AutoColor removes the item's colour.
-1. Otherwise, AutoColor leaves the item's colour unchanged.
-
-The reset never affects an item that step 1 or step 2 colours.
-
-The **Items** checkbox also applies to the children of a folder. If a track receives its colour from its folder track, and the folder track's rule has **Items** ticked, the items on that child track also receive the colour.
-
-If a track rule with **Items** ticked has two colours, each track's items receive that track's shade of the gradient. All items on one track have the same colour.
-
-:::tip[To make items look like their track, prefer the reset]
-The **Items** checkbox and the reset both make an item show its track's colour as soon as the rules are applied. They differ when you later move the item to another track:
-
-- With the reset, the item has no colour of its own. REAPER draws it in the new track's colour at once.
-- With the **Items** checkbox, the item keeps the colour that was written to it. The next time the rules are applied, the item receives the new track's colour only if the new track's rule also has **Items** ticked.
-
-The **Items** checkbox is useful when items should keep their colour after they move to another track, or when the REAPER theme does not tint items with their track's colour.
-:::
-
-Whether item colours are visible at all depends on two [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/).
-
-### Takes
-
-In REAPER, an item holds one or more takes, and each take can have a colour of its own. A take colour can hide the item's colour; [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/) explains which colour REAPER draws.
-
-AutoColor writes colours to the **item**, never to a take. When AutoColor writes a colour to an item, it also removes the colour from every take in that item. This keeps a take colour from hiding the item colour. For the same reason, AutoColor writes the colour again to an item whose colour is already correct if the item's active take has a colour of its own.
-
-:::caution
-Take colours and AutoColor item colours cannot be combined. When AutoColor colours an item, it removes any take colours you set in that item. A take colour on an item that AutoColor does not colour stays in place.
-:::
-
-There are no rules for takes. When you record, REAPER names each take after the track, and it does not rename the take when you later rename the track. Rules for takes would therefore duplicate the rules for tracks. To colour individual takes, use REAPER's own options, such as colouring each recording pass.
-
-To check whether your setup draws the take colour or the item colour, see the tip in [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/#automatic-take-colours).
-
 ## Where to go next
 
-- [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/) — two REAPER settings that decide whether these colours are visible at all.
+- [Item colours](/Reaper-AutoColor/usage/items/) — how items take their colour, and take colours.
 - [Matching names](/Reaper-AutoColor/usage/matching/) — how a rule decides which objects it colours.

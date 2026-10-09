@@ -108,12 +108,21 @@ export default defineConfig({
           label: 'Usage',
           items: [
             { label: 'The configuration window', link: '/usage/' },
-            { label: 'Matching names', link: '/usage/matching/' },
-            { label: 'Colours and gradients', link: '/usage/colours/' },
+            { label: 'Track colours', link: '/usage/tracks/' },
+            { label: 'Item colours', link: '/usage/items/' },
+            { label: 'Region colours', link: '/usage/regions/' },
+            { label: 'Marker colours', link: '/usage/markers/' },
             { label: 'Track icons', link: '/usage/icons/' },
-            { label: 'Applying colours', link: '/usage/applying/' },
+            { label: 'Applying colours and icons', link: '/usage/applying/' },
             { label: 'Auto-apply', link: '/usage/auto-apply/' },
             { label: 'Clearing colours', link: '/usage/clearing/' },
+          ],
+        },
+        {
+          label: 'In depth',
+          items: [
+            { label: 'Matching names', link: '/usage/matching/' },
+            { label: 'Colours and gradients', link: '/usage/colours/' },
           ],
         },
         {

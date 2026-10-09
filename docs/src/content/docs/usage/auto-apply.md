@@ -3,7 +3,7 @@ title: Auto-apply
 description: Keeping the project coloured automatically, what it leaves alone, and how quickly it reacts
 ---
 
-AutoColor rules take effect only when they are applied. You can apply them by hand with **Apply now**, as described in [Applying colours](/Reaper-AutoColor/usage/applying/). Auto-apply applies them for you. While auto-apply is running, AutoColor watches the project and applies the rules whenever a track, item, region or marker is added, renamed or deleted. For example, when you add a track or rename it, the track receives its colour and icon within a fraction of a second.
+AutoColor rules take effect only when they are applied. You can apply them by hand with **Apply now**, as described in [Applying colours and icons](/Reaper-AutoColor/usage/applying/). Auto-apply applies them for you. While auto-apply is running, AutoColor watches the project and applies the rules whenever a track, item, region or marker is added, renamed or deleted. For example, when you add a track or rename it, the track receives its colour and icon within a fraction of a second.
 
 Use auto-apply when you want the project to stay coloured while you work, without pressing **Apply now** after every change.
 

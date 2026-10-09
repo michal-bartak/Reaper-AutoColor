@@ -20,7 +20,22 @@ The name that AutoColor reads depends on the object type:
 
 The rules on a tab are checked from top to bottom. The first rule that matches an object is the rule that colours it. Rules further down the list do not affect that object, even if they also match it. To give a rule priority over another, move it higher in the list.
 
-The **Hits** column in the window shows how many objects each rule colours. See [The Hits column](/Reaper-AutoColor/usage/#the-hits-column).
+### The Hits column
+
+The **Hits** column of a rule counts the objects that this rule colours, which means the objects for which this rule is the first match. An object that also matches a rule higher in the list is coloured by that higher rule, and is not counted here.
+
+When other objects match this rule but a higher rule colours them, their number is shown after the count, for example `12  +3`. To let this rule colour those objects, move it above the other rule.
+
+The column can also show:
+
+- `err`: the pattern is invalid, and the rule is skipped.
+- `!` before the count: the pattern took too long to test on some names.
+
+Both are described in [Invalid, unsupported and slow patterns](#invalid-unsupported-and-slow-patterns).
+
+:::tip[Hits shows 0, but the objects are still coloured]
+An object can be coloured without any rule on its tab matching it. An item can take the colour of its track, when the track's rule has **Items** switched on. A track can take the colour of its folder track. Such objects appear in *Objects preview*, but they are not counted in **Hits**.
+:::
 
 ## Match modes
 
@@ -224,4 +239,4 @@ Because rule 3 is last, it colours only the tracks inside folders that rules 1 a
 ## Where to go next
 
 - [Colours and gradients](/Reaper-AutoColor/usage/colours/) — what colour a rule gives to the objects it matches.
-- [Items](/Reaper-AutoColor/usage/colours/#items) — how an item can take its track's colour without a rule of its own.
+- [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour) — how an item can take its track's colour without a rule of its own.

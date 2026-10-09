@@ -90,6 +90,6 @@ Before you apply the imported rules, check them:
 
 - Look for rules that arrived switched off. The reason is at the end of each rule's name.
 - An SWS `(any)` rule matches every object on its tab. The import places it below your existing rules, so it colours every object that your existing rules do not match.
-- Check the **Hits** column to see how many objects each rule colours in the current project. See [The Hits column](/Reaper-AutoColor/usage/#the-hits-column).
+- Check the **Hits** column to see how many objects each rule colours in the current project. See [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column).
 
 Each imported rule also records the original SWS line in its `note` field in the [config file](/Reaper-AutoColor/configuration/config-file/). The note is not shown in the window, but you can read it in the file to compare a rule with its SWS source.

@@ -47,7 +47,7 @@ Switch one of the two off. To switch SWS Auto Color off, use *SWS → Auto Color
 
 The **Hits** column shows `0` for a rule, although you expect the rule to match some objects.
 
-**Hits** counts only the objects that the rule colours. A rule colours an object only when no rule higher on the tab matches it first. [The Hits column](/Reaper-AutoColor/usage/#the-hits-column) explains the column in full.
+**Hits** counts only the objects that the rule colours. A rule colours an object only when no rule higher on the tab matches it first. [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column) explains the column in full.
 
 Check these causes:
 

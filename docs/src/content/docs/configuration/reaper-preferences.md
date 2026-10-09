@@ -17,7 +17,7 @@ REAPER can store a colour at three levels:
 
 When more than one of these colours is set, REAPER draws an item in the most specific one. A take colour takes precedence over the item colour, and the item colour takes precedence over the track colour. An item with no item colour and no take colour is drawn in its track's colour.
 
-AutoColor writes item colours, and removes take colours from the items it colours. See [Takes](/Reaper-AutoColor/usage/colours/#takes).
+AutoColor writes item colours, and removes take colours from the items it colours. See [Takes](/Reaper-AutoColor/usage/items/#takes).
 
 ## Which colour an item is drawn in
 

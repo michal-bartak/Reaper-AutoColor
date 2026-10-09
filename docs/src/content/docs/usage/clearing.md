@@ -22,7 +22,7 @@ The **Clear…** button is on the action bar of the configuration window. It ope
 | **Clear selected objects** | The selected objects, whether or not a rule matches them. |
 | **Clear EVERY custom colour in the project…** | Every custom colour in the project, including colours that AutoColor never set. AutoColor asks for confirmation first. |
 
-**Clear colours the rules match** includes items that are coloured because their track rule has the **Items** switch on. It also includes tracks that take their colour from a folder. See [Folders](/Reaper-AutoColor/usage/colours/#folders) and [Items](/Reaper-AutoColor/usage/colours/#items).
+**Clear colours the rules match** includes items that are coloured because their track rule has the **Items** switch on. It also includes tracks that take their colour from a folder. See [Folders](/Reaper-AutoColor/usage/colours/#folders) and [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour).
 
 **Clear selected objects** decides which selected objects to clear in the same way as the **Selection** button. See [Selection](/Reaper-AutoColor/usage/applying/#selection).
 
@@ -32,7 +32,7 @@ Each clear is one undo point. REAPER's undo (`Cmd`/`Ctrl`+`Z`) restores the colo
 **Clear EVERY custom colour in the project…** also removes colours you set by hand and colours set by other tools.
 :::
 
-Clearing an item's colour also clears the colours of all its takes. See [Takes](/Reaper-AutoColor/usage/colours/#takes).
+Clearing an item's colour also clears the colours of all its takes. See [Takes](/Reaper-AutoColor/usage/items/#takes).
 
 ### Clearing track icons
 
@@ -76,7 +76,7 @@ The reset also removes colours that you set by hand on objects that no rule matc
 
 ### Items
 
-For items, the reset is the recommended way to make items show their track's colour. An item without a colour of its own is drawn in its track's colour, and keeps following its track when you move it. The reset never removes a colour that comes from an item rule, or from a track rule with the **Items** switch on. [Items](/Reaper-AutoColor/usage/colours/#items) compares the reset with the **Items** switch and gives the full order in which an item's colour is decided.
+For items, the reset is the recommended way to make items show their track's colour. An item without a colour of its own is drawn in its track's colour, and keeps following its track when you move it. The reset never removes a colour that comes from an item rule, or from a track rule with the **Items** switch on. [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour) compares the reset with the **Items** switch and gives the full order in which an item's colour is decided.
 
 ## Limitations
 
