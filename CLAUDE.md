@@ -156,11 +156,12 @@ repo:
 - `Color/MXM_AutoColor.lua` is the manifest and the category. Package identity is
   `UNIQUE(remote, category, package)` — renaming the category directory, the
   manifest filename, or the index `name=` orphans everyone's install.
-- **A version is only re-cut when the manifest file itself changes.** The
-  manifest is in `Color/` and the code in `Reaper/`, so fixing a shipped file
-  publishes nothing: `reapack-index` says "Nothing to do!" and the version stays
-  pinned to an older commit. Bump `@version` (or `--amend` with an `@about` /
-  `@changelog` edit), then verify with `git show <pinned sha>:<file>`.
+- **Downloads resolve through the tag** (`--url-template …/raw/$version/…`):
+  the tag decides the files, so it must exist on GitHub before the merged index
+  is published, and must never be moved once it is. The **file list and
+  changelog** in `index.xml`, though, are frozen at the commit that first set
+  the version; later manifest edits need `reapack-index --no-commit --amend`.
+  Check the result against `git show <tag>:<file>`.
 - `reapack-index` needs `/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/4.0.0/bin`
   on PATH, and **dies without a TTY** (`IO#getch` → `Errno::ENODEV`) — pass
   `--no-commit` and commit `index.xml` yourself. Careful: `-C` is
