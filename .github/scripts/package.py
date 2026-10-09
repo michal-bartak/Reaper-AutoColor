@@ -7,6 +7,8 @@ the leading Reaper/, to unpack straight into the REAPER resource folder.
 
   package.py --check     validate only
   package.py [OUT_DIR]   validate, then write OUT_DIR/MXM_AutoColor-<version>.zip (default dist/)
+  --root DIR             package the checkout in DIR instead of this one, to build a past
+                         tag with the current script
 """
 import re
 import subprocess
@@ -24,6 +26,7 @@ LIB = 'Reaper/Scripts/MXM_AutoColor/lib/'
 EXTERNAL_MODULES = {'imgui'}  # ReaImGui's built-in, not ours
 
 errors = []
+warnings = []
 
 
 def fail(msg):
@@ -82,8 +85,14 @@ def expected_target(opts, src):
 
 
 def main():
-    check_only = '--check' in sys.argv[1:]
-    out_args = [a for a in sys.argv[1:] if a != '--check']
+    global ROOT
+    args = sys.argv[1:]
+    if '--root' in args:
+        i = args.index('--root')
+        ROOT = Path(args[i + 1]).resolve()
+        del args[i:i + 2]
+    check_only = '--check' in args
+    out_args = [a for a in args if a != '--check']
     out_dir = Path(out_args[0]) if out_args else ROOT / 'dist'
 
     tracked = git('ls-files').split('\n')
@@ -108,9 +117,11 @@ def main():
         if not src.startswith('/Reaper/'):
             fail(f'source outside Reaper/: {src}')
             continue
+        # A warning only: 0.9.x installed one level deeper, and a manual install
+        # does not depend on where ReaPack puts the files.
         if target != expected_target(opts, src):
-            fail(f'"{line}": target should be {expected_target(opts, src)}, '
-                 'or the zip layout no longer matches the ReaPack install')
+            warnings.append(f'"{line}": target is not {expected_target(opts, src)}, '
+                            'so the zip layout differs from the ReaPack install')
         rx = glob_re(src.lstrip('/'))
         matched = [f for f in shipped_tree if rx.match(f)]
         if not matched:
@@ -132,6 +143,8 @@ def main():
             if mod not in EXTERNAL_MODULES and path not in files:
                 fail(f'{f}: require "{mod}" -> {path} not provided')
 
+    for w in warnings:
+        print('WARNING: ' + w, file=sys.stderr)
     if errors:
         print('\n'.join('ERROR: ' + e for e in errors), file=sys.stderr)
         return 1

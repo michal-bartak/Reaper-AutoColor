@@ -63,13 +63,17 @@ jobs:
     needs: [prepare, test]
     runs-on: ubuntu-latest
     steps:
+      # Tooling and CHANGELOG.md from the branch the workflow runs on; the files to
+      # ship from the tag. A past tag predates package.py and the changelog.
+      - uses: actions/checkout@v7
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.tag }}
+          path: release-src
 
-      # Validates the manifest's Provides block, then zips exactly those files.
+      # Validates the tag's Provides block, then zips exactly those files.
       - name: Build package
-        run: python3 .github/scripts/package.py dist
+        run: python3 .github/scripts/package.py --root release-src dist
 
       - name: Extract changelog section
         id: changelog
