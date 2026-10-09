@@ -96,7 +96,7 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: AutoColor ${{ needs.prepare.outputs.tag }}
+          name: Reaper Auto-Color ${{ needs.prepare.outputs.tag }}
           draft: ${{ inputs.draft }}
           prerelease: ${{ needs.prepare.outputs.prerelease }}
           generate_release_notes: false
@@ -107,10 +107,5 @@ jobs:
 
             📖 [CHANGELOG.md](https://github.com/michal-bartak/Reaper-AutoColor/blob/main/CHANGELOG.md) - all changes
 
-            ### Installing
-
-            - **ReaPack** (recommended, installs updates) — import `https://github.com/michal-bartak/ReaPack/raw/main/index.xml`, then install **AutoColor**.
-            - **Manual** — unpack `MXM_AutoColor-${{ needs.prepare.outputs.tag }}.zip` into the REAPER resource folder (*Options → Show REAPER resource path*), merging with the existing `Scripts/` and `Data/` folders. Then load `Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua` and `MXM_AutoColor_AutoToggle.lua` via *Actions → Load ReaScript*.
-
-            See the [installation guide](https://michal-bartak.github.io/Reaper-AutoColor/installation/).
+            📦 [Installation guide](https://michal-bartak.github.io/Reaper-AutoColor/installation/)
           files: dist/*.zip
