@@ -96,16 +96,16 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Reaper Auto-Color ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.tag }}
           draft: ${{ inputs.draft }}
           prerelease: ${{ needs.prepare.outputs.prerelease }}
           generate_release_notes: false
           body: |
-            ## What's new
+            ## Reaper Auto-Color
 
             ${{ steps.changelog.outputs.notes }}
 
             📖 [CHANGELOG.md](https://github.com/michal-bartak/Reaper-AutoColor/blob/main/CHANGELOG.md) - all changes
 
-            📦 [Installation guide](https://michal-bartak.github.io/Reaper-AutoColor/installation/)
+            📦 Installation: ReaPack or Manual, see [Installation guide](https://michal-bartak.github.io/Reaper-AutoColor/installation/)
           files: dist/*.zip
