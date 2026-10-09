@@ -49,17 +49,51 @@ checkboxes. v2 has one list per kind, which:
 * makes precedence per-kind, so reordering track rules cannot change which
   region wins;
 * lets each tab offer only filters that mean something — folder filters exist on
-  Tracks and nowhere else;
+  Tracks and Icons and nowhere else;
 * removes the "targets nothing" state entirely.
 
 Migration splits a multi-target rule into one rule per kind, preserving relative
 order, with fresh ids for the copies.
 
+## Track icons are a list of their own
+
+Icons could have been a field on track rules. They are a fifth list instead
+(`rules.icon`, the **Icons** tab) so that icons have their own precedence: a
+track's colour and its icon often come from different rules, as they did in
+SWS, where a rule with no icon does not claim a track's icon. `rules.KINDS`
+includes `icon`, so config, the GUI tabs and the tallies pick it up; `apply.lua`
+keeps a colour-only kind list, and `plan()` appends the icon ops to the colour
+ops so every caller commits both.
+
+* **Folder propagation is per rule** (`children`: default / off / fill /
+  force). Icons had it first; track colours gained it in config v4, with
+  `default` deferring to an Options value per list (`propagate_folders`,
+  `propagate_icons`). Options keep the common case in one place; the rule
+  carries the exception. Icons default to off -- a folder icon handed to every
+  child says less than a colour ramp does. Both go through
+  `apply.propagate(entries, direct, mode_of)` with `rules.children_mode`
+  resolving `default`. Items, regions and markers have no folder structure,
+  so no Children column.
+* **v4 migration is behaviour-preserving.** Track rules start at `default`.
+  Icon rules at `off` -- v3's only default -- become `default`, which
+  resolves to the same off; `fill` / `force` were chosen and stay. The bump
+  stops an older build saving the file back without the track rules' modes.
+  The Options label "fill gaps" became "fill", matching the rule combo.
+* **A folder whose rule does not propagate passes on what it inherited**, so an
+  outer fill still reaches the tracks inside it.
+* **No gradients and no items.** Both are colour concepts.
+* **Matching FX names was deferred.** "Kontakt → keys icon" is tempting, but
+  the FX name depends on the plugin and on the preset or rename the user
+  applied, neither of which the rules control. *has an instrument* covers the
+  robust part.
+* The config went to **v3** for the new list, so an older build opens a v3 file
+  read-only instead of saving it back without the icon rules.
+
 ## Two ways to make items follow their track, and they are not equal
 
 | | mechanism | after copy/paste to another track |
 |---|---|---|
-| **also colour items** on a track rule | writes the track's colour onto the item | stale unless the destination rule also cascades |
+| **FI** (force item colour) on a track rule | writes the track's colour onto the item | stale unless the destination rule also cascades |
 | **reset unmatched items** | removes the item's colour so REAPER draws it from the track | correct instantly, cannot go stale |
 
 An item with no custom colour is drawn by REAPER in its track's colour, live.
@@ -67,6 +101,10 @@ So the second is usually right, and the first is for when items should
 deliberately differ. `clear_unmatched` is **per kind** for exactly this reason:
 clearing unmatched items is desirable, clearing unmatched *tracks* would strip
 every colour set by hand.
+
+The column was headed **Items**, which read as "tick to colour this track's
+items" -- yet unticked items already show the track's colour. Renamed **FI**,
+*force item colour*, to say what it adds: a colour written into the item.
 
 ## Colours are written to the item, and takes are cleared
 
@@ -347,8 +385,9 @@ order, with the folder as its first step. Nothing downstream changed: `rank`,
 `force` therefore no longer flattens a gradient — it *widens* it, because the
 folder's rule takes every descendant including ones with rules of their own.
 The warning that used to predict the collapse is gone. The "folder-parents-only
-filter" warning survives but is now conditional on `propagate_folders = 'off'`,
-which is the only case left where each parent really is alone in its group.
+filter" warning survives but is now conditional on the rule's effective
+Children being off, which is the only case left where each parent really is
+alone in its group.
 
 `plan()` returns `direct` alongside `winner` for this reason: `winner` is who
 COLOURS an entry, `direct` is what it matched by name, and the preview needs
@@ -374,6 +413,103 @@ newlines as unsupported.
 character-class tables with integer keys, which is not encodable as a JSON
 object. That silently
 broke every save after the first preview until `config.serializable()` existed.
+
+## Importing SWS Auto Color
+
+Worth doing because the translation is genuinely exact, not a best effort: SWS
+matches with `stristr` — case-insensitive plain substring — and applies the
+first rule that matches. That is one specific point in this tool's matcher
+space (`mode='substring'`, `ci=true`) with this tool's own precedence, so an
+ordinary name rule crosses over unchanged. Retyping the list by hand was the
+biggest single reason not to switch.
+
+**Imported once, not read live.** Reading SWS's file on every apply would make
+it a second source of truth, and the point of importing is to stop using SWS —
+which the conflict banner already tells people to do.
+
+**What cannot be expressed arrives switched off, with the reason in the rule's
+NAME.** The rule list renders `label`; nothing in it renders `note`. Putting
+the explanation only in the note would have been an explanation nobody can
+read. Silently dropping those rules would have been worse: the user would have
+no idea which parts of their setup did not survive.
+
+**An unsupported rule keeps its keyword as its pattern**, rather than being
+emptied. An empty pattern with no predicate matches *every* object — the rule
+warnings say exactly that — so a user re-enabling one out of curiosity would
+repaint the whole project. `(MIDI input)` read as a substring matches nothing,
+which is the safe inert state, and it still shows what the rule used to be.
+
+**Gradient is the one sentinel that imports enabled**, because it maps exactly:
+SWS ramps its global `ColorGradients` across every track *that rule* matched,
+in track order, and `gradient_scope = 'all'` is already defined as one ramp
+across every match. First-match-wins on both sides makes "matched" and "won"
+the same set. Two differences are left alone: `colors.lerp` interpolates in HSL
+where SWS lerps per channel in RGB (identical for the default black-to-white,
+and the HSL ramp is the better one — see *Gradients restart per group*), and
+`propagate_folders` can hand a folder's rule to its children before grouping,
+which SWS has no equivalent for.
+
+**Losing `(ignore)` is the only loss that changes which *other* rule wins.** In
+SWS it matches, leaves the object alone, and blocks every rule below it. The
+rest merely fail to colour something, so `(ignore)` gets a longer sentence in
+its name.
+
+**The import confirms before it acts, not after.** It reported what it had
+already done, which is a receipt, not a decision -- and the one number worth
+seeing beforehand is how many rules arrive switched off. Reading SWS is cheap
+and changes nothing, so the scan is split from the merge: `scan_sws()` parses,
+the dialog shows the counts, and `merge_sws()` runs only on a yes. Cancelling
+costs a parse and leaves no snapshot.
+
+The dialog counts; it does not explain. Why a rule could not come across is a
+table in the documentation, not something to read in a modal with a Yes button
+waiting -- the rule's own name still carries the reason, which is where it is
+useful.
+
+**The import only ever adds, and there is no replace mode.** It began as a menu
+offering Append or Replace, and the Replace half was all cost: it had to
+confirm, it had to explain that the Items tab would end up empty because SWS
+has no item rules to refill it with, and it was the only way the feature could
+destroy something. Remove Rules already empties the set and already asks, so
+"replace" is those two buttons in the order the user can see. Dropping it took
+the confirm, the caveat and a whole branch of `merge()` with it, and left a
+feature that cannot lose a rule the user wrote.
+
+With one action left, the menu had nothing to offer either — the button acts
+directly. It keeps no `...`, which in this window means "opens something".
+
+**Imported rules land at the end of each list.** The user's own rules are the
+ones they tuned; an SWS `(any)` catch-all arriving above them would repaint the
+project on the next auto tick. The SWS rules keep their order among themselves,
+so their internal precedence survives, and dragging them higher is one gesture
+away.
+
+**The colour decode does not go through `colors.lua`.** `colors.norm` masks
+`0x1FFFFFF`, which drops SWS's `PORTABLE_FLAG` at `0x2000000` and folds the
+negative sentinels into large positives, so every "random" and "parent" rule
+would have read as a real colour. `colors.from_native` additionally answers
+`nil` for 0, which would have turned every *black* SWS rule into the default
+grey. Only the legacy unflagged branch goes through the host, and only because
+that one genuinely needs the machine's byte order.
+
+**Auto-detect only, no file picker.** The package has no JS_ReaScriptAPI
+dependency, no file dialog and no shell-out anywhere; adding one for this would
+have been the first, and the file is always in the same place.
+
+### Two things the third button turned up
+
+The row's `FS * 13` button width no longer fit three buttons — the dialog is
+`FS * 42` less `MODAL_PAD` each side — so the width is derived from the content
+region instead. That also survives the text-size slider, which sits three
+sections above it and a constant did not.
+
+The other came from the menu that no longer exists, and the guard was kept
+anyway. The dialog dismisses itself on any click that is not hovering it, and an
+ImGui popup is a separate **root** window, not a child — so a click inside one
+closed Options underneath, and Escape closed the dialog rather than the popup.
+Both dismissals are now suspended while any popup is open. The Folders dropdown
+in the same dialog opens a popup by the same mechanism; nobody had reported it
+misbehaving, but the guard is correct for it either way.
 
 ## GUI constraints worth knowing
 
@@ -465,10 +601,12 @@ Each of these was silent, and each now has a test named after its failure mode.
    both wrong, which is the lesson: this file's own rule is to measure, and the
    answer in the end was to delete the mechanism rather than time it.
 
-   It is a `Begin` window now, with `NoTitleBar | NoResize | NoMove |
-   NoCollapse | NoDocking | NoSavedSettings | TopMost`, which looks exactly like
-   the popup did. Nothing closes a window behind your back, so there is nothing
-   to re-open and nothing to blink. What the popup gave away free now has to be
+   It is a `Begin` window now, with `NoCollapse | NoDocking | NoSavedSettings |
+   TopMost` (and `NoResize` where the content sets the size). It first copied
+   the popup's look with `NoTitleBar | NoMove`. Since the icon browser, all
+   three dialogs share `gui/dialog.lua` and have a title bar with a close
+   button, and they can be moved. Nothing closes a window behind your back, so
+   there is nothing to re-open and nothing to blink. What the popup gave away free now has to be
    asked for, and each has a test:
 
    * **`TopMost`.** An earlier window version left it out, and the *dimmed* main
@@ -479,10 +617,11 @@ Each of these was silent, and each now has a test named after its failure mode.
      it multiplies into `StyleVar_Alpha` and the content fades to 0.18 instead
      of `DIM_CONTENT`.
    * **Escape**, by hand.
-   * **Dismissal by a click on the window behind**, by hand: a left click, not
-     over the dialog, while some ImGui window has focus. That last test is what
-     keeps a click in REAPER's arrange from counting — it takes the click, no
-     ImGui window is focused, and the dialog stays put.
+   * Not **dismissal by a click on the window behind**. It was copied from the
+     popup and then dropped: the main window is dimmed and blocked anyway, and
+     a stray click cost a dialog its state, such as the icon browser's search.
+     It also had to be exempted from the resize grip, whose grab read as a
+     click outside.
 
    The dialog is drawn from the frame loop *after* `ImGui.End`, so it sits
    outside the dim at full opacity. That means `GetWindowPos` has no window left
@@ -616,3 +755,47 @@ move. `GetSetRegionOrMarkerInfo_String` exposes `"GUID"` (read-only) and that is
 what a marker keeps across a move. The old key remains the fallback on a build
 without it. The extra call per marker per scan is the obvious trade for the one
 kind a project holds few enough of.
+
+## Starting with REAPER
+
+**ReaPack cannot edit `__startup.lua`.** It installs files from the index and has
+no hook to change an existing one; shipping our own would overwrite the user's.
+So `lib/startup.lua` adds a marked block itself, whenever the window or the
+Toggle starts. Not recorded in the config: moving or deleting `__startup.lua` by
+hand is normal in REAPER, and a flag would then be wrong.
+
+**The block is `loadfile` + `pcall`, never a bare `dofile`.** An uninstall leaves
+it behind; a missing file under `dofile` would raise and abort every entry after
+ours. As written it is a silent no-op.
+
+**The bootstrap loads its modules through a `require` of its own.**
+`__startup.lua` is one Lua state shared by every entry, so the plain `require`
+would leave our `package.path` and cached modules (`config`, `json`, ...)
+behind: an earlier entry's `config` would be returned to us, and ours to a later
+entry. Running the bootstrap as an action instead gives it a clean state, but
+registers it in the Action list.
+
+**The last state is a persisted ExtState (`active_last`), not config.** Writing
+`config.json` on every toggle would rewrite the rule file and bump `config_rev`.
+
+**The Toggle is the loop, with `set_action_options(3)`.** Without it, REAPER
+ends a running script on a toolbar click (or prompts, depending on a remembered
+choice), so the stop branch never runs, and `atexit` cannot tell a stop from
+REAPER quitting -- measured: the main window, the project and the API are all
+still valid in both cases. Flag 3 makes the click terminate the loop and then run
+the script again, and that run records the stop. `atexit` therefore leaves the
+token and heartbeat in place; both are session-only, so a quit leaves nothing to
+misread. A fresh heartbeat is what marks the run as a stop: a token left by a
+loop ended some other way is stale, and the click is a start. The earlier split
+into a one-shot Toggle and a separate loop script worked too, but put the loop
+in the Action list. Costs the REAPER 7.03 minimum.
+
+**The bootstrap runs the Toggle as an action**, found by the named command ID
+the Toggle records (numeric IDs of scripts can change between sessions),
+because the Toggle has no start-only mode and `dofile` from `__startup.lua`
+would run it without its command ID or relaunch options. Before the Toggle has ever run,
+`AddRemoveReaScript` returns the ID ReaPack registered. `auto_boot` skips the SWS
+conflict dialog on that launch.
+
+**Nothing locks `__startup.lua`.** ReaScripts share one thread, so only an outside
+editor can race the write; the file is re-read immediately before it.

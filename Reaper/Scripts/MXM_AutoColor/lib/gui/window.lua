@@ -14,7 +14,16 @@ local app      = require 'gui.app'
 local ruletbl  = require 'gui.rule_table'
 local preview  = require 'gui.preview'
 local theme    = require 'gui.theme'
+local iconbrowser = require 'gui.icon_browser'
+local dialog   = require 'gui.dialog'
+local icons    = require 'icons'
 local aboutmod = require 'about'
+
+local AUTOSTART_LABEL = {
+  off  = 'Never',
+  on   = 'Always',
+  last = 'Last',
+}
 
 local M = {}
 
@@ -23,6 +32,8 @@ function M.init(imgui, context)
   ImGui, ctx = imgui, context
   ruletbl.init(imgui, context)
   preview.init(imgui, context)
+  iconbrowser.init(imgui, context)
+  dialog.init(imgui, context)
 end
 
 local function rgba(rgb, a) return ((rgb & 0xFFFFFF) << 8) | (a or 0xFF) end
@@ -32,11 +43,9 @@ local COL_WARN  = 0xD9A441
 local COL_ERR   = 0xC2413B
 local COL_OK    = 0x5FB36A
 
-local FOLDER_LABEL = {
-  off            = 'off -- folders do not colour their children',
-  fill_unmatched = 'fill gaps -- children with no rule of their own inherit',
-  force          = 'force -- the folder colour overrides its children',
-}
+-- The Options values for Folders, named as in the rules' Children combo.
+local FOLDER_LABEL = { off = 'Off', fill_unmatched = 'Fill', force = 'Force' }
+local FOLDER_MODE  = { off = 'off', fill_unmatched = 'fill', force = 'force' }
 
 ----------------------------------------------------------------------- bars
 local function banners(FS)
@@ -44,14 +53,7 @@ local function banners(FS)
 
   if st.readonly then
     ImGui.TextColored(ctx, rgba(COL_WARN),
-      'This rule file was written by a newer version. Editing is allowed but nothing will be saved.')
-  end
-
-  local sws = app.sws_warning()
-  if sws then
-    ImGui.TextColored(ctx, rgba(COL_WARN), sws)
-    ImGui.SameLine(ctx)
-    ImGui.TextColored(ctx, rgba(COL_DIM), '(SWS > Auto Color/Icon/Layout)')
+      'This config file was written by a newer version. Editing is allowed but nothing will be saved.')
   end
 
 end
@@ -87,81 +89,85 @@ local pending_font = nil
 -- Seeded with the first-use size from MXM_AutoColor_GUI.lua.
 local main_x, main_y, main_w, main_h = 0, 0, 78 * 14, 44 * 14
 
---- The Options dialog.
+------------------------------------------------------------------ SWS import
+--- The confirmation: counts only.
 ---
---- A borderless, fixed, always-on-top WINDOW that looks exactly like the popup
---- it replaced -- and is one for a reason. See the note on the Begin call.
+--- WHY a rule arrives switched off is a table in the documentation, not
+--- something to read in a modal with a Yes button waiting.
+local function confirm_text(res)
+  local kinds = {}
+  for _, k in ipairs({ 'track', 'region', 'marker', 'icon' }) do
+    local n = #(res.rules[k] or {})
+    if n > 0 then
+      kinds[#kinds + 1] = n .. ' ' .. rulesmod.KIND_NOUN[k] .. (n == 1 and '' or 's')
+    end
+  end
+
+  local lines = { string.format('Import %d rule%s from SWS Auto Color?',
+                                res.imported, res.imported == 1 and '' or 's'),
+                  '', '  ' .. table.concat(kinds, ', ') }
+  if res.disabled > 0 then
+    lines[#lines + 1] = string.format('  %d of them switched off', res.disabled)
+  end
+  if res.skipped > 0 then
+    lines[#lines + 1] = string.format('  %d line%s could not be read',
+                                      res.skipped, res.skipped == 1 and '' or 's')
+  end
+  lines[#lines + 1] = ''
+  lines[#lines + 1] = 'Appended below existing rules.'
+  return table.concat(lines, '\n')
+end
+
+--- One button. It reads SWS, says what it found, and only then changes
+--- anything -- so the dialog is the last chance to say no rather than a
+--- receipt for something already done.
+local function do_import()
+  local res, err = app.scan_sws()
+  if not res then
+    reaper.ShowMessageBox(err, 'AutoColor', 0)
+    return
+  end
+
+  if reaper.ShowMessageBox(confirm_text(res), 'AutoColor', 4) ~= 6 then return end
+
+  app.merge_sws(res)
+  app.toast(string.format('Imported %d rule%s from SWS.',
+                          res.imported, res.imported == 1 and '' or 's'))
+end
+
+--- The Options dialog. See dialog.lua for why it is a window.
 function M.draw_options(FS)
   local st = app.st
   if not st.options_open then return end
 
-  -- Centre on the app window (not the screen) and dim what is behind it.
-  -- Cond_Appearing so a window the user has since dragged stays put.
-  -- Cond_Always, not Cond_Appearing: the window is NoMove, so it simply tracks
-  -- the centre of the app window the way the popup did.
-  ImGui.SetNextWindowPos(ctx, main_x + main_w * 0.5, main_y + main_h * 0.5,
-                         ImGui.Cond_Always, 0.5, 0.5)
-
-  -- Fixed width, automatic height (0 on an axis means auto-fit). Wide enough
-  -- for the longest fixed line in here -- the Scope question -- with the four
-  -- checkboxes under it rather than beside it. The rules-file path is the one
-  -- thing with no bound on its length, so it wraps instead (see below).
-  ImGui.SetNextWindowSize(ctx, FS * 42, 0, ImGui.Cond_Always)
-
-  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding,
-                     FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
-
-  -- Not a MODAL: its dim overlay cannot be controlled. ImGui paints
-  -- Col_ModalWindowDimBg during Render(), long after any PushStyleColor here
-  -- has been popped, so it always uses the style default -- which in the dark
-  -- style is (0.8, 0.8, 0.8, 0.35), i.e. WHITE, and the window appeared to
-  -- BRIGHTEN. The dim is drawn by hand instead (theme.push_content_dim), which
-  -- also means any colour is possible. A modal was swallowing Escape too.
-  --
-  -- Not a POPUP either, though it was one for a long time and these flags are
-  -- chosen to look identical to it. ImGui owns a popup's visibility and closes
-  -- it on a click outside, on Escape, and on losing focus -- so the dialog
-  -- vanished across an alt-tab. Holding the state here and re-opening the popup
-  -- every frame fixed that but not the flicker it caused: on the first click
-  -- elsewhere in REAPER the popup is closed and re-opened, and it is not drawn
-  -- again for several frames. That gap is inside ImGui's reopen and there is no
-  -- reaching it from a script. An ordinary window is never closed behind our
-  -- back, so there is nothing to re-open and nothing to blink.
-  --
-  -- What the popup gave away free and this has to ask for:
-  --   * TopMost, or the dimmed main window could be raised ABOVE the dialog.
-  --   * theme.push_content_dim's BeginDisabled, or the faded rule table behind
-  --     would still be clickable.
-  --   * Escape, and dismissal by a click on the window behind -- both below.
-  local visible = ImGui.Begin(ctx, OPTIONS_TITLE, nil,
-                              ImGui.WindowFlags_NoTitleBar
-                              | ImGui.WindowFlags_NoResize
-                              | ImGui.WindowFlags_NoMove
-                              | ImGui.WindowFlags_NoCollapse
-                              | ImGui.WindowFlags_NoDocking
-                              | ImGui.WindowFlags_NoSavedSettings
-                              | ImGui.WindowFlags_TopMost)
-
-  ImGui.PopStyleVar(ctx)      -- window style is read at Begin
-
+  -- Fixed width, automatic height. Wide enough for the longest fixed line in
+  -- here -- the Scope question -- with the checkboxes under it rather than
+  -- beside it. The config-file path is the one thing with no bound on its
+  -- length, so it wraps instead (see below).
+  local visible, open = dialog.begin(FS, OPTIONS_TITLE, {
+    x = main_x + main_w * 0.5, y = main_y + main_h * 0.5, w = FS * 42 })
+  if open == false then st.options_open = false end
   if not visible then return end      -- End() only when Begin returned true
 
-  -- Taken before the body, so a click that lands on a widget still counts as
-  -- inside the dialog.
-  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows)
 
   local o = st.cfg.options
   local rv, v
 
   theme.section('Folders')
-  ImGui.SetNextItemWidth(ctx, FS * 34)
-  if ImGui.BeginCombo(ctx, '##folders', FOLDER_LABEL[o.propagate_folders]) then
-    for _, k in ipairs({ 'off', 'fill_unmatched', 'force' }) do
-      if ImGui.Selectable(ctx, FOLDER_LABEL[k], o.propagate_folders == k) then
-        app.snapshot(); o.propagate_folders = k; app.mark_dirty()
+  -- What a rule's Children 'default' means, one per list.
+  for _, f in ipairs({ { 'propagate_folders', 'Tracks' }, { 'propagate_icons', 'Icons' } }) do
+    local key, label = f[1], f[2]
+    ImGui.SetNextItemWidth(ctx, FS * 10)
+    if ImGui.BeginCombo(ctx, label .. '##' .. key, FOLDER_LABEL[o[key]]) then
+      for _, k in ipairs({ 'off', 'fill_unmatched', 'force' }) do
+        if ImGui.Selectable(ctx, FOLDER_LABEL[k], o[key] == k) then
+          app.snapshot(); o[key] = k; app.mark_dirty()
+        end
+        ImGui.SetItemTooltip(ctx, rulesmod.CHILDREN_HELP[FOLDER_MODE[k]])
       end
+      ImGui.EndCombo(ctx)
     end
-    ImGui.EndCombo(ctx)
+    ImGui.SetItemTooltip(ctx, 'The default for ' .. label .. ' tab rules.')
   end
 
   rv, v = theme.checkbox('Subfolder splits the parent\'s colour range',
@@ -193,19 +199,34 @@ function M.draw_options(FS)
     local rvc, vc = theme.checkbox(rulesmod.KIND_LABEL[k] .. '##cu' .. k,
                                    o.clear_unmatched[k])
     if rvc then app.snapshot(); o.clear_unmatched[k] = vc; app.mark_dirty() end
+    if k == 'icon' then
+      ImGui.SetItemTooltip(ctx, 'Removes the icon from tracks no icon rule matches.')
+    end
     if ImGui.IsItemHovered(ctx) and k == 'item' then
       ImGui.SetTooltip(ctx,
         'Recommended for items.\n\n' ..
         'An item with no custom colour is drawn by REAPER in its TRACK\'s\n' ..
         'colour, live -- so copying it to another track makes it follow that\n' ..
         'track immediately, with no rule and nothing to go stale.\n\n' ..
-        'This is usually better than "also colour items" on the track rules,\n' ..
-        'which freezes a colour onto the item instead.')
+        'This is usually better than FI (force item colour) on the track\n' ..
+        'rules, which freezes a colour onto the item instead.')
     end
   end
 
-  theme.section('Background auto-colouring', true)
-  rv, v = theme.checkbox('Create undo points for automatic changes', o.auto_undo)
+  theme.section('System', true)
+  -- Label on the right, like the sliders below: the control and its label then
+  -- share a baseline without any manual offset.
+  ImGui.SetNextItemWidth(ctx, FS * 10)
+  if ImGui.BeginCombo(ctx, 'Autostart', AUTOSTART_LABEL[o.autostart]) then
+    for _, k in ipairs({ 'off', 'on', 'last' }) do
+      if ImGui.Selectable(ctx, AUTOSTART_LABEL[k], o.autostart == k) then
+        app.snapshot(); o.autostart = k; app.mark_dirty()
+      end
+    end
+    ImGui.EndCombo(ctx)
+  end
+
+  rv, v = theme.checkbox('Undo points for automatic changes', o.auto_undo)
   if rv then app.snapshot(); o.auto_undo = v; app.mark_dirty() end
   if ImGui.IsItemHovered(ctx) then
     ImGui.SetTooltip(ctx, 'Off by default: an undo point every time you rename\n' ..
@@ -213,27 +234,34 @@ function M.draw_options(FS)
                           'can always be re-derived from the rules.')
   end
 
+  ImGui.Spacing(ctx)
+  ImGui.Spacing(ctx)
   ImGui.SetNextItemWidth(ctx, FS * 10)
-  rv, v = ImGui.SliderDouble(ctx, 'Check every (s)', o.tick_interval, 0.05, 2.0, '%.2f')
+  rv, v = ImGui.SliderDouble(ctx, 'Check frequency (s)', o.tick_interval,
+                             0.05, 2.0, '%.2f')
   if rv then o.tick_interval = v; app.mark_dirty(true) end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, 'How often the project is checked.\n' ..
+                          'Lower reacts faster, at more CPU.')
+  end
 
   ImGui.SetNextItemWidth(ctx, FS * 10)
   rv, v = ImGui.SliderInt(ctx, 'Work budget (ms)', math.floor(o.cold_budget_ms), 1, 50)
   if rv then o.cold_budget_ms = v; app.mark_dirty(true) end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, 'Time per check for items, regions and\n' ..
+                          'markers. The rest carries over to the\n' ..
+                          'next check.')
+  end
 
   ImGui.SetNextItemWidth(ctx, FS * 10)
-  rv, v = ImGui.SliderInt(ctx, 'Rescan items at most every (s)',
+  rv, v = ImGui.SliderInt(ctx, 'Item/marker rescan (s)',
                           math.floor(o.cold_interval), 0, 60)
   if rv then o.cold_interval = v; app.mark_dirty(true) end
   if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx,
-      'Tracks are checked on every change. Items and regions are\n' ..
-      'much more numerous, so they are only re-read when something\n' ..
-      'says they need it -- one appeared or vanished, a track\n' ..
-      'changed, or this long has passed.\n\n' ..
-      'It is the delay before an item RENAMED in place is noticed;\n' ..
-      'nothing else waits on it. 0 re-reads everything on every\n' ..
-      'change, which is slow on a large project.')
+    ImGui.SetTooltip(ctx, 'Delay before an item, region or marker\n' ..
+                          'renamed in place is noticed. 0 rescans\n' ..
+                          'on every change: slow on a large project.')
   end
 
   theme.section('Window', true)
@@ -249,7 +277,7 @@ function M.draw_options(FS)
   end
   if ImGui.IsItemDeactivated(ctx) then pending_font = nil end
 
-  theme.section('Rules file', true)
+  theme.section('Config file', true)
   -- WRAPPED, not TextColored: a path has no bound on its length, and the one
   -- thing asked of this line is that it always shows the whole thing. Wrapping
   -- costs a second line on a long path; truncation costs the part you needed.
@@ -257,9 +285,20 @@ function M.draw_options(FS)
   ImGui.PushStyleColor(ctx, ImGui.Col_Text, rgba(COL_DIM))
   ImGui.TextWrapped(ctx, config.path())
   ImGui.PopStyleColor(ctx)
-  -- Both replace the WHOLE rule set, so both are one confirm and one snapshot.
-  -- Equal explicit widths: two auto-sized buttons on one row come out ragged.
-  local rw = FS * 13
+  -- Equal widths: auto-sized buttons on one row come out ragged. Derived, not
+  -- a constant: the dialog is FS*42 wide less MODAL_PAD each side, so three
+  -- buttons at the old FS*13 plus two ItemSpacing gaps overflow it. Splitting
+  -- the content region three ways also survives the text-size slider, which
+  -- sits three sections above this one.
+  local spacing = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+  local rw = math.floor((ImGui.GetContentRegionAvail(ctx) - spacing * 2) / 3)
+
+  -- A read-only config (written by a newer version) is never saved back, so
+  -- letting these run would destroy the user's view of their rules and persist
+  -- nothing. app.import_sws refuses on its own too; this is what makes the
+  -- refusal visible before the click.
+  ImGui.BeginDisabled(ctx, app.st.readonly)
+
   if theme.button('Example rules', rw) then
     local ans = reaper.ShowMessageBox(
       'Replace your current rules with the built-in example set?\n\n' ..
@@ -272,6 +311,11 @@ function M.draw_options(FS)
       app.mark_dirty()
       app.toast('Loaded the example rules.')
     end
+  end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Replaces every rule with the built-in example set.\n\n' ..
+      'Asks for confirmation.')
   end
 
   ImGui.SameLine(ctx)
@@ -289,6 +333,31 @@ function M.draw_options(FS)
       app.toast('Removed every rule.')
     end
   end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx,
+      'Empties all four tabs.\n\n' ..
+      'Asks for confirmation.')
+  end
+
+  -- Third, so the two above keep the positions people already know. No '...':
+  -- it acts, it does not open anything.
+  ImGui.SameLine(ctx)
+  if theme.button('Import from SWS', rw) then do_import() end
+  if ImGui.IsItemHovered(ctx) then
+    -- Two lines. The detail belongs on the documentation page, not in a
+    -- tooltip somebody is reading with the mouse already on the button.
+    ImGui.SetTooltip(ctx,
+      'Appends the rules from SWS Auto Color below existing rules.\n\n' ..
+      'Unsupported SWS modes are imported as inactive.\n\n' ..
+      'Asks for confirmation.')
+  end
+
+  ImGui.EndDisabled(ctx)
+
+  if app.st.readonly then
+    ImGui.TextColored(ctx, rgba(COL_WARN),
+      'Read-only: this file was written by a newer version of AutoColor.')
+  end
 
   ImGui.Spacing(ctx)
   ImGui.Separator(ctx)
@@ -297,48 +366,26 @@ function M.draw_options(FS)
   theme.center(bw)
   if theme.button('Close', bw) then st.options_open = false end
 
-  -- Escape. The popup used to do this for us.
-  if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then st.options_open = false end
-
-  -- A click on the AutoColor window behind dismisses it, as a click outside a
-  -- popup did. The focus test is what keeps a click somewhere else in REAPER
-  -- from counting: when the arrange takes the click, no ImGui window is
-  -- focused, and the dialog stays exactly where it is.
-  if ImGui.IsMouseClicked(ctx, 0) and not inside
-     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
-    st.options_open = false
-  end
+  if dialog.dismissed() then st.options_open = false end
 
   ImGui.End(ctx)
 end
 
--- The About dialog. Same shape as the Options one, and for the same reasons:
--- borderless, fixed, TopMost, state held here rather than by ImGui.
+--- The icon browser, centred on the main window.
+function M.draw_icon_browser(FS)
+  iconbrowser.draw(FS, main_x, main_y, main_w, main_h)
+end
+
+-- The About dialog. Same shape as the Options one.
 function M.draw_about(FS)
   local st = app.st
   if not st.about_open then return end
 
-  ImGui.SetNextWindowPos(ctx, main_x + main_w * 0.5, main_y + main_h * 0.5,
-                         ImGui.Cond_Always, 0.5, 0.5)
-  ImGui.SetNextWindowSize(ctx, FS * 32, 0, ImGui.Cond_Always)
-
-  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding,
-                     FS * theme.MODAL_PAD, FS * theme.MODAL_PAD)
-
-  local visible = ImGui.Begin(ctx, ABOUT_TITLE, nil,
-                              ImGui.WindowFlags_NoTitleBar
-                              | ImGui.WindowFlags_NoResize
-                              | ImGui.WindowFlags_NoMove
-                              | ImGui.WindowFlags_NoCollapse
-                              | ImGui.WindowFlags_NoDocking
-                              | ImGui.WindowFlags_NoSavedSettings
-                              | ImGui.WindowFlags_TopMost)
-
-  ImGui.PopStyleVar(ctx)
-
+  local visible, open = dialog.begin(FS, ABOUT_TITLE, {
+    x = main_x + main_w * 0.5, y = main_y + main_h * 0.5, w = FS * 32 })
+  if open == false then st.about_open = false end
   if not visible then return end
 
-  local inside = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_RootAndChildWindows)
 
   ImGui.PushFont(ctx, nil, FS * theme.SECTION_SCALE)
   ImGui.Text(ctx, aboutmod.NAME)
@@ -368,17 +415,31 @@ function M.draw_about(FS)
   theme.center(bw)
   if theme.button('Close##about', bw) then st.about_open = false end
 
-  if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then st.about_open = false end
-  if ImGui.IsMouseClicked(ctx, 0) and not inside
-     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then
-    st.about_open = false
-  end
+  if dialog.dismissed() then st.about_open = false end
 
   ImGui.End(ctx)
 end
 
+local function clear_icons_popup()
+  if ImGui.MenuItem(ctx, 'Clear icons the rules match') then app.clear_icons('matched') end
+  ImGui.SetItemTooltip(ctx, 'Removes icons only from tracks an icon rule currently claims.')
+  if ImGui.MenuItem(ctx, 'Clear icons on selected tracks') then app.clear_icons('selected') end
+  if ImGui.MenuItem(ctx, 'Clear EVERY track icon in the project...') then
+    local ans = reaper.ShowMessageBox(
+      'Remove every track icon in this project?\n\n' ..
+      'This includes icons this tool never set. Undo (Cmd+Z) will put them back.',
+      'AutoColor', 4)
+    if ans == 6 then app.clear_icons('all') end
+  end
+end
+
 local function clear_popup()
   if not ImGui.BeginPopup(ctx, 'clearmenu') then return end
+  if app.st.active_kind == 'icon' then
+    clear_icons_popup()
+    ImGui.EndPopup(ctx)
+    return
+  end
 
   if ImGui.MenuItem(ctx, 'Clear colours the rules match') then
     app.clear_colors('matched')
@@ -524,8 +585,10 @@ function M.draw(FS)
   main_x, main_y = ImGui.GetWindowPos(ctx)
   main_w, main_h = ImGui.GetWindowSize(ctx)
 
-  -- Everything below fades, and stops taking clicks, while either dialog is up.
-  local dimmed = st.options_open or st.about_open
+  iconbrowser.new_frame()
+
+  -- Everything below fades, and stops taking clicks, while a dialog is up.
+  local dimmed = st.options_open or st.about_open or iconbrowser.is_open()
   if dimmed then theme.push_content_dim() end
 
   banners(FS)
@@ -581,27 +644,44 @@ function M.draw(FS)
         -- colour -- so nothing extra is drawn between them.
         theme.close_tab_gap(FS, ty1 - ty0)
 
-        ruletbl.draw(kind, FS, math.max(tableh, FS * 6))
-
-        -- Below the table, not above it: anything between the shelf and the
-        -- header would break the join, and these notes point at the action bar
-        -- underneath anyway.
-        if total == 0 then
-          ImGui.TextColored(ctx, rgba(COL_DIM), 'No ' ..
-            (rulesmod.KIND_NOUN[kind] or '') .. ' rules yet -- add one below.')
-        elseif on == 0 then
-          ImGui.TextColored(ctx, rgba(COL_WARN), 'Every rule on this tab is switched off.')
+        -- Notes go below the table, not above it: anything between the shelf
+        -- and the header would break the join, and they point at the action
+        -- bar underneath anyway. The table gives up their height, or the page
+        -- overflows and grows a scrollbar.
+        local notes = {}
+        -- Per tab, and only with rules to fight over: SWS's switches are per
+        -- kind, and an empty list competes with nothing.
+        local sws = total > 0 and app.sws_warning(kind)
+        if sws then notes[#notes + 1] = { COL_WARN, sws } end
+        if total > 0 and on == 0 then
+          notes[#notes + 1] = { COL_WARN, 'Every rule on this tab is switched off.' }
         end
-
-        -- The selected rule's advisory notes. They used to sit under the name
-        -- tester; that panel is a scratch pad now, and these belong beside the
-        -- rule they are about anyway.
+        -- The selected rule's advisory notes, beside the rule they are about.
         local sr = st.sel_id and app.rule_by_id(st.sel_id)
         if sr and sr.kind == kind then
-          for _, wtext in ipairs(rulesmod.warnings(sr, st.cfg and st.cfg.options)) do
-            ImGui.TextColored(ctx, rgba(COL_WARN), '- ')
+          for _, wtext in ipairs(rulesmod.warnings(sr, st.cfg and st.cfg.options,
+                                                   icons.exists)) do
+            notes[#notes + 1] = { COL_WARN, wtext, bullet = true }
+          end
+        end
+
+        local _, spy = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+        local noteh = 0
+        local wrapw = ImGui.GetContentRegionAvail(ctx) - ImGui.CalcTextSize(ctx, '- ')
+        for _, n in ipairs(notes) do
+          local _, h = ImGui.CalcTextSize(ctx, n[2], nil, nil, false, n.bullet and wrapw or -1)
+          noteh = noteh + h + spy
+        end
+
+        ruletbl.draw(kind, FS, math.max(tableh - noteh, FS * 6))
+
+        for _, n in ipairs(notes) do
+          if n.bullet then
+            ImGui.TextColored(ctx, rgba(n[1]), '- ')
             ImGui.SameLine(ctx, 0, 0)
-            ImGui.TextWrapped(ctx, wtext)
+            ImGui.TextWrapped(ctx, n[2])
+          else
+            ImGui.TextColored(ctx, rgba(n[1]), n[2])
           end
         end
 

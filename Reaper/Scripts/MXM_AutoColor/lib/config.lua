@@ -19,7 +19,7 @@ local rulesmod = require 'rules'
 
 local M = {}
 
-M.VERSION     = 2
+M.VERSION     = 4
 M.EXT_SECTION = 'MXM_AutoColor'
 
 local function in_reaper()
@@ -42,6 +42,10 @@ function M.badpath() return M.dir() .. '/config.bad.json' end
 local OPTION_SPEC = {
   propagate_folders      = { default = 'fill_unmatched',
                              enum = { off = true, fill_unmatched = true, force = true } },
+  -- What an icon rule's 'default' Children means. Off: an icon handed to every
+  -- child of a folder says less than a colour does.
+  propagate_icons        = { default = 'off',
+                             enum = { off = true, fill_unmatched = true, force = true } },
   -- Default ON: a nested folder is a visible break in the track panel, so a
   -- gradient ramp running straight through one reads as a bug. Off is the older
   -- behaviour, one ramp per folder however deeply it is nested.
@@ -54,6 +58,10 @@ local OPTION_SPEC = {
   -- change, which is what it did before the gate existed.
   cold_interval          = { default = 5,    kind = 'number', min = 0,    max = 60 },
   font_size              = { default = 14,   kind = 'number', min = 8,    max = 20 },
+  -- Whether REAPER start-up launches the auto-apply loop. 'last' resumes
+  -- whatever state it was in at shutdown.
+  autostart              = { default = 'last',
+                             enum = { off = true, on = true, last = true } },
 }
 
 --- Which kinds have their unmatched objects reset to the default colour.
@@ -152,8 +160,10 @@ local function normalize_options(o)
   for _, k in ipairs(rulesmod.KINDS) do
     if type(cu) == 'table' then
       out.clear_unmatched[k] = (cu[k] == true)
-    else
+    elseif k ~= 'icon' then            -- the boolean predates icon rules
       out.clear_unmatched[k] = (cu == true)
+    else
+      out.clear_unmatched[k] = false
     end
   end
 
@@ -167,7 +177,7 @@ end
 -- after the first preview. Only ever write a cleaned copy.
 local RULE_FIELDS = { 'id', 'label', 'enabled', 'mode', 'pattern', 'only',
                       'ci', 'invert', 'color', 'color2', 'note', 'cascade_items',
-                      'gradient_scope' }
+                      'gradient_scope', 'icon', 'children' }
 
 function M.serializable(cfg)
   local out = { version = cfg.version, options = {}, rules = {} }
@@ -247,6 +257,29 @@ migrations[1] = function(cfg)
   end
 
   cfg.rules = out
+  return cfg
+end
+
+--- v3 adds the icon rule list. normalize() creates it empty; the version bump
+--- is what makes an older build open a v3 file read-only instead of saving over
+--- it without the icon rules.
+migrations[2] = function(cfg) return cfg end
+
+--- v4 gives track rules a Children mode and adds 'default' to both lists.
+--- Icon rules at 'off' -- the only default v3 had -- become 'default', which
+--- the new propagate_icons option resolves to the same 'off'. fill and force
+--- were chosen and stay. Track rules need nothing: normalize() gives them
+--- 'default'. The bump keeps an older build from saving the file back
+--- without the track rules' modes.
+migrations[3] = function(cfg)
+  local list = type(cfg.rules) == 'table' and cfg.rules.icon
+  if type(list) == 'table' then
+    for _, r in ipairs(list) do
+      if type(r) == 'table' and (r.children == 'off' or r.children == nil) then
+        r.children = 'default'
+      end
+    end
+  end
   return cfg
 end
 

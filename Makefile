@@ -1,4 +1,4 @@
-.PHONY: help test icon docs docs-install docs-dev docs-build docs-preview docs-diagrams docs-diagrams-verify docs-clean
+.PHONY: help test reapack-text icon docs docs-install docs-dev docs-build docs-preview docs-diagrams docs-diagrams-verify docs-clean
 
 # The scripts themselves need no build step -- REAPER runs the .lua files where they sit. This
 # file is for the parts that do have a toolchain: the test suite, the icon, and the docs site.
@@ -23,9 +23,15 @@ help:
 	@echo ""
 	@echo "Tests (need a standalone Lua: brew install lua):"
 	@echo "  make test               run the suite outside REAPER"
+	@echo ""
+	@echo "ReaPack:"
+	@echo "  make reapack-text       print the About text and History ReaPack shows, from index.xml"
 
 test:
 	./tests/run.sh
+
+reapack-text:
+	@python3 dev/reapack_text.py index.xml
 
 # Re-render the favicon, the README mark and the REAPER toolbar strips from the one master SVG.
 # Deliberately NOT a prerequisite of docs-build: the outputs are committed and the master changes
@@ -46,11 +52,11 @@ docs-install: $(DOCS_DIR)/node_modules
 docs: docs-preview
 
 # Live-reload dev server at http://localhost:4321/Reaper-AutoColor/
-docs-dev: $(DOCS_DIR)/node_modules docs-diagrams
+docs-dev: $(DOCS_DIR)/node_modules
 	cd $(DOCS_DIR) && npm run dev
 
 # Static build into docs/dist/
-docs-build: $(DOCS_DIR)/node_modules docs-diagrams
+docs-build: $(DOCS_DIR)/node_modules
 	cd $(DOCS_DIR) && npm run build
 
 # Serve the built site locally (builds first if needed)
@@ -62,10 +68,10 @@ docs-preview: docs-build
 # "overwrite the file, rebuild" -- no markdown edit.
 #
 # The colouring diagrams under docs/src/assets/usage/diagrams are GENERATED, not drawn:
-# scripts/diagrams.py computes every square from a port of lib/apply.lua. Redrawing on
-# every docs build is cheap (no dependencies) and keeps an edited scenario from shipping
-# stale. `--verify` diffs the port against the real apply.lua and needs lua, so it is a
-# separate target rather than a build prerequisite.
+# scripts/diagrams.py computes every square from a port of lib/apply.lua. Not a
+# prerequisite of docs-build or docs-dev: the committed SVGs are minified by hand, and
+# regenerating would overwrite them. Run it after editing a scenario. `--verify` diffs the
+# port against the real apply.lua and needs lua.
 docs-diagrams:
 	cd $(DOCS_DIR) && npm run --silent diagrams
 

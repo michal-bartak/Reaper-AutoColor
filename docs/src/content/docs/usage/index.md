@@ -1,10 +1,11 @@
 ---
 title: The configuration window
-description: Tabs, the rule row, the action bar, and the preview panes
+description: The tabs, the controls shared by every tab, the preview and the warnings in the AutoColor window
 ---
 
-`MXM_AutoColor_GUI.lua` opens AutoColor's configuration window. It holds the rules, a preview of
-what they currently hit, and the buttons that write the colours into the project.
+The configuration window is where you create and edit AutoColor's rules. A rule tells AutoColor which colour, or which track icon, to give to tracks, items, regions or markers whose names match a pattern. On this page, *object* means any track, item, region or marker. The window also shows a preview of what the rules will do in the current project, and has the buttons that apply the rules to the project.
+
+To open the window, run the action `MXM_AutoColor_GUI.lua`, or click its toolbar button. If the window does not open, see [Requirements](/Reaper-AutoColor/requirements/).
 
 <figure class="shot">
 
@@ -13,83 +14,53 @@ what they currently hit, and the buttons that write the colours into the project
 <figcaption>The configuration window</figcaption>
 </figure>
 
-The window saves every edit to the [rules file](/Reaper-AutoColor/configuration/rules-file/) as you
-make it. There is no Save button. **Undo**, or `Cmd`/`Ctrl`+`Z` while the window has focus, steps
-back through changes to the **rules**; colour changes in the project use REAPER's own undo.
+The window has four parts, from top to bottom:
 
-## One tab per object kind
+- **The tabs**, one for each object type. Each tab holds the rule list for that object type.
+- **The action bar**, with the buttons that add rules, apply them, clear colours, and open the options.
+- **The preview panes**: *Objects preview* shows what the rules match in the current project, and *Pattern tester* lets you try out a pattern on a name.
+- **The status line**, at the bottom, which shows the result of the last action.
 
-<figure class="shot">
+## Saving and undo
 
-![The four tabs](../../../assets/usage/tabs.png)
+There is no Save button. AutoColor saves every change to the rules automatically, shortly after you make it, to the [config file](/Reaper-AutoColor/configuration/config-file/). While a save is pending, `saving...` appears on the action bar.
 
-<figcaption>Tracks, Items, Regions and Markers, with their rule counts</figcaption>
-</figure>
+The **Undo** button on the action bar reverts the last change to the rules. `Cmd`+`Z` on macOS, or `Ctrl`+`Z` on Windows and Linux, does the same while the window has focus. The undo history is kept only while the window is open.
 
-Each tab holds its own ordered list. Within a tab, **the first rule that matches wins**. Reorder the
-rules to change precedence, like firewall rules.
+Colours written into the project are not part of this undo history. To revert them, use REAPER's own Undo.
 
-Precedence is **per tab**, so reordering track rules can never change which region wins. Each tab
-offers only the controls that mean something for it: the folder filters exist on Tracks and nowhere
-else.
-
-## The rule row
+## The tabs
 
 <figure class="shot">
 
-![A rule row](../../../assets/usage/rule-row.png)
+![The five tabs](../../../assets/usage/tabs.png)
 
-<figcaption>One rule, left to right</figcaption>
+<figcaption>The tabs, with their rule counts</figcaption>
 </figure>
 
-| Column | What it is |
-|---|---|
-| handle | Drag to reorder. Click to highlight the rule, which is where Objects preview points when you click a rule name in it. |
-| on/off | Switch the rule off without deleting it. A tab whose rules are all off says so. |
-| **Name** | Your label for the rule. Shown only in this window. |
-| **Match** | `contains`, `glob` or `regex` — see [Matching names](/Reaper-AutoColor/usage/matching/). |
-| **Pattern** | What to match. Leave it empty to match on the filter alone. |
-| **Aa** | Ignore case (ASCII only). |
-| **Filter** | An extra condition on top of the pattern — see [Filters](/Reaper-AutoColor/usage/matching/#filters). |
-| **Colour** | The rule's colour, and optionally a [second one](/Reaper-AutoColor/usage/colours/#gradients) for a gradient. |
-| **Items** | Tracks tab only: [write the track's colour onto the items](/Reaper-AutoColor/usage/colours/#items) on the tracks this rule matches, instead of leaving REAPER to draw them from the track. |
-| **Hits** | How many objects this rule wins in this project. |
-| menu | Duplicate, Delete, and Move to top / up / down / bottom. |
+The window has one tab for each thing that AutoColor can set. When a tab has rules, the number of rules is shown in its label, for example `Tracks (12)`.
 
-:::tip[Hits reads 0 but objects are still coloured]
-**Hits** counts what the rule *wins*, not what its pattern matches. An earlier rule that claimed the
-same objects leaves this one on 0. Move it up if it should win.
-:::
+| Tab | Sets | Described in |
+|---|---|---|
+| **Tracks** | Track colours | [Track colours](/Reaper-AutoColor/usage/tracks/) |
+| **Items** | Item colours | [Item colours](/Reaper-AutoColor/usage/items/) |
+| **Regions** | Region colours | [Region colours](/Reaper-AutoColor/usage/regions/) |
+| **Markers** | Marker colours | [Marker colours](/Reaper-AutoColor/usage/markers/) |
+| **Icons** | Track icons | [Track icons](/Reaper-AutoColor/usage/icons/) |
 
-## The preview panes
+Each tab holds an ordered list of rules for its own object type. Rules on one tab never affect objects of another type.
 
-<figure class="shot">
+## Common controls
 
-![Objects preview and Pattern tester](../../../assets/usage/preview.png)
+These controls work the same on every tab. The columns that decide what a rule matches and what it sets are described on the page for each tab.
 
-<figcaption>Objects preview and Pattern tester</figcaption>
-</figure>
+### The row menu
 
-**Objects preview** lists what the rules on the open tab claim in *this* project. The same code that
-Apply runs resolves it first-match-wins, so it is not an approximation. Each row carries the colour
-the object will get, its name, and which rule is responsible:
+The **...** button at the right end of each row opens a menu with **Move up**, **Move down**, **Move to top**, **Move to bottom**, **Duplicate** and **Delete**.
 
-| The Rule column says | Meaning |
-|---|---|
-| a rule's name | That rule won it. Click to highlight the rule in the table. A trailing `~` means it is spreading a gradient. |
-| `from track: …` | No item rule matched, so it takes its track's colour. That track's rule has *also colour items* on. |
-| `from folder` | No rule of its own. It inherits its folder parent's colour. |
+Reordering can be achieved also by dragging the handle at the left end of the row.
 
-The list follows the open tab. Click a **name** to reveal that object in the project.
-
-**Pattern tester** is a scratch pad with its own mode, pattern and text to match. Type, and it says
-whether the pattern matches, which part of the name it matched, and what each group captured.
-
-:::tip[It knows nothing about your rules]
-That is the point. Nothing you type here is saved, and nothing it does reaches the project.
-:::
-
-## The action bar
+### The action bar
 
 <figure class="shot">
 
@@ -100,29 +71,62 @@ That is the point. Nothing you type here is saved, and nothing it does reaches t
 
 | Button | What it does |
 |---|---|
-| **+ *kind* rule** | Adds a rule to the open tab. |
-| **Undo** | Steps back through changes to the rules. |
-| **Apply now** | Colours the whole project, in one undo point. See [Applying colours](/Reaper-AutoColor/usage/applying/). |
-| **Selection** | Colours only what is selected. |
-| **Clear…** | Three clearing scopes — see [Clearing colours](/Reaper-AutoColor/usage/clearing/). |
-| **Auto: off / on / paused** | The state of the background loop, and a Pause button once it runs. See [Auto-apply](/Reaper-AutoColor/usage/auto-apply/). |
-| **Options** | Folders, scope, the background loop's timing, text size, rules file. See [Options](/Reaper-AutoColor/configuration/). |
-| **ⓘ** | About: the version you are running, links to the source and these docs, the author, and the licence. |
+| **+ *type* rule** | Adds a rule at the bottom of the open tab, for example **+ track rule** on the Tracks tab. A new rule has an empty pattern and no filter, so it matches every object on its tab that no earlier rule matches. |
+| **Undo** | Reverts the last change to the rules. |
+| **Apply now** | Applies all rules to the whole project. See [Applying colours and icons](/Reaper-AutoColor/usage/applying/). |
+| **Selection** | Applies the rules to the selected objects only. See [Applying colours and icons](/Reaper-AutoColor/usage/applying/). |
+| **Clear...** | Removes colours, or on the Icons tab track icons. See [Clearing colours](/Reaper-AutoColor/usage/clearing/). |
+| **Auto: off** / **Auto: on** | Shows whether auto-apply is on, and switches it on or off. When auto-apply is on, AutoColor applies the rules automatically as objects are added or renamed. See [Auto-apply](/Reaper-AutoColor/usage/auto-apply/). |
+| **Options** | Opens the options: folder colours, resetting the colour of objects that no rule matches, starting auto-apply with REAPER, auto-apply timing, text size, and the config file. See [Options](/Reaper-AutoColor/configuration/). |
+| **ⓘ** | Shows the installed version, links to the source code and this documentation, the author, and the licence. |
 
-The foot of the window keeps one line for status messages: what an Apply coloured, why a clear did
-nothing, whether a save failed. The line is always there, so the layout never jumps.
+## Notes below the rule list
 
-## Banners
+Some notes appear below the rule list:
 
-Two conditions appear at the top of the window rather than in passing:
+- A warning when SWS Auto Color, or SWS Auto Icon on the Icons tab, is switched on for this object type and the tab has rules. See [Warnings](#warnings).
+- A note when every rule on the tab is switched off.
+- Notes about the selected rule, when there is something to point out. For example, a rule with an empty pattern and no filter shows that it matches every object on its tab.
 
-- **SWS Auto Color is enabled.** Both are live colour engines and they will fight. Switch one off;
-  see [Troubleshooting](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
-- **This rule file was written by a newer version.** You can edit, but nothing is saved, so an older
-  build cannot quietly destroy a config it does not understand.
+## The preview panes
+
+<figure class="shot">
+
+![Objects preview and Pattern tester](../../../assets/usage/preview.png)
+
+<figcaption>Objects preview and Pattern tester</figcaption>
+</figure>
+
+### Objects preview
+
+**Objects preview** lists the objects of the open tab's type that the rules will colour in the current project. The list shows exactly what applying the rules would do, before anything is applied. The heading says how many objects will be coloured out of how many there are. The list shows at most 500 objects.
+
+Each row shows the colour the object will get, the object's name, and where the colour comes from:
+
+| The Rule column shows | Meaning |
+|---|---|
+| a rule's name | That rule colours the object. If the rule has no name, its pattern is shown instead. A `~` after the name means the rule has two colours and gives each object a shade of a gradient. Click the rule's name to select the rule in the list above. |
+| `from track: …` | The object is an item that no item rule matches. It takes the colour of its track, because the track's rule has **FI** (force item colour) switched on. |
+| `from folder` | No rule matches the track. It takes the colour of its folder track; see [Folders](/Reaper-AutoColor/usage/colours/#folders). |
+
+Click an object's name to find it in the project. A track is selected and scrolled into view. An item is selected. For a region or marker, the edit cursor moves to its position.
+
+### Pattern tester
+
+**Pattern tester** lets you try out a pattern on a name before you put the pattern in a rule. See [Testing a pattern](/Reaper-AutoColor/usage/matching/#testing-a-pattern).
+
+## The status line
+
+The line at the bottom of the window shows the result of the last action for a few seconds. For example, it shows how many objects **Apply now** coloured, `Already up to date.` when nothing needed to change, `Nothing is selected.` when **Selection** had nothing to work on, or an error if the rules could not be saved.
+
+## Warnings
+
+The window shows a warning in two situations:
+
+- **SWS Auto Color or SWS Auto Icon is switched on.** The warning appears below the rule list of each affected tab that has rules, because SWS and AutoColor would overwrite each other's colours or icons. See [Colours keep changing back](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
+- **This config file was written by a newer version.** The warning appears at the top of the window. Changes to the rules are not saved until you update AutoColor. See [Version handling](/Reaper-AutoColor/configuration/config-file/#version-handling).
 
 ## Where to go next
 
-- [Matching names](/Reaper-AutoColor/usage/matching/) — the three modes, the supported regex, the filters.
-- [Colours and gradients](/Reaper-AutoColor/usage/colours/) — one colour, two colours, and what a ramp spreads across.
-- [Applying colours](/Reaper-AutoColor/usage/applying/) — Apply now, Selection, and the actions that do the same without the window.
+- [Track colours](/Reaper-AutoColor/usage/tracks/), and the pages for the other tabs: what the rules on each tab do.
+- [Applying colours and icons](/Reaper-AutoColor/usage/applying/): **Apply now**, **Selection**, and the actions that do the same without opening the window.

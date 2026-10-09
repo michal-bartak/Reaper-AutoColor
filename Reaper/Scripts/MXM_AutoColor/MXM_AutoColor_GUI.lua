@@ -5,7 +5,7 @@
 ]]
 
 local sep = package.config:sub(1, 1)
-local _, thisFile = reaper.get_action_context()
+local _, thisFile, sectionID, cmdID = reaper.get_action_context()
 local ROOT = thisFile:match('^(.*[\\/])')
 package.path = ROOT .. '?.lua;' .. ROOT .. 'lib' .. sep .. '?.lua;' .. package.path
 
@@ -45,14 +45,25 @@ if reaper.GetExtState(SECT, 'gui_open') == '1' then
 end
 reaper.SetExtState(SECT, 'gui_open', '1', false)
 
+-- Running the action again closes the window, instead of REAPER asking whether
+-- to terminate. The button lights while the window is open.
+if reaper.set_action_options then reaper.set_action_options(1) end
+local function set_toggle(state)
+  if sectionID and sectionID >= 0 and cmdID and cmdID ~= 0 then
+    reaper.SetToggleCommandState(sectionID, cmdID, state)
+    reaper.RefreshToolbar2(sectionID, cmdID)
+  end
+end
+
 ------------------------------------------------------------------- start up
 local app    = require 'gui.app'
 local window = require 'gui.window'
 local theme  = require 'gui.theme'
 
 app.load()
+require('startup').ensure()
 
-local ctx  = ImGui.CreateContext('AutoColor')
+local ctx = ImGui.CreateContext('AutoColor')
 local FONT = ImGui.CreateFont('sans-serif')      -- 0.10: no size here
 ImGui.Attach(ctx, FONT)
 
@@ -62,7 +73,9 @@ theme.init(ImGui, ctx)
 reaper.atexit(function()
   app.flush(true)                                -- never lose a pending edit
   reaper.DeleteExtState(SECT, 'gui_open', false)
+  set_toggle(0)
 end)
+set_toggle(1)
 
 ------------------------------------------------------------------ the frame
 local function frame()
@@ -86,6 +99,9 @@ local function frame()
 
     local okdraw, err = pcall(window.draw, FS)
     if not okdraw then
+      -- Also to the console: an error inside a table or child leaves it open,
+      -- and End() below then raises its own error, which hides this one.
+      reaper.ShowConsoleMsg('AutoColor: drawing error: ' .. tostring(err) .. '\n')
       ImGui.TextColored(ctx, 0xC2413BFF, 'Drawing error: ' .. tostring(err))
     end
 
@@ -96,12 +112,13 @@ local function frame()
   -- main window has ended -- outside the dim, at full opacity, and still inside
   -- the theme/font push so they are styled and sized like everything else.
   for _, d in ipairs({ { 'options', window.draw_options, 'options_open' },
-                       { 'about',   window.draw_about,   'about_open'   } }) do
+                       { 'about',   window.draw_about,   'about_open'   },
+                       { 'icons',   window.draw_icon_browser, 'icon_browser' } }) do
     local okd, derr = pcall(d[2], FS)
     if not okd then
       reaper.ShowConsoleMsg('AutoColor: ' .. d[1] .. ' dialog error: ' ..
                             tostring(derr) .. '\n')
-      app.st[d[3]] = false      -- or it throws again on every frame
+      app.st[d[3]] = nil        -- or it throws again on every frame
     end
   end
 

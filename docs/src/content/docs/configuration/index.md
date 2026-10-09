@@ -1,10 +1,11 @@
 ---
 title: Options
-description: Everything in the Options dialog, and what each setting costs
+description: The settings in the Options dialog, what each one does, and when to change it
 ---
 
-Everything that is not a rule lives in **Options**, at the right-hand end of the action bar. The
-settings are global: one rule set, one set of options, shared by every project.
+The **Options** dialog holds the settings that are not part of an individual rule: whether the tracks inside a folder take the folder track's colour, what happens to objects that no rule matches, how auto-apply behaves, and the size of the text in the window. It also has buttons that replace, remove or import the whole rule set.
+
+To open the dialog, click **Options** at the right-hand end of the action bar, the row of buttons below the rule list in the AutoColor window.
 
 <figure class="shot">
 
@@ -13,68 +14,61 @@ settings are global: one rule set, one set of options, shared by every project.
 <figcaption>Options</figcaption>
 </figure>
 
+Options apply to every project and are saved in the [config file](/Reaper-AutoColor/configuration/config-file/), together with the rules.
+
+While the Options dialog is open, the AutoColor window behind it is dimmed and does not respond to clicks. The dialog stays open when you switch to another application or click elsewhere in REAPER. To close it, click **Close**, click the close button in its title bar, or press `Escape`.
+
 ## Folders
 
-How a folder's colour reaches its children. See
-[Folder colours](/Reaper-AutoColor/usage/colours/#folders).
+Every rule on the **Tracks** and **Icons** tabs has a **Children** setting. It decides whether the tracks inside a folder also receive the folder track's colour or icon. A rule whose **Children** setting is `--` uses the value chosen here. There is one value for each tab:
 
-| Setting | Meaning |
-|---|---|
-| **fill gaps** *(default)* | Children with no rule of their own inherit. |
-| **force** | The folder colour overrides its children. |
-| **off** | Folders do not colour their children. |
+- **Tracks**: **Fill** *(default)*, **Force** or **Off**. [Folders](/Reaper-AutoColor/usage/colours/#folders) explains the values with examples.
+- **Icons**: **Off** *(default)*, **Fill** or **Force**. [Children](/Reaper-AutoColor/usage/icons/#children) explains the values with examples.
 
-**Subfolder splits the parent's colour range**, on by default. It affects only rules that
-[spread a gradient across **folders**](/Reaper-AutoColor/usage/colours/#gradients). A nested folder
-ends the range around it, so the tracks after it start the ramp again instead of resuming it. A
-folder at the top level does the same to the tracks around it. Off gives one ramp per folder,
-however deep the nesting. Take care in a folder made mostly of subfolders: a range of one track
-shows the first colour only.
+### Subfolder splits the parent's colour range
+
+Affects only rules whose gradient is spread across **folders** or **runs & folders**. When on *(default)*, a subfolder divides the gradient of the folder around it into separate ramps. When off, the folder's tracks share one ramp. [Subfolders](/Reaper-AutoColor/usage/colours/#subfolders) explains the setting with examples.
 
 ## Scope
 
-**Reset to the default colour when no rule matches**, one checkbox per kind — Tracks, Items, Regions,
-Markers. Off everywhere by default. See
-[Reset unmatched objects](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects).
+**Reset to the default colour when no rule matches** has one checkbox for each object type: **Tracks**, **Items**, **Regions**, **Markers** and **Icons**. All five are off by default. When a checkbox is on, applying the rules removes the colour, or for **Icons** the icon, from every object of that type that no rule matches.
 
-:::tip
-Recommended for **items**, where it makes an item follow its track live. Careful on **tracks**,
-where it also strips colours you set by hand.
-:::
+[Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches) explains when to use it.
 
-## Background auto-colouring
+## System
 
-| Setting | Default | What it does |
-|---|---|---|
-| **Create undo points for automatic changes** | off | Adds an undo point per automatic recolour. Off because renaming a track would otherwise shred your undo history, and the rules can always re-derive the colours. |
-| **Check every (s)** | 0.20 | How often the loop wakes. |
-| **Work budget (ms)** | 4 | How long it may work before yielding back to REAPER. |
-| **Rescan items at most every (s)** | 5 | The delay before an item *renamed in place* is noticed. `0` re-reads everything on every change. |
+These settings control auto-apply, which applies the rules automatically while you work. Each setting is explained on the [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) page.
 
-[Auto-apply](/Reaper-AutoColor/usage/auto-apply/) explains what the loop re-reads and why the rescan
-interval exists.
+| Setting | Default | Allowed values | Explained in |
+|---|---|---|---|
+| **Autostart** | Last | Last, Always, Never | [Starting with REAPER](/Reaper-AutoColor/usage/auto-apply/#starting-with-reaper) |
+| **Undo points for automatic changes** | off | on, off | [Undo history](/Reaper-AutoColor/usage/auto-apply/#undo-history) |
+| **Check frequency (s)** | 0.20 | 0.05 to 2 | [How quickly changes are applied](/Reaper-AutoColor/usage/auto-apply/#how-quickly-changes-are-applied) |
+| **Work budget (ms)** | 4 | 1 to 50 | [How quickly changes are applied](/Reaper-AutoColor/usage/auto-apply/#how-quickly-changes-are-applied) |
+| **Item/marker rescan (s)** | 5 | 0 to 60 | [How quickly changes are applied](/Reaper-AutoColor/usage/auto-apply/#how-quickly-changes-are-applied) |
 
 ## Window
 
-**Text size**, 8 to 20. Every dimension in the window is a multiple of the font size, so this scales
-the whole layout rather than just the labels.
+**Text size** sets the size of the text in the AutoColor window, from 8 to 20. The default is 14. The setting scales the whole window, including buttons and columns, not only the text.
 
-The dialog stays **open** when you switch to another application and back, or click elsewhere in
-REAPER. Close it with its **Close** button, `Escape`, or a click on the AutoColor window behind it.
+## Config file
 
-## Rules file
-
-Shows the path to [`config.json`](/Reaper-AutoColor/configuration/rules-file/), and two buttons that
-replace the **whole** rule set, every tab rather than just the one you are looking at:
+This section shows the path to the [config file](/Reaper-AutoColor/configuration/config-file/), which stores the rules and options. Below the path are three buttons. Each of them changes the rules on every tab, not only on the tab that is open. They do not change the options.
 
 | Button | What it does |
 |---|---|
-| **Example rules** | The built-in set, as written on first run. |
-| **Remove Rules** | Empties every tab. |
+| **Example rules** | Replaces all rules with the [example rules](/Reaper-AutoColor/installation/#first-run) that AutoColor starts with. The example rules include no icon rules. |
+| **Remove Rules** | Removes every rule from every tab. |
+| **Import from SWS** | Converts the rules of SWS Auto Color into AutoColor rules, and adds them below the existing rules. |
 
-Both ask for confirmation, and **Undo** takes either one back while the window is open.
+Each button asks for confirmation before it changes anything. **Import from SWS** first shows how many rules it found. While the AutoColor window stays open, **Undo** reverses any of the three.
+
+If the config file was written by a newer version of AutoColor, the three buttons are disabled. See [Version handling](/Reaper-AutoColor/configuration/config-file/#version-handling).
+
+[Importing from SWS](/Reaper-AutoColor/configuration/import-sws/) describes what the import reads, which rules come across unchanged, and which rules arrive switched off.
 
 ## Where to go next
 
-- [Rules file](/Reaper-AutoColor/configuration/rules-file/) — what is stored, where, and what happens when it goes wrong.
-- [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/) — two settings outside this tool that decide what you see.
+- [Config file](/Reaper-AutoColor/configuration/config-file/) — where the rules and options are stored, and how they are protected.
+- [Importing from SWS](/Reaper-AutoColor/configuration/import-sws/) — bringing SWS Auto Color rules into AutoColor.
+- [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/) — two REAPER settings that decide whether item colours are visible.

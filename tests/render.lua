@@ -50,10 +50,21 @@ do
                         'TableNextRow', 'TableSetColumnIndex', 'EndTable',
                         'PushID', 'PopID', 'ColorEdit3', 'InputText', 'Checkbox',
                         'BeginChild', 'EndChild', 'Button',
-                        'Selectable', 'ColorButton',
+                        'Selectable',
                         'BeginTabBar', 'BeginTabItem', 'PushStyleVar' }) do
     check(rec.seen[fn], 'frame reaches ' .. fn)
   end
+end
+
+-- The preview follows the LAST open tab, and with every tab open that is Icons,
+-- which shows thumbnails rather than swatches.
+do
+  local ImGui, rec = mockimgui.new{ only_tab = 'Tracks' }
+  window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+  P.advance(1); app.refresh_entries(true); app.recompute_preview()
+  local ok, err = pcall(window.draw, 14)
+  check(ok, 'a Tracks-only frame draws', tostring(err))
+  check(rec.seen.ColorButton, 'the Tracks preview reaches ColorButton')
 end
 
 ------------------------------------------------------- one tab per object kind
@@ -87,11 +98,14 @@ do -- only the TRACK tab offers the cascade switch and the folder filters
   end
 
   local tr = labels_for('Tracks')
-  check(tr['##casc'], 'the track tab has the "also colour items" switch')
-  check(tr['Items'],  'and an Items column header')
+  check(tr['##casc'], 'the track tab has the FI (force item colour) switch')
+  check(tr['FI'],     'and an FI column header')
+  check(tr['##children'] and tr['Children'], 'and a Children combo')
 
   local rg = labels_for('Regions')
   check(not rg['##casc'], 'the region tab has no cascade switch')
+  check(not rg['##children'], 'nor a Children combo')
+  check(not labels_for('Items')['##children'], 'items have no Children either')
   check(rg['rules_region'], 'but it did draw its own table')
 
   -- the filter dropdown only appears where a filter exists for that kind
@@ -580,9 +594,13 @@ do -- the button opens it; it is drawn as a window, centred, and never a popup
   -- The mock hands out a distinct bit per flag name, so the OR can be taken
   -- apart again and each one checked for.
   if flags then
-    for _, f in ipairs({ 'NoTitleBar', 'NoResize', 'NoMove', 'NoCollapse',
+    for _, f in ipairs({ 'NoResize', 'NoCollapse', 'NoDocking',
                          'NoSavedSettings', 'TopMost' }) do
       check(flags & ImGui['WindowFlags_' .. f] ~= 0, 'with WindowFlags_' .. f)
+    end
+    -- a title bar with a close button, and movable, like the icon browser
+    for _, f in ipairs({ 'NoTitleBar', 'NoMove' }) do
+      check(flags & ImGui['WindowFlags_' .. f] == 0, 'without WindowFlags_' .. f)
     end
   end
 
@@ -606,7 +624,7 @@ do -- nothing shuts it on its own -- that is the whole point
   check(unfocused == true, 'and so does a click while no ImGui window has focus')
 end
 
-do -- Escape, Close, and a click on the window behind all shut it
+do -- Escape and Close shut it
   local _, _, _, esc = optdialog({ IsKeyPressed = function() return true end }, true)
   check(esc == false, 'Escape closes it')
 
@@ -620,7 +638,7 @@ do -- Escape, Close, and a click on the window behind all shut it
     IsWindowHovered = function() return false end,   -- not over the dialog
     IsWindowFocused = function() return true end,    -- but ImGui has the click
   }, true)
-  check(behind == false, 'and a click on the AutoColor window behind dismisses it')
+  check(behind == true, 'a click on the AutoColor window behind leaves it open')
 
   local _, _, _, onit = optdialog({
     IsMouseClicked  = function() return true end,
@@ -670,6 +688,8 @@ do -- the dialog body: every control it is supposed to offer
   check(ok, 'the options body draws without error', tostring(err))
   check(rec.labels['Subfolder splits the parent\'s colour range'],
         'the Folders section offers the subfolder split checkbox')
+  check(rec.labels['Tracks##propagate_folders'] and rec.labels['Icons##propagate_icons'],
+        'and a Children default for tracks and for icons')
   check(rec.labels['Example rules'], 'the rules file section offers Example rules')
   check(rec.labels['Remove Rules'], 'and Remove Rules')
   check(rec.seen.SetTooltip, 'and the dialog explains itself')
@@ -744,8 +764,8 @@ do -- and it is dismissed the same way the Options dialog is
         'the Close button closes it')
   check(shut{ IsMouseClicked  = function() return true end,
               IsWindowHovered = function() return false end,
-              IsWindowFocused = function() return true end } == false,
-        'and a click on the window behind dismisses it')
+              IsWindowFocused = function() return true end } == true,
+        'a click on the window behind leaves it open')
   check(shut{ IsMouseClicked  = function() return true end,
               IsWindowHovered = function() return false end,
               IsWindowFocused = function() return false end } == true,
@@ -857,6 +877,131 @@ do -- Remove Rules empties every kind, behind a confirmation
   check(app.can_undo(), 'and a snapshot taken, so Undo puts them back')
 end
 
+do -- the third button in the Rules file row, and all three hints
+  local _, _, rec = optdialog({ IsItemHovered = function() return true end }, true)
+  check(rec.labels['Import from SWS'], 'the rules file section offers Import from SWS')
+  -- No '...': it acts rather than opening anything, so the label must not
+  -- promise a dialog.
+  check(not rec.labels['Import from SWS...'], 'without the ellipsis that means "opens a menu"')
+
+  -- Every button in the row says what it does. The exact strings, because a
+  -- tooltip that silently stopped being drawn would otherwise go unnoticed --
+  -- rec.seen.SetTooltip is true if ANY of them fires.
+  check(rec.labels['Replaces every rule with the built-in example set.\n\nAsks for confirmation.'],
+        'Example rules has a hint')
+  check(rec.labels['Empties all four tabs.\n\nAsks for confirmation.'],
+        'Remove Rules has a hint')
+  check(rec.labels['Appends the rules from SWS Auto Color below existing rules.\n\n' ..
+                   'Unsupported SWS modes are imported as inactive.\n\n' ..
+                   'Asks for confirmation.'],
+        'Import from SWS has a hint')
+end
+
+do -- three buttons have to FIT: the dialog is a fixed width and does not scroll
+  local widths = {}
+  optdialog({
+    GetContentRegionAvail = function() return 14 * 39.6, 640 end,
+    GetStyleVar = function() return 8, 8 end,
+    Button = function(_, id, w) widths[id] = w; return false end,
+  }, true)
+
+  local row = { widths['##Example rules'], widths['##Remove Rules'],
+                widths['##Import from SWS'] }
+  check(row[1] and row[2] and row[3], 'all three are drawn')
+  check(row[1] == row[2] and row[2] == row[3], 'at equal widths',
+        table.concat({ tostring(row[1]), tostring(row[2]), tostring(row[3]) }, '/'))
+  -- The real constraint. A stub cannot measure pixels, so it checks the
+  -- arithmetic instead of pretending to have looked at the screen.
+  check(row[1] and (row[1] * 3 + 8 * 2) <= 14 * 39.6,
+        'and the row fits the content region, spacing included',
+        tostring(row[1]))
+end
+
+do -- with no SWS file, the click reports and stops
+  local real = reaper.ShowMessageBox
+  local asked
+  reaper.ShowMessageBox = function(msg, _, kind) asked = { msg = msg, kind = kind }; return 6 end
+
+  app.st.cfg = config.starter()
+  local before = #app.st.cfg.rules.track
+  optdialog({ Button = function(_, id) return id == '##Import from SWS' end }, true)
+  reaper.ShowMessageBox = real
+
+  check(asked ~= nil, 'the click runs the scan')
+  check(asked and asked.kind == 0, 'and reports with an OK box, not a question',
+        asked and tostring(asked.kind))
+  check(asked and asked.msg:find('not found', 1, true) ~= nil,
+        'naming the missing file', asked and asked.msg)
+  check(#app.st.cfg.rules.track == before, 'and the rules are untouched')
+end
+
+do -- with a file, it asks BEFORE changing anything, and Cancel means cancel
+  os.execute('cp "' .. NC .. '/../../../tests/fixtures/sws-autocoloricon.ini" "' .. TMP .. '/"')
+
+  local real = reaper.ShowMessageBox
+  local asked
+  local function click(answer)
+    asked = nil
+    reaper.ShowMessageBox = function(msg, _, kind)
+      asked = { msg = msg, kind = kind }; return answer
+    end
+    optdialog({ Button = function(_, id) return id == '##Import from SWS' end }, true)
+    reaper.ShowMessageBox = real
+  end
+
+  app.st.cfg = config.starter()
+  app.st.undo = {}                           -- earlier blocks left snapshots on it
+  local before = #app.st.cfg.rules.track
+
+  click(7)                                   -- No
+  check(asked and asked.kind == 4, 'it asks a yes/no question first')
+  check(asked and asked.msg:find('Import 14 rules', 1, true) ~= nil,
+        'counting what it found', asked and asked.msg)
+  check(asked and asked.msg:find('12 tracks, 1 region, 1 marker', 1, true) ~= nil,
+        'broken down by kind', asked and asked.msg)
+  check(asked and asked.msg:find('1 icon', 1, true) ~= nil,
+        'with the icon a track rule carried', asked and asked.msg)
+  check(asked and asked.msg:find('5 of them switched off', 1, true) ~= nil,
+        'and saying how many arrive off', asked and asked.msg)
+  -- WHY they are off is a table in the manual, not something to read with a
+  -- Yes button waiting.
+  check(asked and asked.msg:find('equivalent', 1, true) == nil,
+        'without explaining why -- that is what the manual is for')
+  check(#app.st.cfg.rules.track == before, 'answering No imports nothing')
+  check(not app.can_undo(), 'and takes no snapshot')
+
+  click(6)                                   -- Yes
+  check(#app.st.cfg.rules.track == before + 12, 'answering Yes appends them',
+        tostring(#app.st.cfg.rules.track))
+  check(app.can_undo(), 'and that one is undoable')
+
+  os.remove(TMP .. '/sws-autocoloricon.ini')
+end
+
+do -- a click in a dropdown must not dismiss the dialog underneath it
+  -- A popup is a separate ROOT window, so IsWindowHovered on the dialog is
+  -- false while the mouse is over the Folders dropdown. Without the guard, a
+  -- click on one of its entries closed Options.
+  local _, _, _, still = optdialog({
+    IsPopupOpen    = function() return true end,
+    IsMouseClicked = function() return true end,
+    IsWindowHovered = function() return false end,
+    IsWindowFocused = function() return true end,
+  }, true)
+  check(still, 'the dialog survives a click while a dropdown of its own is open')
+
+  -- And Escape belongs to the menu while one is up, not to the dialog.
+  local _, _, _, still2 = optdialog({
+    IsPopupOpen  = function() return true end,
+    IsKeyPressed = function() return true end,
+  }, true)
+  check(still2, 'and survives Escape, which the dropdown should be eating')
+
+  -- The guard must not have broken the ordinary dismissal.
+  local _, _, _, gone = optdialog({ IsKeyPressed = function() return true end }, true)
+  check(not gone, 'with no popup open, Escape still closes it')
+end
+
 do -- the split checkbox is wired to the option, and repaints the preview
   local src = pathlib_read('lib/gui/window.lua')
   check(src:find('o.subfolder_splits_range = v', 1, true) ~= nil,
@@ -882,7 +1027,8 @@ do -- dimming is done with the GLOBAL alpha, not a veil
         'and no veil rect either -- it cannot reach inside child windows')
   check(src:find('push_content_dim', 1, true) ~= nil,
         'the content is faded with the global alpha instead')
-  check(src:find('StyleVar_WindowPadding', 1, true) ~= nil,
+  local dsrc = pathlib_read('lib/gui/dialog.lua')
+  check(dsrc:find('StyleVar_WindowPadding', 1, true) ~= nil,
         'and the dialog gets its own padding')
 
   -- The dialog must not drift back to being a popup. ImGui owns a popup's
@@ -893,15 +1039,13 @@ do -- dimming is done with the GLOBAL alpha, not a veil
         'the options dialog is not a popup')
   check(src:find('PopupFlags_NoReopen', 1, true) == nil,
         'and does not try to re-open one every frame')
-  check(src:find('Begin(ctx, OPTIONS_TITLE', 1, true) ~= nil,
+  check(src:find('dialog.begin(FS, OPTIONS_TITLE', 1, true) ~= nil,
         'it is begun as an ordinary window, by its shared name constant')
-  check(src:find('WindowFlags_TopMost', 1, true) ~= nil,
+  check(dsrc:find('WindowFlags_TopMost', 1, true) ~= nil,
         'always on top, or the dimmed window behind could cover it')
 
   -- Everything a popup used to give away free has to be asked for.
-  check(src:find('Key_Escape', 1, true) ~= nil, 'Escape is handled by hand')
-  check(src:find('IsMouseClicked', 1, true) ~= nil,
-        'as is dismissal by a click on the window behind')
+  check(dsrc:find('Key_Escape', 1, true) ~= nil, 'Escape is handled by hand')
   local tsrc = pathlib_read('lib/gui/theme.lua')
   check(tsrc:find('BeginDisabled', 1, true) ~= nil,
         'and the dim blocks input, which a window does not')
@@ -1369,6 +1513,93 @@ do -- preview and Apply must agree for a GROUPED gradient too, not just a flat
   end
   check(mismatch == nil, 'every previewed grouped-gradient colour is what Apply writes',
         tostring(mismatch))
+end
+
+------------------------------------------------ the SWS conflict, per tab
+do
+  local f = assert(io.open(TMP .. '/sws-autocoloricon.ini', 'w'))
+  f:write('[SWS]\nAutoColorEnable=1\nAutoColorRegionEnable=0\nAutoIconEnable=1\n'); f:close()
+  app.st.cfg.rules = config.empty_rules()
+  app.st.cfg.rules.track[1] = rules.new('track', { pattern = 'a' })
+  app.st.cfg.rules.region[1] = rules.new('region', { pattern = 'a' })
+  local function note(tab)
+    local ImGui, rec = mockimgui.new{ only_tab = tab }
+    window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+    P.advance(10); app.refresh_entries(true); app.recompute_preview()
+    assert(pcall(window.draw, 14))
+    for l in pairs(rec.labels) do
+      if l:find('will fight these rules', 1, true) then return l end
+    end
+  end
+  check(note('Tracks') ~= nil, 'SWS auto colour on: the Tracks tab says so')
+  check(note('Regions') == nil, 'a switch that is off: no note')
+  check(note('Icons') == nil, 'no icon rules: nothing to fight over')
+  local all = note('Tracks')
+  check(all == 'SWS Auto Color for tracks is enabled and will fight these rules', 'naming the kind', all)
+  os.remove(TMP .. '/sws-autocoloricon.ini')
+end
+
+------------------------------------------------------ the Icons tab and browser
+do
+  local dir = TMP .. '/Data/track_icons'
+  P.files[dir] = { files = { 'kick.png', 'Snare.PNG', 'notes.txt', 'amp.jpg' }, dirs = { 'subf' } }
+  P.files[dir .. '/subf'] = { files = { 'fx.png' } }
+  local icons = require 'icons'
+  local list = icons.list(false)
+  check(#list == 4, 'the index keeps png/jpg, any case, subfolders included', #list .. '')
+  check(list[1].rel == 'amp.jpg' and list[4].rel == 'subf/fx.png', 'ordered by relative path')
+
+  app.st.cfg.rules = config.empty_rules()
+  app.st.cfg.rules.icon[1] = rules.new('icon', { label = 'Kick', pattern = 'kick',
+                                                 icon = 'kick.png', children = 'fill' })
+  local r = app.st.cfg.rules.icon[1]
+
+  local steps = 0
+  local scripted = {
+    CreateImage = function() return { 'img' } end,
+    Image_GetSize = function() return 64, 64 end,
+    ValidatePtr = function() return true end,
+    CreateListClipper = function() return { 'clipper' } end,
+    ListClipper_Step = function() steps = steps + 1; return steps % 2 == 1 end,
+    ListClipper_GetDisplayRange = function() return 0, 10 end,
+  }
+  local function iframe(extra)
+    local sc = {}
+    for k, v in pairs(scripted) do sc[k] = v end
+    for k, v in pairs(extra or {}) do sc[k] = v end
+    local ImGui, rec = mockimgui.new{ only_tab = 'Icons', scripted = sc }
+    window.init(ImGui, { 'ctx' }); theme.init(ImGui, { 'ctx' })
+    P.advance(1); app.refresh_entries(true); app.recompute_preview()
+    local ok, err = pcall(window.draw, 14)
+    local ok2, err2 = pcall(window.draw_icon_browser, 14)
+    return ok and ok2, tostring(err) .. ' / ' .. tostring(err2), rec
+  end
+
+  local ok, err, rec = iframe()
+  check(ok, 'the Icons tab draws', err)
+  check(rec.labels['##children'], 'an icon rule has a Children combo')
+  check(rec.labels['##icon'], 'and an icon cell')
+  check(not rec.labels['##col1'], 'but no colour swatch')
+
+  app.st.icon_browser = nil
+  require('gui.icon_browser').open(r)
+  ok, err, rec = iframe()
+  check(ok, 'the icon browser draws', err)
+  check(rec.seen.InvisibleButton and rec.seen.DrawList_AddImage, 'it draws icon cells')
+
+  -- typing narrows the grid; Select applies the marked icon
+  app.st.icon_browser.query = 'SUBF'
+  app.st.icon_browser.mark = 'subf/fx.png'
+  ok, err = iframe{ Button = function(_, label) return label == '##Select' end }
+  check(ok, 'a Select frame draws', err)
+  check(r.icon == 'subf/fx.png', 'Select applies the marked icon', r.icon)
+  check(app.st.icon_browser == nil, 'and closes the browser')
+
+  -- Cancel changes nothing
+  require('gui.icon_browser').open(r)
+  app.st.icon_browser.mark = 'amp.jpg'
+  iframe{ Button = function(_, label) return label == '##Cancel' end }
+  check(r.icon == 'subf/fx.png' and app.st.icon_browser == nil, 'Cancel leaves the rule alone')
 end
 
 print('\n=== gui render (stub ImGui) ===')

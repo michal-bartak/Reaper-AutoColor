@@ -5,7 +5,9 @@ substring, glob, or **real regular expressions**. One ordered rule list per
 object kind, and within a kind the first rule that matches wins.
 
 SWS's Auto Color does case-insensitive substring matching only, and has no item
-support at all.
+support at all. If you already use it, **Options → Rules file → Import from SWS**
+brings your rules across — matching and priority order carry over exactly,
+since SWS's substring-and-first-match-wins is a special case of this.
 
 ## Documentation
 
@@ -13,7 +15,7 @@ support at all.
 
 | | |
 |---|---|
-| [Requirements](https://michal-bartak.github.io/Reaper-AutoColor/requirements/) | REAPER 7; ReaImGui 0.10+, for the configuration window only |
+| [Requirements](https://michal-bartak.github.io/Reaper-AutoColor/requirements/) | REAPER 7.03+; ReaImGui 0.10+, for the configuration window only |
 | [Installation](https://michal-bartak.github.io/Reaper-AutoColor/installation/) | ReaPack, or copy `Reaper/` over your resource path |
 | [Usage](https://michal-bartak.github.io/Reaper-AutoColor/usage/) | the rule list, matching, colours, applying, auto-apply |
 | [Configuration](https://michal-bartak.github.io/Reaper-AutoColor/configuration/) | options, the rules file, the REAPER preferences that interfere |

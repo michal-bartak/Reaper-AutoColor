@@ -1,23 +1,25 @@
 ---
-title: Applying colours
-description: Apply now, Selection, and the actions that do the same without the window
+title: Applying colours and icons
+description: Apply now, Selection, and the actions that write colours and icons into the project
 ---
 
-Rules decide colours. Applying writes them into the project. Nothing in the rule table touches your
-tracks until you apply, or until the [background loop](/Reaper-AutoColor/usage/auto-apply/) does it
-for you.
+AutoColor rules determine which colour each track, item, region and marker should have, and which icon each track should have. Tracks, items, regions and markers are called *objects* in the window and on this page. Editing a rule does not change the project. The rules take effect only when they are applied.
 
-Objects that already have the colour the rules want are **not rewritten**, so applying twice costs
-nothing and changes nothing.
+Applying the rules means that AutoColor checks every name against the rules and writes the resulting colours and icons into the project. There are two ways to apply the rules:
 
-:::note
-An apply writes colours. By default it never removes one, so an object no rule claims keeps
-whatever colour it already had — an old item colour can survive every apply.
+- **By hand**, with **Apply now** or **Selection** in the configuration window, or with the matching actions in the Action List. This page describes these.
+- **Automatically**, with [auto-apply](/Reaper-AutoColor/usage/auto-apply/) switched on. AutoColor then applies the rules when a track is added or renamed, and when items, regions or markers are added or renamed.
 
-To remove a colour, use [Clear](/Reaper-AutoColor/usage/clearing/), or tick
-[reset unmatched objects](/Reaper-AutoColor/usage/clearing/#reset-unmatched-objects) for that kind,
-which makes every apply strip the colour from anything the rules do not claim.
-:::
+## What applying changes
+
+Applying writes a colour only where the colour differs from the one the rules assign. If every object already has the right colour and icon, applying changes nothing and adds no undo point. The status line then reads `Already up to date.`
+
+By default, applying never removes a colour. A track, item, region or marker that no rule matches keeps the colour it already has. For example, an item you coloured by hand last week keeps that colour after every apply, as long as no rule matches it.
+
+To remove colours, use one of these:
+
+- [Clear](/Reaper-AutoColor/usage/clearing/) removes colours once.
+- [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches) removes the colour from every object of a chosen object type that no rule matches, each time the rules are applied.
 
 ## From the window
 
@@ -28,46 +30,61 @@ which makes every apply strip the colour from anything the rules do not claim.
 <figcaption>Apply now and Selection, on the action bar</figcaption>
 </figure>
 
-**Apply now** colours the whole project — every track, item, region and marker — in **one undo
-point**. It also tells the background loop to drop the marks it holds on objects you recoloured by
-hand, so the rules take those objects back. Use it when you have hand-coloured something and want
-the rules to own it again.
+### Apply now
 
-**Selection** colours only what is selected. When a track **and** some items are selected, whichever
-you clicked last wins, the same rule REAPER uses for its own "depending on focus" actions. The
-status line says which it used.
+**Apply now** applies the rules to the whole project: every track, item, region and marker, and every track icon. All changes go into **one undo point**, so one undo reverts the whole apply.
 
-- With **items** in focus, AutoColor still reads tracks, because folder inheritance and the
-  track → item cascade need them, but writes to none of them.
-- With **tracks** in focus, items are left out entirely.
-- **Selected regions and markers are always included**, whichever way the focus went. There is no
-  focus value to weigh them against.
+If auto-apply is running, it does not change colours and icons that you set by hand. **Apply now** does change them: it replaces them with the colours and icons from the matching rules. See [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) for details.
+
+The status line reports the result, for example `Coloured 12 objects, set 3 icons.`, or `No rule matched anything.`
+
+### Selection
+
+**Selection** applies the rules to the selected tracks, items, regions and markers only. Everything else in the project stays unchanged.
+
+A selected track gets the same colour that **Apply now** would give it. Unselected tracks still count when AutoColor works out folder colours and gradient shades, but their own colours are not changed.
+
+REAPER can have tracks and items selected at the same time. For example, you select a track, then click some items, and the track stays selected. In that case **Selection** colours only one of the two selections: the one you clicked last. REAPER's own actions whose names end in "depending on focus" decide the same way.
+
+- If you clicked an **item** last, the selected items are coloured and the tracks are left unchanged.
+- If you clicked a **track** last, the selected tracks are coloured and the items are left unchanged.
+- If REAPER cannot tell which you clicked last, for example after you clicked an envelope, both are coloured.
+
+The status line names which selection was used, for example `Coloured 4 of 4 selected items.`
+
+Selected regions and markers are always included, whichever selection was used for tracks and items.
 
 ## From the Action List
 
-The same two operations exist as standalone actions, so you can put them on a key or a toolbar
-without opening the window:
+**Apply now** and **Selection** are also available as actions. Use them to apply the rules from a keyboard shortcut or a toolbar button without opening the window.
 
-| Action | Scope |
+| Action | What it applies the rules to |
 |---|---|
-| `MXM_AutoColor_ApplyAll.lua` | The whole project. One undo point. Drops the hand-colour marks, like **Apply now**. |
-| `MXM_AutoColor_ApplySelection.lua` | The selected **tracks and items**. |
+| `MXM_AutoColor_ApplyAll.lua` | The whole project, exactly like **Apply now**. |
+| `MXM_AutoColor_ApplySelection.lua` | The selected tracks and items. |
 
-:::note[The action and the button are not quite the same]
-`MXM_AutoColor_ApplySelection.lua` never touches regions or markers, while the window's
-**Selection** button includes any that are selected. The action has no window to report the
-difference in, so it takes the narrower, more predictable scope.
+The actions report their result in the REAPER console. They show a message box when something needs attention, for example when no rule matches anything or a colour could not be written.
+
+:::note[The action and the button differ]
+`MXM_AutoColor_ApplySelection.lua` differs from the **Selection** button in two ways:
+
+- It never changes regions or markers. The **Selection** button includes any that are selected.
+- It colours both the selected tracks and the selected items. It does not choose between them by which you clicked last.
 :::
 
-## When a rule change reaches the project
+## When edited rules take effect
 
-Editing a rule does **not** repaint the project, and neither does clicking around in the window
-afterwards. With the background loop running, the edit waits until an object actually changes, then
-applies to everything at once. The project is never half on the old rules.
+Editing a rule in the window does **not** recolour the project. The window shows a preview of what the rules would do, but the project keeps its current colours.
 
-**Apply now** commits an edit immediately.
+- To apply the edited rules immediately, press **Apply now**.
+- If auto-apply is running, it applies the edited rules at the next change to the project, such as a track being added or renamed. It then applies them to the whole project at once, not only to the object that changed.
+
+## Limitations
+
+- On REAPER older than 7.62, **Selection** leaves all regions and markers unchanged. See [REAPER versions before 7.62](/Reaper-AutoColor/requirements/#reaper-versions-before-762).
+- If SWS Auto Color is enabled, `MXM_AutoColor_ApplyAll.lua` shows a warning first. See [Colours keep changing back](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
 
 ## Where to go next
 
-- [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) — keeping the project in step without pressing anything.
-- [Clearing colours](/Reaper-AutoColor/usage/clearing/) — the other direction.
+- [Auto-apply](/Reaper-AutoColor/usage/auto-apply/) — keep the project coloured without pressing a button.
+- [Clearing colours](/Reaper-AutoColor/usage/clearing/) — remove colours instead of setting them.

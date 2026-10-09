@@ -66,7 +66,7 @@ def t(name, fd=0, alt=None):
     track slot of its own, so that band is the one deliberate abstraction here: it marks
     the POSITION of a break, not a track.
 
-    Do NOT use it where the cases behave differently. Under `fill gaps` an unmatched child
+    Do NOT use it where the cases behave differently. Under `fill` an unmatched child
     INHERITS the folder's rule and joins its ramp while a child with a rule of its own
     drops out, so folder-rule-gradient draws them as separate squares on purpose."""
     alt = [alt] if isinstance(alt, str) else list(alt or ())
@@ -186,7 +186,7 @@ SCENARIOS = [
         id="folder-rule-gradient",
         page="colours",
         title="One rule names the folder; the ramp covers every track it owns",
-        setting="folder colours: fill gaps \u00b7 spread: all matches",
+        setting="children: fill \u00b7 spread: all matches",
         folders="fill_unmatched",
         rules=[rule("blue*", "blue"), rule("red1", "red", "red", "all")],
         tracks=[t("red1", fd=1), t("red2"), t("red3"), t("blue1"),
@@ -202,7 +202,7 @@ SCENARIOS = [
         id="folder-rule-gradient-runs",
         page="colours",
         title="The same folder, spread across runs: the inherited range breaks",
-        setting="folder colours: fill gaps \u00b7 spread: runs",
+        setting="children: fill \u00b7 spread: runs",
         folders="fill_unmatched",
         rules=[rule("blue*", "blue"), rule("red1", "red", "red", "run")],
         tracks=[t("red1", fd=1), t("red2"), t("red3"), t("blue1"),
@@ -213,8 +213,8 @@ SCENARIOS = [
     dict(
         id="folders-off",
         page="items-and-folders",
-        title="Folder colours off",
-        setting="folder colours: off",
+        title="Children: off",
+        setting="children: off",
         folders="off",
         rules=[rule("red*", "red"), rule("green*", "green"), rule("blue*", "blue")],
         tracks=[t("red", fd=1), t("green"), t("bass"), t("blue", fd=-1)],
@@ -222,8 +222,8 @@ SCENARIOS = [
     dict(
         id="folders-fill",
         page="items-and-folders",
-        title="Folder colours: fill gaps",
-        setting="folder colours: fill gaps",
+        title="Children: fill",
+        setting="children: fill",
         folders="fill_unmatched",
         rules=[rule("red*", "red"), rule("green*", "green"), rule("blue*", "blue")],
         tracks=[t("red", fd=1), t("green"), t("bass"), t("blue", fd=-1)],
@@ -231,8 +231,8 @@ SCENARIOS = [
     dict(
         id="folders-force",
         page="items-and-folders",
-        title="Folder colours: force",
-        setting="folder colours: force",
+        title="Children: force",
+        setting="children: force",
         folders="force",
         rules=[rule("red*", "red"), rule("green*", "green"), rule("blue*", "blue")],
         tracks=[t("red", fd=1), t("green"), t("bass"), t("blue", fd=-1)],

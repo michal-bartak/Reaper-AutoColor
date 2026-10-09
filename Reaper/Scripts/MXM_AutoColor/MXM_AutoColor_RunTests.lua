@@ -626,6 +626,9 @@ do -- option coercion
   check(c.options.font_size == 8, 'font size clamps to min')
   check(CF.normalize{ options = { font_size = 99 } }.options.font_size == 20,
         'and to max, so a config written before the cap is brought down')
+  check(c.options.autostart == 'last', 'autostart defaults to last')
+  check(CF.normalize{ options = { autostart = 'on' } }.options.autostart == 'on',
+        'autostart accepts "on"')
   check(c.options.clear_unmatched.track == false, 'non-boolean coerces to false per kind')
   check(type(c.options.clear_unmatched) == 'table', 'clear_unmatched is a per-kind table')
 end
@@ -766,6 +769,247 @@ do
         'patterns survive cleaning')
 end
 
+--=============================================================== sws import
+-- This whole section runs with no REAPER table in sight, which is the point:
+-- everything except paths()/read() is pure, so the mapping is testable here
+-- rather than only by clicking about inside REAPER.
+local SI = require 'swsimport'
+
+do -- tokenizer: WDL's LineParser rules, quotes and all
+  local t = SI.tokenize('0 "(MIDI input)" 50331644 "" "" ""')
+  check(#t == 6, 'a modern record is six tokens', #t .. ' tokens')
+  check(t[2] == '(MIDI input)', 'a quoted token loses its quotes')
+  -- Load-bearing: the token COUNT is what separates the modern record from the
+  -- legacy three-token one, so trailing empties must not be swallowed.
+  check(t[4] == '' and t[5] == '' and t[6] == '', 'empty tokens are emitted, not skipped')
+
+  local b = SI.tokenize('0 (any) 0 "" "" ""')
+  check(b[2] == '(any)', 'a bare token survives -- SWS only quotes what it must')
+
+  check(SI.tokenize("x 'has \"quotes\"' y")[2] == 'has "quotes"',
+        'single quotes are a quote character too')
+  check(SI.tokenize('x `odd \'un` y')[2] == "odd 'un", 'and so is a backtick')
+
+  check(#SI.tokenize('a b ;trailing note') == 2, '";" at a token start starts a comment')
+  check(#SI.tokenize('a b #trailing note') == 2, 'and so does "#"')
+  check(SI.tokenize('a;b')[1] == 'a;b', 'but only at a token start, never mid-token')
+
+  check(SI.tokenize('a "unterminated')[2] == 'unterminated',
+        'an unterminated quote runs to the end of the line, as WDL does')
+  check(#SI.tokenize('a\tb\t\tc') == 3, 'tabs separate tokens')
+  check(#SI.tokenize('') == 0, 'an empty line is no tokens')
+end
+
+do -- ini reader
+  local ini = SI.ini('[A]\nx=1\n[SWS]\nAutoColor 1=0 (any) 0\nAutoColorCount=1\n')
+  check(ini.SWS ~= nil and ini.A ~= nil, 'sections are kept apart')
+  check(ini.SWS['AutoColor 1'] == '0 (any) 0', 'a key keeps its embedded space')
+  check(ini.A.x == '1' and ini.SWS.x == nil, 'keys do not leak between sections')
+  -- A filter can contain '=' and a key never does.
+  check(SI.ini('[SWS]\nk=a=b\n').SWS.k == 'a=b', 'the split is at the FIRST "="')
+  -- An ini carried over from a Windows install is CRLF, and without this
+  -- tonumber('16\r') is nil and the import silently finds nothing.
+  check(SI.ini('[SWS]\r\nAutoColorCount=2\r\n').SWS.AutoColorCount == '2',
+        'a trailing CR is stripped')
+  check(next(SI.ini('no section here\nk=v\n')) == nil, 'keys before any section are dropped')
+end
+
+do -- colour decode -- deliberately NOT routed through colors.lua
+  local w, c = SI.decode_color(50331644)     -- the value in the real file
+  check(w == 'rgb' and c == 0xFFFFFC, 'a portable colour drops its flag and enable bit',
+        tostring(w) .. ' ' .. string.format('%06X', c or 0))
+
+  local w0, c0 = SI.decode_color(0)
+  -- colors.from_native answers nil here, which would quietly turn every black
+  -- SWS rule into the default grey. This is the one place that matters.
+  check(w0 == 'rgb' and c0 == 0x000000, '0 is BLACK, not "no colour"')
+
+  local _, c2 = SI.decode_color(0x2000000 | 0x123456)
+  check(c2 == 0x123456, 'the portable flag is stripped, the colour is not')
+
+  for n, name in pairs({ [-1] = 'custom', [-2] = 'gradient', [-3] = 'random',
+                         [-4] = 'none', [-5] = 'parent', [-6] = 'ignore' }) do
+    check(select(1, SI.decode_color(n)) == name, 'sentinel ' .. n .. ' is "' .. name .. '"')
+    check(select(2, SI.decode_color(n)) == nil, 'and carries no colour')
+  end
+
+  -- No portable flag: written before the format was portable, so it is in the
+  -- byte order of whichever machine wrote it and only the host can say which.
+  local got
+  local _, cl = SI.decode_color(0xFF0000, {
+    native_to_rgb = function(v) got = v; return ((v & 0xFF) << 16) | (v & 0xFF00) | ((v >> 16) & 0xFF) end,
+  })
+  check(got == 0xFF0000, 'a legacy colour is handed to the host already masked to 24 bits')
+  check(cl == 0x0000FF, 'and the host decides its byte order')
+  check(select(2, SI.decode_color(0xFF0000)) == 0xFF0000,
+        'with no host, a legacy colour is left alone')
+end
+
+do -- gradient endpoints, which live in reaper.ini rather than beside the rules
+  local a, b = SI.gradient_ends('[SWS]\nColorGradients=33554432 50331647\n')
+  check(a == 0x000000 and b == 0xFFFFFF, 'portable gradient endpoints are decoded',
+        string.format('%06X %06X', a, b))
+  local da, db = SI.gradient_ends(nil)
+  check(da == 0x000000 and db == 0xFFFFFF, 'an absent reaper.ini falls back to SWS\'s default')
+  check(select(1, SI.gradient_ends('[SWS]\nColorGradients=-3 -3\n')) == 0x000000,
+        'a sentinel where a colour belongs falls back too')
+end
+
+-- The fixture. Read by path so the awkward cases live in a file that looks
+-- like the real thing rather than as string literals dotted through here.
+local FIXDIR = ROOT .. '../../../tests/fixtures/'
+local function slurp(p)
+  local f = io.open(p, 'r'); if not f then return nil end
+  local s = f:read('a'); f:close(); return s
+end
+local FIX  = slurp(FIXDIR .. 'sws-autocoloricon.ini')
+local RINI = slurp(FIXDIR .. 'reaper.ini')
+check(FIX ~= nil, 'the SWS fixture is readable')
+
+if FIX then
+  local res = SI.parse(FIX, RINI)
+  local by = {}
+  for _, k in ipairs({ 'track', 'item', 'region', 'marker' }) do
+    by[k] = res.rules[k]
+  end
+
+  check(res.count == 16, 'every AutoColorCount entry is looked at', tostring(res.count))
+  check(#by.item == 0, 'SWS has no item rules, so the item list stays empty')
+  check(#by.region == 1, 'a type-2 rule becomes a region rule', tostring(#by.region))
+  check(#by.marker == 1, 'a type-1 rule becomes a marker rule', tostring(#by.marker))
+  -- 14 is an unknown type and 15 has too few tokens; neither can be a rule.
+  check(res.skipped == 2, 'an unknown type and a malformed line are skipped',
+        tostring(res.skipped))
+  check(res.imported == 14, 'and everything else is imported', tostring(res.imported))
+
+  local t = by.track
+  check(t[1].only == 'midi_in' and t[1].pattern == '' and t[1].enabled == true,
+        '(MIDI input) becomes the MIDI input filter')
+  -- Not an empty pattern: that would match EVERY track, so re-enabling it out
+  -- of curiosity would repaint the project. The keyword matches nothing.
+  check(t[8].pattern == '(master)',
+        'an unsupported filter keeps its keyword as the pattern, which matches nothing')
+
+  check(t[2].pattern == '' and t[2].only == nil and t[2].enabled == true,
+        '(any) is an empty pattern with no filter')
+  check(t[3].pattern == 'Kick' and t[3].mode == 'substring' and t[3].ci == true,
+        'a plain name filter is a case-insensitive substring -- SWS\'s stristr exactly')
+  check(t[3].color == 0x00A655, 'and keeps its colour',
+        string.format('%06X', t[3].color))
+  check(t[4].pattern == 'Lead Vox', 'a quoted filter keeps its spaces')
+  check(t[4].label == 'Lead Vox', 'and the filter becomes the rule name')
+
+  check(t[5].only == 'folder' and t[5].pattern == '', '(folder) becomes the folder filter')
+  -- The one sentinel that translates exactly: SWS ramps its global gradient
+  -- across every track THAT rule matched, which is what scope 'all' means.
+  check(t[5].enabled == true, 'a gradient rule arrives ENABLED')
+  check(t[5].color == 0x000000 and t[5].color2 == 0xFFFFFF,
+        'with the SWS gradient endpoints')
+  check(t[5].gradient_scope == 'all', 'spread across all matches')
+  check(t[5].label == '(folder)', 'and nothing appended to its name')
+
+  check(t[6].only == 'unnamed' and t[6].enabled == false,
+        '(unnamed) maps, but a random colour does not')
+  check(t[6].label:find('random colours', 1, true) ~= nil, 'and says so')
+  check(t[7].only == 'children' and t[7].enabled == false, '(children) maps, parent colour does not')
+  check(t[8].enabled == false, '(master) arrives off')
+  check(t[8].label:find('(master) filter', 1, true) ~= nil,
+        'because REAPER ignores a custom colour on the master track')
+
+  check(t[9].color == 0xFF0000, 'a legacy colour with no portable flag still decodes',
+        string.format('%06X', t[9].color))
+  check(t[10].pattern == 'say "hi"', 'a filter SWS had to single-quote round trips')
+  check(t[11].pattern == 'Legacy' and t[11].color == 0x00A655,
+        'the legacy three-token form is a track rule')
+  check(t[12].enabled == false and t[12].label:find('ignore', 1, true) ~= nil,
+        '"ignore" arrives off -- its loss changes which OTHER rule wins')
+
+  check(by.region[1].pattern == '' and by.region[1].color == 0xFFFFFF,
+        'the region rule keeps its colour')
+  check(by.marker[1].only == 'unnamed' and by.marker[1].enabled == false,
+        'the marker rule keeps its filter and loses its "none" colour')
+
+  check(res.disabled == 5, 'five rules could not be expressed', tostring(res.disabled))
+
+  -- Order is priority order on both sides, so it has to survive the trip.
+  check(#t == 12, 'twelve of the sixteen entries are track rules', tostring(#t))
+  check(t[1].only == 'midi_in' and t[12].pattern == 'Ignored',
+        'file order is preserved within a kind')
+
+  -- A track rule's icon arrives as an Icons rule with the same filter.
+  local ic = res.rules.icon
+  check(#ic == 1 and ic[1].pattern == 'Lead Vox' and ic[1].icon == 'drums.png'
+        and ic[1].enabled == true, 'an SWS icon becomes an Icons rule', tostring(#ic))
+
+  -- Normalising twice must be a no-op, or a hand edit of the saved file would
+  -- come back different from what was written.
+  local stable = true
+  for _, list in pairs(res.rules) do
+    for _, r in ipairs(list) do
+      local again = RU.normalize({ id = r.id, label = r.label, enabled = r.enabled,
+                                   mode = r.mode, pattern = r.pattern, only = r.only,
+                                   ci = r.ci, invert = r.invert, color = r.color,
+                                   color2 = r.color2, note = r.note,
+                                   cascade_items = r.cascade_items,
+                                   gradient_scope = r.gradient_scope }, r.kind)
+      if again.enabled ~= r.enabled or again.only ~= r.only
+         or again.color ~= r.color or again.gradient_scope ~= r.gradient_scope then
+        stable = false
+      end
+    end
+  end
+  check(stable, 'every imported rule is already normalised')
+
+  -- The regression that would otherwise only surface as a silently failed save.
+  do
+    local cfg = CF.defaults()
+    SI.merge(cfg, res)
+    local enc = J.encode(CF.serializable(CF.normalize(cfg)))
+    check(enc ~= nil, 'an imported rule set encodes')
+    local ids = {}
+    local dup = false
+    for _, r in ipairs(CF.all_rules(cfg)) do
+      if ids[r.id] then dup = true end
+      ids[r.id] = true
+    end
+    check(not dup, 'and every rule has a distinct id')
+  end
+end
+
+do -- merge
+  local res = SI.parse('[SWS]\nAutoColorCount=1\nAutoColor 1=0 Kick 50374229 "" "" ""\n')
+  check(res.imported == 1, 'a one-rule file imports one rule')
+
+  local cfg = CF.defaults()
+  cfg.rules.track[1] = RU.new('track', { pattern = 'mine' })
+  cfg.rules.item[1]  = RU.new('item',  { pattern = 'takes' })
+  SI.merge(cfg, res, 'append')
+  check(#cfg.rules.track == 2, 'append grows the list')
+  -- END, not top: an SWS "(any)" catch-all arriving above the user's own rules
+  -- would repaint the project on the next auto tick.
+  check(cfg.rules.track[1].pattern == 'mine', 'and the user\'s rules keep precedence')
+  check(cfg.rules.track[2].pattern == 'Kick', 'with the imported ones below')
+  check(#cfg.rules.item == 1, 'append leaves the item tab alone')
+
+  -- There is no replace mode, and that is the point: merge can only ever grow
+  -- a list, so no import can destroy a rule the user wrote.
+  local cfg3 = CF.defaults()
+  cfg3.rules.track[1] = RU.new('track', { pattern = 'mine' })
+  SI.merge(cfg3, SI.parse('[SWS]\nAutoColorCount=0\n'))
+  check(#cfg3.rules.track == 1, 'importing nothing changes nothing')
+end
+
+do -- degenerate files
+  check(SI.parse('').imported == 0, 'an empty file imports nothing')
+  check(SI.parse('[Other]\nx=1\n').count == 0, 'a file with no [SWS] section imports nothing')
+  check(SI.parse('[SWS]\nAutoColorCount=3\nAutoColor 1=0 a 0 "" "" ""\n').skipped == 2,
+        'a count larger than the rules present skips the gaps')
+  -- A hand-edited file with the count dropped should not lose rules that are
+  -- plainly there.
+  check(SI.parse('[SWS]\nAutoColor 1=0 a 0 "" "" ""\nAutoColor 2=0 b 0 "" "" ""\n').imported == 2,
+        'a missing count falls back to the highest index present')
+end
+
 --=================================================================== about
 -- The version exists twice: ReaPack reads it from the header of
 -- Color/MXM_AutoColor.lua, which never ships to Scripts/, and lib/about.lua
@@ -773,8 +1017,9 @@ end
 -- this.
 do
   local AB = require 'about'
-  check(AB.VERSION:match('^%d+%.%d+%.%d+$') ~= nil,
-        'the shipped version is three numbers', tostring(AB.VERSION))
+  -- Three numbers, optionally a pre-release tag ReaPack recognises: 1.1.0beta1.
+  check(AB.VERSION:match('^%d+%.%d+%.%d+%a*%d*$') ~= nil,
+        'the shipped version is three numbers, optionally a pre-release', tostring(AB.VERSION))
   for _, k in ipairs({ 'NAME', 'AUTHOR', 'LICENCE', 'COPYRIGHT', 'TAGLINE',
                        'URL_REPO', 'URL_DOCS' }) do
     check(type(AB[k]) == 'string' and AB[k] ~= '', 'about carries ' .. k)
@@ -796,7 +1041,7 @@ do
     end
     if f then
       local manifest = f:read('a'); f:close()
-      local declared = manifest:match('\nVersion:%s*([%d%.]+)')
+      local declared = manifest:match('\nVersion:%s*([%w%.]+)')
       check(declared ~= nil, 'the ReaPack manifest declares a version')
       check(declared == AB.VERSION,
             'the shipped version matches the ReaPack manifest',
@@ -1579,6 +1824,22 @@ do
   check(planmap(folderset(), rs, { propagate_folders = 'off' })['Snare'] == nil,
         'off does not inherit at all')
 end
+do -- a track rule's own Children overrides Options; 'default' follows them
+  local function rs(children)
+    return ruleset{ track = {
+      { mode = 'substring', pattern = 'Kick',  color = GRN },
+      { mode = 'substring', pattern = 'Drums', color = RED, children = children },
+    } }
+  end
+  local m = planmap(folderset(), rs('force'), { propagate_folders = 'off' })
+  check(m['Kick'] == RED and m['Snare'] == RED, 'rule force beats Options off')
+  m = planmap(folderset(), rs('off'), { propagate_folders = 'force' })
+  check(m['Kick'] == GRN and m['Snare'] == nil, 'rule off beats Options force')
+  m = planmap(folderset(), rs('fill'), { propagate_folders = 'off' })
+  check(m['Kick'] == GRN and m['Snare'] == RED, 'rule fill beats Options off')
+  m = planmap(folderset(), rs('default'), { propagate_folders = 'force' })
+  check(m['Kick'] == RED, 'default follows Options')
+end
 do -- one track closing several folder levels at once
   local entries = { tr('Outer', { fd = 1 }), tr('Inner', { fd = 1 }),
                     tr('Leaf', { fd = -2 }), tr('After') }
@@ -1706,6 +1967,219 @@ do -- an item coloured by a TRACK cascade is claimed by the rules too, so
   for _, op in ipairs(ops) do kinds[op.entry.kind] = true end
   check(kinds.item == true, 'a cascaded item is cleared by "what the rules match"')
   check(#ops == 2, 'along with its track', #ops .. ' ops')
+end
+
+do -- SWS icons: independent of the colour, filters carried, paths kept
+  local res = SI.parse(table.concat({
+    '[SWS]',
+    'AutoColor 1=0 (instrument) -6 "/abs/keys.png" "" ""',
+    'AutoColor 2=0 Kick 50374229 "" "" ""',
+    'AutoColor 3=0 (receive) 50374229 "sub\\bus.png" "" ""',
+    'AutoColor 4=0 "(vca master)" 50374229 "vca.png" "" ""',
+    'AutoColor 5=2 (any) 50331647 "region.png" "" ""',
+    'AutoColorCount=5',
+  }, '\n'), nil)
+  local ic = res.rules.icon
+  check(#ic == 3, 'only track rules with an icon become Icons rules', tostring(#ic))
+  check(ic[1].only == 'instrument' and ic[1].icon == '/abs/keys.png' and ic[1].enabled,
+        'an "ignore" colour does not stop the icon')
+  check(res.rules.track[1].enabled == false, 'while the colour rule still arrives off')
+  check(ic[2].only == 'bus' and ic[2].icon == 'sub/bus.png', '(receive) maps; separators unified')
+  check(ic[3].enabled == false, 'an unsupported filter leaves the icon rule off too')
+  check(res.icons == 3, 'counted apart from the colour rules')
+end
+
+--===================================================================== icons
+-- The icon list: tracks only, own precedence, per-rule folder propagation.
+local IC = require 'icons'
+
+check(pr('instrument', 'track', { instrument = true }) == true,  'instrument: yes')
+check(pr('instrument', 'track', { instrument = false }) == false, 'instrument: no')
+check(pr('midi_in', 'icon', { midi_in = true }) == true, 'midi_in on the icon list')
+check(pr('bus', 'track', { bus = true }) == true, 'bus: has receives')
+check(pr('bus', 'item', { bus = true }) == false, 'bus is track-only')
+check(pr('folder', 'icon', { folderdepth = 1 }) == true, 'folder applies to icon rules')
+check(PR.applies('instrument', 'region') == false, 'instrument does not apply to regions')
+
+do -- the record
+  local r = RU.new('icon', { pattern = 'kick', icon = 'kick.png', color = RED })
+  check(r.icon == 'kick.png' and r.children == 'default', 'icon rule keeps its icon, children default')
+  check(r.color == nil and r.color2 == nil and r.cascade_items == nil,
+        'an icon rule carries no colour fields')
+  check(RU.new('icon', { children = 'bogus' }).children == 'default', 'bad children coerces')
+  check(RU.new('track', {}).children == 'default', 'a track rule has children too')
+  check(RU.new('item', { children = 'force' }).children == nil, 'other kinds do not')
+  check(RU.new('icon', {}).icon == '', 'no icon means remove the icon')
+  check(RU.new('track', { icon = 'x.png', children = 'fill' }).icon == nil,
+        'a colour rule drops icon fields')
+  local w = RU.warnings(RU.new('icon', { pattern = 'a', only = 'children', children = 'fill',
+                                         icon = 'gone.png' }), {},
+                        function() return false end)
+  check(#w == 2, 'icon warnings: propagating a children-only rule, missing file', #w .. '')
+  check(#RU.warnings(RU.new('track', { pattern = 'a', only = 'children' }),
+                     { propagate_folders = 'fill_unmatched' }) == 0,
+        'no children-only warning for a rule left at default')
+  check(#RU.warnings(RU.new('track', { pattern = 'a', only = 'children', children = 'force' }),
+                     {}) == 1, 'but one for a track rule set to force')
+end
+
+do -- paths: relative inside track_icons, absolute outside; P_ICON reads absolute
+  local dir = IC.dir()
+  check(IC.resolve('kick.png') == dir .. '/kick.png', 'relative resolves into track_icons')
+  check(IC.resolve('/x/y.png') == '/x/y.png', 'absolute is kept')
+  check(IC.resolve('') == '', 'empty stays empty')
+  check(IC.to_stored(dir .. '/sub/fx.png') == 'sub/fx.png', 'inside track_icons stores relative')
+  check(IC.to_stored('/elsewhere/a.jpg') == '/elsewhere/a.jpg', 'outside stores absolute')
+  check(IC.basename('sub/fx.png') == 'fx', 'basename')
+end
+
+local function itr(name, o)
+  local e = tr(name, o)
+  o = o or {}
+  e.icon = o.icon and IC.resolve(o.icon) or ''
+  e.instrument = o.instrument
+  return e
+end
+
+-- name -> planned icon path ('' for removal); only icon ops
+local function iconmap(entries, rules, opts)
+  local ops = AP.plan(entries, rules, opts or {})
+  local out, n = {}, 0
+  for _, op in ipairs(ops) do
+    if op.icon ~= nil then out[op.entry.name] = op.icon; n = n + 1 end
+  end
+  return out, n
+end
+
+do -- first match wins; an icon already in place is not rewritten
+  local rs = ruleset{ icon = {
+    { pattern = 'kick', icon = 'kick.png' },
+    { pattern = 'k',    icon = 'other.png' },
+  } }
+  local m, n = iconmap({ itr('Kick'), itr('Keys'), itr('Kick 2', { icon = 'kick.png' }),
+                         itr('Bass') }, rs)
+  check(m['Kick'] == IC.resolve('kick.png'), 'first icon rule wins')
+  check(m['Keys'] == IC.resolve('other.png'), 'second rule takes the rest')
+  check(m['Kick 2'] == nil, 'an icon already right produces no op')
+  check(m['Bass'] == nil and n == 2, 'unmatched track untouched by default')
+end
+
+do -- icon rules are independent of colour rules
+  local rs = ruleset{ track = { { pattern = 'kick', color = RED } },
+                      icon  = { { pattern = 'kick', icon = 'kick.png' } } }
+  local ops = AP.plan({ itr('Kick') }, rs, {})
+  check(#ops == 2, 'one colour op and one icon op', #ops .. '')
+end
+
+do -- clear unmatched, and the context rule
+  local rs = ruleset{ icon = { { pattern = 'kick', icon = 'kick.png' } } }
+  local m = iconmap({ itr('Bass', { icon = 'bass.png' }), itr('Kick', { context = true }) },
+                    rs, { clear_unmatched = { icon = true } })
+  check(m['Bass'] == '', 'reset when unmatched removes the icon')
+  check(m['Kick'] == nil, 'a context track is never written')
+end
+
+do -- a filter narrows the icon rule
+  local rs = ruleset{ icon = { { pattern = '', only = 'instrument', icon = 'synth.png' } } }
+  local m = iconmap({ itr('Pad', { instrument = true }), itr('Vox') }, rs)
+  check(m['Pad'] == IC.resolve('synth.png') and m['Vox'] == nil, 'instrument filter')
+end
+
+do -- per-rule folder propagation
+  local function tree(children_mode)
+    local rs = ruleset{ icon = {
+      { mode = 'regex', pattern = '^drums$', icon = 'drums.png', children = children_mode },
+      { mode = 'regex', pattern = '^kick',   icon = 'kick.png' },
+    } }
+    return iconmap({ itr('drums', { fd = 1 }), itr('kick', { depth = 1 }),
+                     itr('snare', { depth = 1, fd = -1 }), itr('after') }, rs)
+  end
+  local m = tree('off')
+  check(m['snare'] == nil and m['kick'] == IC.resolve('kick.png'), 'off: children untouched')
+  m = tree('fill')
+  check(m['snare'] == IC.resolve('drums.png'), 'fill: an unmatched child takes the folder icon')
+  check(m['kick'] == IC.resolve('kick.png'), 'fill: a matched child keeps its own')
+  check(m['after'] == nil, 'fill: stops at the folder end')
+  m = tree('force')
+  check(m['kick'] == IC.resolve('drums.png'), 'force: overrides the child')
+  m = tree('default')
+  check(m['snare'] == nil, 'default: off unless Options say otherwise')
+  local rs = ruleset{ icon = {
+    { mode = 'regex', pattern = '^drums$', icon = 'drums.png' },
+  } }
+  m = iconmap({ itr('drums', { fd = 1 }), itr('snare', { depth = 1, fd = -1 }) }, rs,
+              { propagate_icons = 'fill_unmatched' })
+  check(m['snare'] == IC.resolve('drums.png'), 'default: follows propagate_icons')
+end
+
+do -- nesting: an outer fill reaches through a subfolder whose rule does not propagate
+  local rs = ruleset{ icon = {
+    { mode = 'regex', pattern = '^outer$', icon = 'o.png', children = 'fill' },
+    { mode = 'regex', pattern = '^inner$', icon = 'i.png' },
+  } }
+  local m = iconmap({ itr('outer', { fd = 1 }), itr('inner', { depth = 1, fd = 1 }),
+                      itr('leaf', { depth = 2, fd = -2 }), itr('top') }, rs)
+  check(m['inner'] == IC.resolve('i.png'), 'the subfolder keeps its own icon')
+  check(m['leaf'] == IC.resolve('o.png'), 'the outer fill reaches through it')
+  check(m['top'] == nil, 'a two-level close ends both folders')
+end
+
+do -- nesting: an outer force beats an inner fill
+  local rs = ruleset{ icon = {
+    { mode = 'regex', pattern = '^outer$', icon = 'o.png', children = 'force' },
+    { mode = 'regex', pattern = '^inner$', icon = 'i.png', children = 'fill' },
+  } }
+  local m = iconmap({ itr('outer', { fd = 1 }), itr('inner', { depth = 1, fd = 1 }),
+                      itr('leaf', { depth = 2, fd = -2 }) }, rs)
+  check(m['inner'] == IC.resolve('o.png') and m['leaf'] == IC.resolve('o.png'),
+        'the outermost force wins')
+end
+
+do -- tally counts icon rules against tracks
+  local rs = ruleset{ icon = { { pattern = 'k', icon = 'a.png' }, { pattern = 'kick', icon = 'b.png' } } }
+  local won, sh = AP.tally({ itr('kick'), itr('bass') }, rs)
+  check(won[rs.icon[1].id] == 1 and sh[rs.icon[2].id] == 1, 'icon tally: won and shadowed')
+end
+
+do -- clearing icons
+  local rs = ruleset{ icon = { { pattern = 'kick', icon = 'kick.png' } } }
+  local es = { itr('Kick', { icon = 'x.png' }), itr('Bass', { icon = 'y.png' }), itr('Vox') }
+  check(#AP.plan_clear_icons(es, rs, 'matched', {}) == 1, 'clear matched icons')
+  check(#AP.plan_clear_icons(es, rs, 'all', {}) == 2, 'clear every icon')
+end
+
+do -- config: v4, and the icon list round-trips
+  check(CF.VERSION == 4, 'config version 4')
+  local c = CF.normalize(CF.migrate{ version = 2, rules = { track = {} } })
+  check(c.version == 4 and type(c.rules.icon) == 'table', 'v2 migrates with an empty icon list')
+  c.rules.icon[1] = RU.new('icon', { pattern = 'k', icon = 'k.png', children = 'force' })
+  local back = CF.normalize(CF.serializable(c))
+  check(back.rules.icon[1].icon == 'k.png' and back.rules.icon[1].children == 'force',
+        'icon and children survive serialisation')
+  check(back.options.clear_unmatched.icon == false, 'icons are not reset by default')
+end
+
+do -- v3 -> v4: Children gains 'default', with no change in behaviour
+  local c = CF.normalize(CF.migrate{ version = 3,
+    options = { propagate_folders = 'force' },
+    rules = {
+      track = { { pattern = 'a', color = RED } },
+      icon  = { { pattern = 'a', children = 'off' }, { pattern = 'b', children = 'fill' },
+                { pattern = 'c', children = 'force' }, { pattern = 'd' } },
+    } })
+  check(c.version == 4, 'v3 migrates to v4')
+  check(c.rules.track[1].children == 'default', 'a track rule starts at default')
+  local ic = c.rules.icon
+  check(ic[1].children == 'default' and ic[4].children == 'default',
+        'an icon rule at off becomes default')
+  check(ic[2].children == 'fill' and ic[3].children == 'force', 'fill and force are kept')
+  check(c.options.propagate_icons == 'off', 'icon default is off')
+  check(c.options.propagate_folders == 'force', 'the track option survives')
+  check(CF.normalize{ options = { propagate_icons = 'bogus' } }.options.propagate_icons
+        == 'off', 'bad propagate_icons falls back')
+  local back = CF.normalize(CF.serializable(CF.normalize{ rules = {
+    track = { { pattern = 'a', children = 'force' } } } }))
+  check(back.rules.track[1].children == 'force', 'a track rule\'s children survive serialisation')
 end
 
 ------------------------------------------------------------------- report
