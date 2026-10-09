@@ -41,3 +41,7 @@ jobs:
       # run.sh exits non-zero if any suite failed, so nothing else is needed.
       - name: Run the suite
         run: ./tests/run.sh
+
+      # The files ReaPack ships: Provides globs, requires, version headers.
+      - name: Check the ReaPack manifest
+        run: python3 .github/scripts/package.py --check

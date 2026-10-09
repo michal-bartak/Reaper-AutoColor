@@ -175,10 +175,15 @@ repo:
 - **A `.lua` anywhere below the repo root carrying a `@version` tag becomes a
   package candidate.** Shipped scripts under `Reaper/Scripts/` must not carry a
   ReaPack header — keep it in the manifest only.
+- `make package-check` validates what the manifest ships (CI runs it on every
+  push). A blank line before `Provides:` silently drops every file.
 - **The merged index is a required second step.** Clients import
   `michal-bartak/ReaPack`; this repo's `index.xml` is only an input to
   `merge-index.py` there. Until that runs and is pushed, a new version reaches
   nobody.
+- **GitHub release** is a third step: `CHANGELOG.md` gets a `## [<version>]`
+  section, the version is tagged (no `v`), then *Actions → Release* builds the
+  manual-install zip from the Provides block and publishes it.
 
 ## Writing: short, and in the right place
 

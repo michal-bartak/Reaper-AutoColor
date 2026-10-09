@@ -45,11 +45,13 @@ To find these actions in the Action List, search for `autocolor` or `mxm`. The t
 
 1. Open the [REAPER resource folder](#the-reaper-resource-folder).
 
-1. From the AutoColor download, copy the **contents** of the `Reaper/` folder into the resource folder. Merge the folders with the ones that already exist there; do not replace them:
+1. Download `MXM_AutoColor-<version>.zip` from the [GitHub releases page](https://github.com/michal-bartak/Reaper-AutoColor/releases).
+
+1. Unpack the zip file into the resource folder. The zip file contains a `Scripts/` folder and a `Data/` folder. Merge them with the folders that already exist in the resource folder; do not replace them:
 
    ```
-   Reaper/Scripts/MXM_AutoColor/  ->  <resource folder>/Scripts/MXM_AutoColor/
-   Reaper/Data/toolbar_icons/     ->  <resource folder>/Data/toolbar_icons/
+   Scripts/MXM_AutoColor/  ->  <resource folder>/Scripts/MXM_AutoColor/
+   Data/toolbar_icons/     ->  <resource folder>/Data/toolbar_icons/
    ```
 
 1. In REAPER, open *Actions → Show action list*, click *New action → Load ReaScript*, and load `MXM_AutoColor_GUI.lua` and `MXM_AutoColor_AutoToggle.lua` from `Scripts/MXM_AutoColor/`.
