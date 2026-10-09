@@ -23,18 +23,15 @@ Metapackage: true
 Changelog:
   - Requires Reaper 7.03 or later.
   - Added: track icons support.
+  - Added: Children fill per rule selector to tracks (defaults in Options > Folders).
   - Added: new track filters: has an instrument, has a MIDI input, has receives.
   - Added: SWS import.
-  - Added: autostart at startup option (see Options > Autostart).
-  - Fixed: Toolbar buttons toggle without the "already running" prompt
+  - Added: autostart at startup option (configurable in Options > Startup).
+  - Fixed: Toolbar buttons toggle without the "already running" prompt.
   - Minor layout changes.
 
-  Config file bumped to version 3. Earlier versions of AutoColor will open it
+  Config file bumped to version 4. Earlier versions of AutoColor will open it
   in read-only mode.
-
-  An entry is added to Scripts/__startup.lua. By default, auto-colouring
-  resumes at launch if it was running at shutdown.
-
 Provides:
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_GUI.lua > ../MXM_AutoColor/
   [main] /Reaper/Scripts/MXM_AutoColor/MXM_AutoColor_AutoToggle.lua > ../MXM_AutoColor/
