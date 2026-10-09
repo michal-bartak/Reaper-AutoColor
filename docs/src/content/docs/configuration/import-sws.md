@@ -65,7 +65,7 @@ Some SWS features have no equivalent in AutoColor. Rules that use them are still
 |---|---|
 | **Random** colours | AutoColor assigns only colours that a rule specifies. |
 | **Custom** colours, which cycle through REAPER's colour palette | AutoColor assigns only colours that a rule specifies. |
-| **Parent** colour | AutoColor handles folder colours with one setting for all rules, [Folders](/Reaper-AutoColor/configuration/#folders), instead of a colour choice in each rule. |
+| **Parent** colour | In AutoColor, the rule that colours a folder track decides whether the tracks inside the folder receive its colour, with its **Children** setting. The rules for the tracks inside the folder have no colour choice for this. See [Folders](/Reaper-AutoColor/usage/colours/#folders). |
 | **None** | AutoColor has no rule that removes a colour. To remove colours, use **Clear…** on the action bar, or turn on [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches). |
 | **Ignore** | See the warning below. |
 | A rule with an empty filter | The SWS rule has no filter text, so there is nothing to convert into a pattern. The rule arrives named `(no filter)`. |

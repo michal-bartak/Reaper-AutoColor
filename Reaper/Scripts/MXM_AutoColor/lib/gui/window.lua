@@ -43,11 +43,9 @@ local COL_WARN  = 0xD9A441
 local COL_ERR   = 0xC2413B
 local COL_OK    = 0x5FB36A
 
-local FOLDER_LABEL = {
-  off            = 'off -- folders do not colour their children',
-  fill_unmatched = 'fill gaps -- children with no rule of their own inherit',
-  force          = 'force -- the folder colour overrides its children',
-}
+-- The Options values for Folders, named as in the rules' Children combo.
+local FOLDER_LABEL = { off = 'Off', fill_unmatched = 'Fill', force = 'Force' }
+local FOLDER_MODE  = { off = 'off', fill_unmatched = 'fill', force = 'force' }
 
 ----------------------------------------------------------------------- bars
 local function banners(FS)
@@ -156,14 +154,20 @@ function M.draw_options(FS)
   local rv, v
 
   theme.section('Folders')
-  ImGui.SetNextItemWidth(ctx, FS * 34)
-  if ImGui.BeginCombo(ctx, '##folders', FOLDER_LABEL[o.propagate_folders]) then
-    for _, k in ipairs({ 'off', 'fill_unmatched', 'force' }) do
-      if ImGui.Selectable(ctx, FOLDER_LABEL[k], o.propagate_folders == k) then
-        app.snapshot(); o.propagate_folders = k; app.mark_dirty()
+  -- What a rule's Children 'default' means, one per list.
+  for _, f in ipairs({ { 'propagate_folders', 'Tracks' }, { 'propagate_icons', 'Icons' } }) do
+    local key, label = f[1], f[2]
+    ImGui.SetNextItemWidth(ctx, FS * 10)
+    if ImGui.BeginCombo(ctx, label .. '##' .. key, FOLDER_LABEL[o[key]]) then
+      for _, k in ipairs({ 'off', 'fill_unmatched', 'force' }) do
+        if ImGui.Selectable(ctx, FOLDER_LABEL[k], o[key] == k) then
+          app.snapshot(); o[key] = k; app.mark_dirty()
+        end
+        ImGui.SetItemTooltip(ctx, rulesmod.CHILDREN_HELP[FOLDER_MODE[k]])
       end
+      ImGui.EndCombo(ctx)
     end
-    ImGui.EndCombo(ctx)
+    ImGui.SetItemTooltip(ctx, 'The default for ' .. label .. ' tab rules.')
   end
 
   rv, v = theme.checkbox('Subfolder splits the parent\'s colour range',
@@ -204,8 +208,8 @@ function M.draw_options(FS)
         'An item with no custom colour is drawn by REAPER in its TRACK\'s\n' ..
         'colour, live -- so copying it to another track makes it follow that\n' ..
         'track immediately, with no rule and nothing to go stale.\n\n' ..
-        'This is usually better than "also colour items" on the track rules,\n' ..
-        'which freezes a colour onto the item instead.')
+        'This is usually better than FI (force item colour) on the track\n' ..
+        'rules, which freezes a colour onto the item instead.')
     end
   end
 

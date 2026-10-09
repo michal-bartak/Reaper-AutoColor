@@ -1824,6 +1824,22 @@ do
   check(planmap(folderset(), rs, { propagate_folders = 'off' })['Snare'] == nil,
         'off does not inherit at all')
 end
+do -- a track rule's own Children overrides Options; 'default' follows them
+  local function rs(children)
+    return ruleset{ track = {
+      { mode = 'substring', pattern = 'Kick',  color = GRN },
+      { mode = 'substring', pattern = 'Drums', color = RED, children = children },
+    } }
+  end
+  local m = planmap(folderset(), rs('force'), { propagate_folders = 'off' })
+  check(m['Kick'] == RED and m['Snare'] == RED, 'rule force beats Options off')
+  m = planmap(folderset(), rs('off'), { propagate_folders = 'force' })
+  check(m['Kick'] == GRN and m['Snare'] == nil, 'rule off beats Options force')
+  m = planmap(folderset(), rs('fill'), { propagate_folders = 'off' })
+  check(m['Kick'] == GRN and m['Snare'] == RED, 'rule fill beats Options off')
+  m = planmap(folderset(), rs('default'), { propagate_folders = 'force' })
+  check(m['Kick'] == RED, 'default follows Options')
+end
 do -- one track closing several folder levels at once
   local entries = { tr('Outer', { fd = 1 }), tr('Inner', { fd = 1 }),
                     tr('Leaf', { fd = -2 }), tr('After') }
@@ -1987,10 +2003,12 @@ check(PR.applies('instrument', 'region') == false, 'instrument does not apply to
 
 do -- the record
   local r = RU.new('icon', { pattern = 'kick', icon = 'kick.png', color = RED })
-  check(r.icon == 'kick.png' and r.children == 'off', 'icon rule keeps its icon, children off')
+  check(r.icon == 'kick.png' and r.children == 'default', 'icon rule keeps its icon, children default')
   check(r.color == nil and r.color2 == nil and r.cascade_items == nil,
         'an icon rule carries no colour fields')
-  check(RU.new('icon', { children = 'bogus' }).children == 'off', 'bad children coerces')
+  check(RU.new('icon', { children = 'bogus' }).children == 'default', 'bad children coerces')
+  check(RU.new('track', {}).children == 'default', 'a track rule has children too')
+  check(RU.new('item', { children = 'force' }).children == nil, 'other kinds do not')
   check(RU.new('icon', {}).icon == '', 'no icon means remove the icon')
   check(RU.new('track', { icon = 'x.png', children = 'fill' }).icon == nil,
         'a colour rule drops icon fields')
@@ -1998,6 +2016,11 @@ do -- the record
                                          icon = 'gone.png' }), {},
                         function() return false end)
   check(#w == 2, 'icon warnings: propagating a children-only rule, missing file', #w .. '')
+  check(#RU.warnings(RU.new('track', { pattern = 'a', only = 'children' }),
+                     { propagate_folders = 'fill_unmatched' }) == 0,
+        'no children-only warning for a rule left at default')
+  check(#RU.warnings(RU.new('track', { pattern = 'a', only = 'children', children = 'force' }),
+                     {}) == 1, 'but one for a track rule set to force')
 end
 
 do -- paths: relative inside track_icons, absolute outside; P_ICON reads absolute
@@ -2079,6 +2102,14 @@ do -- per-rule folder propagation
   check(m['after'] == nil, 'fill: stops at the folder end')
   m = tree('force')
   check(m['kick'] == IC.resolve('drums.png'), 'force: overrides the child')
+  m = tree('default')
+  check(m['snare'] == nil, 'default: off unless Options say otherwise')
+  local rs = ruleset{ icon = {
+    { mode = 'regex', pattern = '^drums$', icon = 'drums.png' },
+  } }
+  m = iconmap({ itr('drums', { fd = 1 }), itr('snare', { depth = 1, fd = -1 }) }, rs,
+              { propagate_icons = 'fill_unmatched' })
+  check(m['snare'] == IC.resolve('drums.png'), 'default: follows propagate_icons')
 end
 
 do -- nesting: an outer fill reaches through a subfolder whose rule does not propagate
@@ -2117,15 +2148,38 @@ do -- clearing icons
   check(#AP.plan_clear_icons(es, rs, 'all', {}) == 2, 'clear every icon')
 end
 
-do -- config: v3, and the icon list round-trips
-  check(CF.VERSION == 3, 'config version 3')
+do -- config: v4, and the icon list round-trips
+  check(CF.VERSION == 4, 'config version 4')
   local c = CF.normalize(CF.migrate{ version = 2, rules = { track = {} } })
-  check(c.version == 3 and type(c.rules.icon) == 'table', 'v2 migrates with an empty icon list')
+  check(c.version == 4 and type(c.rules.icon) == 'table', 'v2 migrates with an empty icon list')
   c.rules.icon[1] = RU.new('icon', { pattern = 'k', icon = 'k.png', children = 'force' })
   local back = CF.normalize(CF.serializable(c))
   check(back.rules.icon[1].icon == 'k.png' and back.rules.icon[1].children == 'force',
         'icon and children survive serialisation')
   check(back.options.clear_unmatched.icon == false, 'icons are not reset by default')
+end
+
+do -- v3 -> v4: Children gains 'default', with no change in behaviour
+  local c = CF.normalize(CF.migrate{ version = 3,
+    options = { propagate_folders = 'force' },
+    rules = {
+      track = { { pattern = 'a', color = RED } },
+      icon  = { { pattern = 'a', children = 'off' }, { pattern = 'b', children = 'fill' },
+                { pattern = 'c', children = 'force' }, { pattern = 'd' } },
+    } })
+  check(c.version == 4, 'v3 migrates to v4')
+  check(c.rules.track[1].children == 'default', 'a track rule starts at default')
+  local ic = c.rules.icon
+  check(ic[1].children == 'default' and ic[4].children == 'default',
+        'an icon rule at off becomes default')
+  check(ic[2].children == 'fill' and ic[3].children == 'force', 'fill and force are kept')
+  check(c.options.propagate_icons == 'off', 'icon default is off')
+  check(c.options.propagate_folders == 'force', 'the track option survives')
+  check(CF.normalize{ options = { propagate_icons = 'bogus' } }.options.propagate_icons
+        == 'off', 'bad propagate_icons falls back')
+  local back = CF.normalize(CF.serializable(CF.normalize{ rules = {
+    track = { { pattern = 'a', children = 'force' } } } }))
+  check(back.rules.track[1].children == 'force', 'a track rule\'s children survive serialisation')
 end
 
 ------------------------------------------------------------------- report

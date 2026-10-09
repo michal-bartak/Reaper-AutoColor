@@ -3,19 +3,16 @@ title: Config file
 description: Where the rules and options are stored, what the file contains, and how it is protected
 ---
 
-AutoColor stores all its rules and all the settings from [Options](/Reaper-AutoColor/configuration/) in one file, `config.json`. The same file is used for every project, so every project is coloured by the same rules.
-
-You do not need to open the file to use AutoColor. The file is useful when you want to back up your setup, copy it to another computer, or edit rules outside the window.
-
-## Where it is
-
-The file is in a folder named `MXM_AutoColor` inside the [REAPER resource folder](/Reaper-AutoColor/installation/#the-reaper-resource-folder):
-
+AutoColor stores all its rules and settings in configuration file located at:
 ```
-<REAPER resource folder>/MXM_AutoColor/config.json
+<resource folder>/MXM_AutoColor/config.json
 ```
 
-The **Config file** section of AutoColor's [Options](/Reaper-AutoColor/configuration/) dialog shows the full path. The file is created the first time you change a rule or an option.
+Knowing this location is useful when you want to back up your setup, copy it to another computer.
+
+It's exact location is shown in AutoColor's [Options](/Reaper-AutoColor/configuration/) dialog. 
+
+The file is created the first time you change a rule or an option.
 
 :::note[Why it is not in `Scripts/`]
 The file is stored **outside** the folder that holds the AutoColor scripts, to prevent reinstalling or updating the scripts from overwriting it.
@@ -40,9 +37,13 @@ AutoColor writes `config.bad.json` when `config.json` cannot be read, for exampl
 
 The config file contains the entire AutoColor setup: every rule and every option. To use the same setup on another computer, copy `config.json` to the same location on that computer.
 
-Icon rules also need the icon files on the other computer. [The icon browser](/Reaper-AutoColor/usage/icons/#the-icon-browser) explains how icon locations are stored.
+Icon rules also need the icon files - especially custom images - on the other computer. [The icon browser](/Reaper-AutoColor/usage/icons/#the-icon-browser) explains how icon locations are stored.
 
 ## Editing it by hand
+
+:::caution
+It's not recommended
+:::
 
 The file is plain JSON, and you can edit it in a text editor. Follow these steps so that your changes are not lost or ignored:
 
@@ -60,9 +61,10 @@ The file has three parts: `version`, `options` and `rules`. Here is a short exam
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "options": {
     "propagate_folders": "fill_unmatched",
+    "propagate_icons": "off",
     "subfolder_splits_range": true,
     "clear_unmatched": { "track": false, "item": true, "region": false, "marker": false, "icon": false },
     "auto_undo": false,
@@ -73,11 +75,11 @@ The file has three parts: `version`, `options` and `rules`. Here is a short exam
     "autostart": "last"
   },
   "rules": {
-    "track":  [ { "label": "Bass", "mode": "regex", "pattern": "^(sub )?bass", "color": 8142034 } ],
+    "track":  [ { "label": "Bass", "mode": "regex", "pattern": "^(sub )?bass", "color": 8142034, "children": "default" } ],
     "item":   [],
     "region": [],
     "marker": [],
-    "icon":   [ { "label": "Kick", "mode": "substring", "pattern": "kick", "icon": "kick.png", "children": "off" } ]
+    "icon":   [ { "label": "Kick", "mode": "substring", "pattern": "kick", "icon": "kick.png", "children": "default" } ]
   }
 }
 ```
@@ -94,7 +96,8 @@ Each field under `options` corresponds to a setting in the [Options](/Reaper-Aut
 
 | Field | Setting in Options | Default | Allowed values |
 |---|---|---|---|
-| `propagate_folders` | Folders | `"fill_unmatched"` | `"fill_unmatched"` (**fill gaps**), `"force"`, `"off"` |
+| `propagate_folders` | Folders → Tracks | `"fill_unmatched"` | `"fill_unmatched"` (**fill**), `"force"`, `"off"` |
+| `propagate_icons` | Folders → Icons | `"off"` | `"off"`, `"fill_unmatched"` (**fill**), `"force"` |
 | `subfolder_splits_range` | Subfolder splits the parent's colour range | `true` | `true`, `false` |
 | `clear_unmatched` | Reset to the default colour when no rule matches | all `false` | `true` or `false` for each of `track`, `item`, `region`, `marker`, `icon` |
 | `autostart` | Autostart | `"last"` | `"last"`, `"on"` (**Always**), `"off"` (**Never**) |
@@ -133,9 +136,9 @@ Each rule is a JSON object with the fields below. A field that is missing takes 
 | `color` | The rule's colour. See [Colours](#colours). | grey (`8421504`) |
 | `color2` | A second colour. When it is present, the rule colours its matches with a gradient from `color` to `color2`. | none |
 | `gradient_scope` | How a gradient is spread: `"all"` (**all matches**), `"run"` (**runs**), `"folder"` (**folders**) or `"both"` (**runs & folders**). `"folder"` and `"both"` are for track rules only. | `"run"` for tracks and items, `"all"` for regions and markers |
-| `cascade_items` | Track rules only. `true` also colours the items on the tracks that the rule matches. This is the **Items** column. | `false` |
+| `cascade_items` | Track rules only. `true` also colours the items on the tracks that the rule matches. This is the **FI** (force item colour) column. | `false` |
 | `icon` | Icon rules only. The icon file, relative to REAPER's `Data/track_icons` folder or as a full path. `""` removes the icon from the matched tracks. | `""` |
-| `children` | Icon rules only. Whether a folder track's icon is also given to the tracks inside the folder: `"off"`, `"fill"` or `"force"`. | `"off"` |
+| `children` | Track and icon rules only. Whether a folder track's colour or icon is also given to the tracks inside the folder: `"default"`, `"off"`, `"fill"` or `"force"`. `"default"`, shown as `--`, uses `propagate_folders` for track rules and `propagate_icons` for icon rules. This is the **Children** column. | `"default"` |
 | `note` | A message that AutoColor attaches to a rule, for example the reason a rule was switched off when it was loaded. The window does not show it. | `""` |
 | `id` | An identifier that AutoColor uses to keep track of the rule. Do not edit it. When it is missing or duplicated, AutoColor creates a new one. | created automatically |
 | `invert` | `true` makes the rule match every name that the pattern does **not** match. The window has no control for this field, so it can be set only in the file. | `false` |
@@ -159,12 +162,13 @@ See [Filters](/Reaper-AutoColor/usage/matching/#filters) for what each filter ma
 
 ## Version handling
 
-The `version` field allows AutoColor to read files written by both older and newer versions of AutoColor without losing rules. The current version is 3.
+The `version` field allows AutoColor to read files written by both older and newer versions of AutoColor without losing rules. The current version is 4.
 
 When AutoColor loads a file from an **older** version, it converts the file to the current layout. The converted file is written at the next save, and the original file is then kept as `config.bak.json` until the save after that. The conversions are:
 
 - Version 1 kept all rules in a single list, and each rule had a checkbox for each object type. A rule that was ticked for several object types becomes one rule in each of those lists. The order of the rules within each list is preserved.
 - Version 3 added the list of icon rules.
+- Version 4 added the **Children** setting to track rules, and the value `"default"` to track and icon rules. Every track rule starts at `"default"`. An icon rule whose `children` was `"off"` changes to `"default"`, which gives the same result because `propagate_icons` is `"off"` by default. Icon rules set to `"fill"` or `"force"` keep their value.
 
 When AutoColor loads a file from a **newer** version, it uses the rules but never saves over the file. This prevents an older version of AutoColor from overwriting settings that it does not understand. The window shows a banner: *This config file was written by a newer version. Editing is allowed but nothing will be saved.* You can still change rules in the window to try them out, but the changes are lost when the window closes. The **Example rules**, **Remove Rules** and **Import from SWS** buttons in Options are disabled. To edit the rules again, update AutoColor.
 

@@ -19,7 +19,7 @@ local rulesmod = require 'rules'
 
 local M = {}
 
-M.VERSION     = 3
+M.VERSION     = 4
 M.EXT_SECTION = 'MXM_AutoColor'
 
 local function in_reaper()
@@ -41,6 +41,10 @@ function M.badpath() return M.dir() .. '/config.bad.json' end
 ------------------------------------------------------------------- defaults
 local OPTION_SPEC = {
   propagate_folders      = { default = 'fill_unmatched',
+                             enum = { off = true, fill_unmatched = true, force = true } },
+  -- What an icon rule's 'default' Children means. Off: an icon handed to every
+  -- child of a folder says less than a colour does.
+  propagate_icons        = { default = 'off',
                              enum = { off = true, fill_unmatched = true, force = true } },
   -- Default ON: a nested folder is a visible break in the track panel, so a
   -- gradient ramp running straight through one reads as a bug. Off is the older
@@ -260,6 +264,24 @@ end
 --- is what makes an older build open a v3 file read-only instead of saving over
 --- it without the icon rules.
 migrations[2] = function(cfg) return cfg end
+
+--- v4 gives track rules a Children mode and adds 'default' to both lists.
+--- Icon rules at 'off' -- the only default v3 had -- become 'default', which
+--- the new propagate_icons option resolves to the same 'off'. fill and force
+--- were chosen and stay. Track rules need nothing: normalize() gives them
+--- 'default'. The bump keeps an older build from saving the file back
+--- without the track rules' modes.
+migrations[3] = function(cfg)
+  local list = type(cfg.rules) == 'table' and cfg.rules.icon
+  if type(list) == 'table' then
+    for _, r in ipairs(list) do
+      if type(r) == 'table' and (r.children == 'off' or r.children == nil) then
+        r.children = 'default'
+      end
+    end
+  end
+  return cfg
+end
 
 --- Bring a config forward to the current version. Public so the test
 --- suite can exercise the v1 -> v2 split directly.

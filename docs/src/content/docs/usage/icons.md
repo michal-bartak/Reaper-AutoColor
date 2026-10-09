@@ -23,7 +23,7 @@ Each row on the **Icons** tab is one rule. A rule says which tracks it matches a
 | **Children** | What happens to the tracks inside a folder track that this rule matches. See [Children](#children). |
 | **Hits** | How many tracks this rule sets the icon on in the current project. See [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column). |
 
-To add a rule, click **+ icon rule** on the action bar. [Editing rules](/Reaper-AutoColor/usage/#editing-rules) describes how to move, switch off and delete rules.
+To add a rule, click **+ icon rule** on the action bar. [Common controls](/Reaper-AutoColor/usage/#common-controls) describes how to reorder, duplicate and delete rules.
 
 ## Which rule sets a track's icon
 
@@ -57,7 +57,8 @@ The **Children** setting decides whether a folder track passes its icon to the t
 
 | Setting | Effect |
 |---|---|
-| **off** (default) | Only the folder track gets the icon. |
+| `--` *(default)* | The rule uses the value set under **Options → Folders → Icons**. That value is **Off** unless you change it. |
+| **off** | Only the folder track gets the icon. |
 | **fill** | Tracks inside the folder that no icon rule matches get the folder's icon. Tracks that an icon rule matches get the icon from that rule. |
 | **force** | Every track inside the folder gets the folder's icon, even if an icon rule matches it. |
 
@@ -72,7 +73,7 @@ Folders inside folders follow these rules:
 - If several nested folders use **force**, the tracks inside get the icon of the outermost folder.
 - If an outer folder's rule uses **fill**, tracks inside a subfolder that no icon rule matches also get the outer folder's icon. This applies even when the subfolder's own rule has **Children** set to **off**.
 
-Colours handle folders differently. For colours, one setting in [Options](/Reaper-AutoColor/configuration/#folders) applies to all rules. For icons, each rule has its own **Children** setting.
+Rules on the **Tracks** tab have a **Children** setting of their own, which works in the same way for colours. The two settings are independent: a folder track can pass its colour to its children without passing its icon, or the other way round. See [Folders](/Reaper-AutoColor/usage/colours/#folders).
 
 ## When icons are set
 

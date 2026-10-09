@@ -19,6 +19,7 @@ local predicates = require 'predicates'
 local colors     = require 'colors'
 local targets    = require 'targets'
 local icons      = require 'icons'
+local rulesmod   = require 'rules'
 
 local M = {}
 
@@ -61,11 +62,11 @@ M.resolve = resolve
 ---   'off'    -- it does not reach them
 ---   'force'  -- it overrides theirs; among nested ones the OUTERMOST wins
 ---   anything else -- it fills the children that have no rule of their own
---- Colours pass one global mode; icon rules each carry their own.
+--- Each rule carries its own mode, 'default' deferring to Options
+--- (rules.children_mode).
 ---
 --- A folder whose rule does not propagate passes on what it inherited, so an
---- outer 'fill' still reaches through it. With one mode for every rule this is
---- exactly the old single-policy walk: every non-nil winner propagates.
+--- outer 'fill' still reaches through it.
 local function propagate(entries, direct, mode_of)
   local winner, stack = {}, {}
   for i = 1, #entries do
@@ -173,7 +174,7 @@ M.prepare_all = prepare_all
 --- gradients and no items. Ops carry `icon` (the path to write, '' to remove)
 --- instead of `rgb`, which is how commit() tells them apart.
 --- @return { desired, winner, direct }, number of tracks matched
-local function plan_icons(entries, list, clear_unmatched, ops)
+local function plan_icons(entries, list, clear_unmatched, ops, options)
   local out = { desired = {}, winner = {}, direct = {} }
   if #list == 0 and not clear_unmatched then return out, 0 end
 
@@ -189,7 +190,9 @@ local function plan_icons(entries, list, clear_unmatched, ops)
     end
   end
 
-  local winner = propagate(entries, direct, function(r) return r.children end)
+  local winner = propagate(entries, direct, function(r)
+    return rulesmod.children_mode(r, options, 'icon')
+  end)
   out.winner = winner
 
   for i = 1, #entries do
@@ -217,12 +220,12 @@ end
 --
 -- Order of resolution:
 --   1a. each object against the rule list for its OWN kind, first match wins
---   1b. folders hand their RULE down to their children (propagate_folders)
+--   1b. folders hand their RULE down to their children (each rule's Children)
 --   1c. gradients, over every match each rule now OWNS -- so a folder rule with
 --       two colours ramps across the folder rather than painting it one shade
 --   2.  rank and group size become a colour
 --   4.  track colours flow onto the ITEMS sitting on them, for track rules with
---       "also colour items" -- but only where no item rule already claimed them,
+--       FI (force item colour) -- but only where no item rule already claimed them,
 --       so an item rule always overrides its track
 --
 -- Entries flagged `context = true` take part in 1b and 4 but are never written
@@ -236,7 +239,6 @@ end
 function M.plan(entries, rules, options)
   options = options or {}
   rules = rules or {}
-  local policy = options.propagate_folders or 'fill_unmatched'
 
   -- tolerate the old single boolean as well as the per-kind table
   local clear_unmatched = {}
@@ -320,7 +322,9 @@ function M.plan(entries, rules, options)
   --
   --     Order within a folder is project order, and the parent is the first
   --     step of its own ramp.
-  local winner = propagate(entries, direct, function() return policy end)
+  local winner = propagate(entries, direct, function(r)
+    return rulesmod.children_mode(r, options, 'track')
+  end)
   local cascade = {}
   for i = 1, #entries do
     if entries[i].kind == 'track' then
@@ -450,7 +454,7 @@ function M.plan(entries, rules, options)
 
   -- 6. icons, appended to the same ops so every caller commits them too
   local icon, icon_matched = plan_icons(entries, rules.icon or {},
-                                        clear_unmatched.icon, ops)
+                                        clear_unmatched.icon, ops, options)
 
   local stats = {
     scanned = scanned, matched = matched, unchanged = unchanged,

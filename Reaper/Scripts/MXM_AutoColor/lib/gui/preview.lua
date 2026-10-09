@@ -147,7 +147,7 @@ function M.draw_list(FS, w, h)
       ImGui.SetTooltip(ctx,
         'Objects can get a colour without any rule on this tab matching them:\n' ..
         '  - an item takes its track\'s colour when that track\'s rule has\n' ..
-        '    "also colour items" switched on\n' ..
+        '    FI (force item colour) switched on\n' ..
         '  - a track with no rule of its own inherits from its parent folder\n\n' ..
         'That is why the Hits column can read 0 while objects are still listed.')
     end
@@ -188,7 +188,7 @@ function M.draw_list(FS, w, h)
         if ImGui.IsItemHovered(ctx) then
           ImGui.SetTooltip(ctx, 'No item rule matched it, so it takes the colour\n' ..
                                 'of the track it sits on -- that track\'s rule has\n' ..
-                                '"also colour items" switched on.')
+                                'FI (force item colour) switched on.')
         end
       elseif p.inherited then
         ImGui.TextColored(ctx, rgba(COL_DIM), 'from folder')

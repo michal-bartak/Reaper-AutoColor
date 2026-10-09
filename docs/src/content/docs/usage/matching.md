@@ -34,7 +34,7 @@ The column can also show:
 Both are described in [Invalid, unsupported and slow patterns](#invalid-unsupported-and-slow-patterns).
 
 :::tip[Hits shows 0, but the objects are still coloured]
-An object can be coloured without any rule on its tab matching it. An item can take the colour of its track, when the track's rule has **Items** switched on. A track can take the colour of its folder track. Such objects appear in *Objects preview*, but they are not counted in **Hits**.
+An object can be coloured without any rule on its tab matching it. An item can take the colour of its track, when the track's rule has **FI** (force item colour) switched on. A track can take the colour of its folder track. Such objects appear in *Objects preview*, but they are not counted in **Hits**.
 :::
 
 ## Match modes

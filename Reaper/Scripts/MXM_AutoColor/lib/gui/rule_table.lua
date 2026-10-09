@@ -6,8 +6,8 @@
   reliable path; dragging is the pleasant one).
 
   Each kind gets its own table, so the columns differ: only tracks have folder
-  filters and the "also colour items" switch, and the Icons table has an icon
-  and a Children column where the others have Colour.
+  filters and the FI (force item colour) switch, the Icons table has an icon
+  where the others have Colour, and only those two have a Children column.
 
   Every mutation is deferred to after EndTable -- changing the list while
   iterating it is how you get flickering rows and mismatched widget ids.
@@ -156,20 +156,27 @@ local function icon_cell(r)
   end
 end
 
-local function children_combo(r)
+local function children_help(r, kind)
+  if r.children ~= 'default' then return rulesmod.CHILDREN_HELP[r.children] end
+  local m = rulesmod.children_mode(r, app.st.cfg.options, kind)
+  return 'Follows Options > Folders: ' ..
+         rulesmod.CHILDREN_LABEL[m == 'fill_unmatched' and 'fill' or m] .. '.'
+end
+
+local function children_combo(r, kind)
   local changed = false
   ImGui.SetNextItemWidth(ctx, -1)
-  if ImGui.BeginCombo(ctx, '##children', rulesmod.ICON_CHILDREN_LABEL[r.children]) then
-    for _, c in ipairs(rulesmod.ICON_CHILDREN) do
-      if ImGui.Selectable(ctx, rulesmod.ICON_CHILDREN_LABEL[c], c == r.children)
+  if ImGui.BeginCombo(ctx, '##children', rulesmod.CHILDREN_LABEL[r.children]) then
+    for _, c in ipairs(rulesmod.CHILDREN) do
+      if ImGui.Selectable(ctx, rulesmod.CHILDREN_LABEL[c], c == r.children)
          and c ~= r.children then
         app.snapshot(); r.children = c; changed = true
       end
-      ImGui.SetItemTooltip(ctx, rulesmod.ICON_CHILDREN_HELP[c])
+      ImGui.SetItemTooltip(ctx, rulesmod.CHILDREN_HELP[c])
     end
     ImGui.EndCombo(ctx)
   end
-  ImGui.SetItemTooltip(ctx, rulesmod.ICON_CHILDREN_HELP[r.children])
+  if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, children_help(r, kind)) end
   return changed
 end
 
@@ -191,7 +198,8 @@ function M.draw(kind, FS, height)
   local function col(name) cols[#cols + 1] = name; idx[name] = #cols - 1 end
   col('drag'); col('on'); col('name'); col('mode'); col('pattern'); col('ci')
   if has_only then col('only') end
-  if is_icon then col('icon'); col('children') else col('color') end
+  if is_icon then col('icon') else col('color') end
+  if is_icon or is_track then col('children') end
   if is_track then col('cascade') end
   col('hits'); col('menu')
 
@@ -227,17 +235,19 @@ function M.draw(kind, FS, height)
   -- Sized for the filter labels in Windows' wider UI font as well as macOS'.
   if has_only then ImGui.TableSetupColumn(ctx, 'Filter', FIX, FS * 10.5 + 4) end
   if is_icon then
-    ImGui.TableSetupColumn(ctx, 'Icon',     STRETCH, 1.0)
-    ImGui.TableSetupColumn(ctx, 'Children', FIX, FS * 5)
+    ImGui.TableSetupColumn(ctx, 'Icon',   STRETCH, 1.0)
   else
     ImGui.TableSetupColumn(ctx, 'Colour', FIX, COLOUR_W)
   end
-  if is_track then ImGui.TableSetupColumn(ctx, 'Items', FIX, FS * 3.2) end
+  if is_icon or is_track then
+    ImGui.TableSetupColumn(ctx, 'Children', FIX, FS * 5)
+  end
+  if is_track then ImGui.TableSetupColumn(ctx, 'FI', FIX, FS * 2.2) end
   ImGui.TableSetupColumn(ctx, 'Hits',   FIX, FS * 4)
   ImGui.TableSetupColumn(ctx, '##menu', FIX, MENU_W)
   ImGui.TableSetupScrollFreeze(ctx, 0, 1)
 
-  -- Aa / Items / Hits are narrow columns whose contents are centred, so their
+  -- Aa / FI / Hits are narrow columns whose contents are centred, so their
   -- labels should be too. TableHeadersRow always left-aligns, hence the manual
   -- header row.
   local centred_headers = { [idx.ci] = true, [idx.hits] = true }
@@ -326,23 +336,27 @@ function M.draw(kind, FS, height)
     if is_icon then
       ImGui.TableSetColumnIndex(ctx, idx.icon)
       icon_cell(r)
-      ImGui.TableSetColumnIndex(ctx, idx.children)
-      if children_combo(r) then changed = true end
     else
       ImGui.TableSetColumnIndex(ctx, idx.color)
       if color_cell(r, kind, FS) then changed = true end
     end
 
-    ------------------------------------------------- cascade onto items
+    ------------------------------------------------------------ children
+    if idx.children then
+      ImGui.TableSetColumnIndex(ctx, idx.children)
+      if children_combo(r, kind) then changed = true end
+    end
+
+    ------------------------------------------- force the colour onto items
     if is_track then
       ImGui.TableSetColumnIndex(ctx, idx.cascade)
       local rvx, casc = theme.checkbox('##casc', r.cascade_items, true)
       if rvx then app.snapshot(); r.cascade_items = casc; changed = true end
       if ImGui.IsItemHovered(ctx) then
         ImGui.SetTooltip(ctx,
-          'Also colour the ITEMS sitting on the tracks this rule matches,\n' ..
-          'whatever those items are called.\n\n' ..
-          'A rule on the Items tab still wins over this.')
+          'Force item colour: writes the track colour into its items.\n' ..
+          'Not needed for items to show their track\'s colour.\n' ..
+          'A rule on the Items tab still wins.')
       end
     end
 

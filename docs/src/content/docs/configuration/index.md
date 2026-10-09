@@ -20,13 +20,10 @@ While the Options dialog is open, the AutoColor window behind it is dimmed and d
 
 ## Folders
 
-Decides whether the tracks inside a folder also receive the folder track's colour. The setting applies to all rules on the **Tracks** tab.
+Every rule on the **Tracks** and **Icons** tabs has a **Children** setting. It decides whether the tracks inside a folder also receive the folder track's colour or icon. A rule whose **Children** setting is `--` uses the value chosen here. There is one value for each tab:
 
-- **fill gaps** *(default)*: only tracks that no rule matches receive the folder track's colour.
-- **force**: every track inside the folder receives the folder track's colour.
-- **off**: tracks inside a folder never receive the folder track's colour.
-
-[Folders](/Reaper-AutoColor/usage/colours/#folders) explains the three values with examples.
+- **Tracks**: **Fill** *(default)*, **Force** or **Off**. [Folders](/Reaper-AutoColor/usage/colours/#folders) explains the values with examples.
+- **Icons**: **Off** *(default)*, **Fill** or **Force**. [Children](/Reaper-AutoColor/usage/icons/#children) explains the values with examples.
 
 ### Subfolder splits the parent's colour range
 

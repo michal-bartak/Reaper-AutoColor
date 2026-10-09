@@ -10,7 +10,7 @@ A rule can have one colour or two:
 - With one colour, everything the rule matches receives that same colour.
 - With two colours, the rule creates a *gradient*: a sequence of shades that changes step by step from the first colour to the second. Gradients make related tracks look like a group while keeping each track distinguishable.
 
-The folder setting on this page decides whether the tracks inside a folder also receive the folder track's colour.
+The **Children** setting of a track rule, described on this page, decides whether the tracks inside a folder also receive the folder track's colour.
 
 The colours are written into the project when the rules are applied: with **Apply now** or **Selection** in the configuration window, with the apply actions, or automatically while auto-apply is running. See [Applying colours and icons](/Reaper-AutoColor/usage/applying/).
 
@@ -30,7 +30,7 @@ The **Colour** column of a rule holds its colour. To turn the rule into a gradie
 When the rules are applied, AutoColor works out the colours for each rule in this order:
 
 1. AutoColor finds the objects that the rule colours. These are the objects whose names match the rule's pattern and filter, and that no rule higher on the same tab has already matched. [Matching names](/Reaper-AutoColor/usage/matching/) explains patterns and filters.
-1. For tracks, the [folder setting](#folders) can also give the rule's colour to the tracks inside a folder whose folder track the rule colours.
+1. For tracks, the rule's [Children setting](#folders) can also give the rule's colour to the tracks inside a folder whose folder track the rule colours.
 1. If the rule has one colour, every one of these objects receives it.
 1. If the rule has two colours, the objects receive shades of a gradient. The rule's [spread setting](#spread-across) decides how the gradient is divided among them.
 
@@ -64,23 +64,26 @@ A rule with one colour gives that colour to every object it colours.
 
 In REAPER, a folder track groups the tracks below it. The tracks inside the folder are its *children*. A folder can also contain other folders, called *subfolders*.
 
-The folder setting decides whether a folder track's colour is also given to its children. It applies to all rules on the **Tracks** tab, and is set under **Options → Folders**. It has three values:
+The **Children** setting decides whether a folder track's colour is also given to its children. Each rule on the **Tracks** tab has its own **Children** setting. The setting has an effect only when the rule colours a folder track. It has four values:
 
 | Setting | Effect |
 |---|---|
-| **fill gaps** *(default)* | A child that no rule matches receives the folder track's colour. A child that a rule matches keeps the colour of that rule. |
+| `--` *(default)* | The rule uses the value set under **Options → Folders → Tracks**. That value is **Fill** unless you change it. |
+| **fill** | A child that no rule matches receives the folder track's colour. A child that a rule matches keeps the colour of that rule. |
 | **force** | Every child receives the folder track's colour, including children that a rule matches. |
 | **off** | Children never receive the folder track's colour. Each child is coloured only by the rule that matches it. |
 
 For example, a rule colours the folder track `Drums` red, and another rule colours tracks named `Kick` orange. The folder contains the tracks `Kick` and `Room`, and no rule matches `Room`:
 
-- With **fill gaps**, `Kick` is orange and `Room` is red.
+- With **fill**, `Kick` is orange and `Room` is red.
 - With **force**, both `Kick` and `Room` are red.
 - With **off**, `Kick` is orange and `Room` keeps the colour it already has.
 
 Choose **force** when each folder should appear as one block of colour, whatever the names inside it. Choose **off** when every track should be coloured only by its own name.
 
-The folder setting applies only to colours. Icon rules have their own **Children** setting for each rule; see [Track icons](/Reaper-AutoColor/usage/icons/#children).
+To use the same behaviour for every folder, leave each rule at `--` and choose the value under **Options → Folders → Tracks**. To make one folder behave differently, set **Children** on the rule that colours its folder track.
+
+The **Children** setting of a track rule applies only to colours. Icon rules have their own **Children** setting; see [Track icons](/Reaper-AutoColor/usage/icons/#children).
 
 The diagrams below show one folder. The folder track is named `red`. Two of its children, `green` and `blue`, are matched by rules of their own. The third child, `bass`, is matched by no rule.
 
@@ -88,7 +91,7 @@ The diagrams below show one folder. The folder track is named `red`. Two of its 
 
 ![The same folder, the unmatched child taking the folder's colour](../../../assets/usage/diagrams/folders-fill.svg)
 
-<figcaption><strong>fill gaps</strong>: only <code>bass</code> receives the folder&rsquo;s colour.</figcaption>
+<figcaption><strong>fill</strong>: only <code>bass</code> receives the folder&rsquo;s colour.</figcaption>
 </figure>
 
 <figure class="shot diagram">
@@ -105,10 +108,11 @@ The diagrams below show one folder. The folder track is named `red`. Two of its 
 <figcaption><strong>off</strong>: AutoColor does not change the colour of <code>bass</code>.</figcaption>
 </figure>
 
-When folders are nested, the two settings behave as follows:
+When folders are nested, the values behave as follows:
 
-- With **fill gaps**, a child that no rule matches receives the colour of the innermost folder around it that has a colour. A folder has a colour when a rule matches its folder track, or when its folder track received a colour from a folder further out.
+- With **fill**, a child that no rule matches receives the colour of the innermost folder around it that has a colour. A folder has a colour when a rule matches its folder track, or when its folder track received a colour from a folder further out.
 - With **force**, the outermost folder whose folder track has a colour gives that colour to everything inside it, including its subfolders.
+- If an outer folder's rule uses **fill**, tracks inside a subfolder that no rule matches also receive the outer folder's colour. This applies even when the **Children** setting of the subfolder's own rule is **off**.
 
 ## Gradients
 
@@ -242,9 +246,9 @@ For a folder like this, turn **Subfolder splits the parent's colour range** off,
 
 ### Gradients and folder colours
 
-When a gradient rule matches a folder track, the [folder setting](#folders) can give the folder track's colour to its children as well. The children that receive the folder's colour in this way become part of the folder track's ramp. The ramp then spreads across the whole folder instead of giving every child the same colour.
+When a gradient rule matches a folder track, the rule's [Children setting](#folders) can give the folder track's colour to its children as well. The children that receive the folder's colour in this way become part of the folder track's ramp. The ramp then spreads across the whole folder instead of giving every child the same colour.
 
-The two diagrams below use the same folder. The rule's pattern is `red1`, which is the folder track's own name. No child matches this pattern, so every child that receives the red gradient receives it from the folder track. The child `blue1` matches a separate rule, `blue*`, and keeps its blue colour. The folder setting is **fill gaps**.
+The two diagrams below use the same folder. The rule's pattern is `red1`, which is the folder track's own name. No child matches this pattern, so every child that receives the red gradient receives it from the folder track. The child `blue1` matches a separate rule, `blue*`, and keeps its blue colour. The rule's **Children** setting is **fill**.
 
 A child that the gradient rule does not colour, such as `blue1`, interrupts the folder's ramp in the same way as it would between tracks outside a folder. With **runs** or **runs & folders**, that child splits the ramp in two.
 
@@ -264,7 +268,7 @@ A child that the gradient rule does not colour, such as `blue1`, interrupts the 
 
 Two settings decide whether a child such as `blue1` splits the ramp:
 
-- **The folder setting.** With **force**, the folder track's rule colours every child, including `blue1`, so nothing interrupts the ramp. With **off**, no child receives the folder's colour, so the folder track has no ramp across its children at all.
+- **The Children setting.** With **force**, the folder track's rule colours every child, including `blue1`, so nothing interrupts the ramp. With **off**, no child receives the folder's colour, so the folder track has no ramp across its children at all.
 - **The spread setting.** Only **runs** and **runs & folders** split the ramp. With **all matches** or **folders**, the ramp stays in one piece and is one step shorter.
 
 With a single folder, as in these diagrams, **runs & folders** gives the same result as **runs**, because there is no second folder whose boundary could start a new ramp.
@@ -274,7 +278,7 @@ This happens when all three of these settings are combined:
 
 - the rule spreads across **folders** or **runs & folders**;
 - the rule has the filter **is a folder track**;
-- the folder setting is **off**.
+- the rule's **Children** setting is **off**, or is `--` while **Options → Folders → Tracks** is **Off**.
 
 The rule then colours only folder tracks, and none of their children. Each folder track is then the only track in its ramp, so every folder track receives the first colour. The window shows a warning below the rule list when such a rule is selected.
 :::

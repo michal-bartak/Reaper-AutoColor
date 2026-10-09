@@ -113,9 +113,6 @@ export default defineConfig({
             { label: 'Region colours', link: '/usage/regions/' },
             { label: 'Marker colours', link: '/usage/markers/' },
             { label: 'Track icons', link: '/usage/icons/' },
-            { label: 'Applying colours and icons', link: '/usage/applying/' },
-            { label: 'Auto-apply', link: '/usage/auto-apply/' },
-            { label: 'Clearing colours', link: '/usage/clearing/' },
           ],
         },
         {
@@ -123,6 +120,9 @@ export default defineConfig({
           items: [
             { label: 'Matching names', link: '/usage/matching/' },
             { label: 'Colours and gradients', link: '/usage/colours/' },
+            { label: 'Applying colours and icons', link: '/usage/applying/' },
+            { label: 'Auto-apply', link: '/usage/auto-apply/' },
+            { label: 'Clearing colours', link: '/usage/clearing/' },
           ],
         },
         {

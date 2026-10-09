@@ -98,11 +98,14 @@ do -- only the TRACK tab offers the cascade switch and the folder filters
   end
 
   local tr = labels_for('Tracks')
-  check(tr['##casc'], 'the track tab has the "also colour items" switch')
-  check(tr['Items'],  'and an Items column header')
+  check(tr['##casc'], 'the track tab has the FI (force item colour) switch')
+  check(tr['FI'],     'and an FI column header')
+  check(tr['##children'] and tr['Children'], 'and a Children combo')
 
   local rg = labels_for('Regions')
   check(not rg['##casc'], 'the region tab has no cascade switch')
+  check(not rg['##children'], 'nor a Children combo')
+  check(not labels_for('Items')['##children'], 'items have no Children either')
   check(rg['rules_region'], 'but it did draw its own table')
 
   -- the filter dropdown only appears where a filter exists for that kind
@@ -685,6 +688,8 @@ do -- the dialog body: every control it is supposed to offer
   check(ok, 'the options body draws without error', tostring(err))
   check(rec.labels['Subfolder splits the parent\'s colour range'],
         'the Folders section offers the subfolder split checkbox')
+  check(rec.labels['Tracks##propagate_folders'] and rec.labels['Icons##propagate_icons'],
+        'and a Children default for tracks and for icons')
   check(rec.labels['Example rules'], 'the rules file section offers Example rules')
   check(rec.labels['Remove Rules'], 'and Remove Rules')
   check(rec.seen.SetTooltip, 'and the dialog explains itself')

@@ -81,6 +81,10 @@ if r then
   w('  mode          : %s%s', r.mode, r.ci and ', ignore case' or '')
   w('  pattern       : "%s"', r.pattern)
   if r.only then w('  filter        : %s', r.only) end
+  if r.children then
+    w('  children      : %s (%s)', r.children,
+      require('rules').children_mode(r, cfg.options, me.kind))
+  end
 
   -- A gradient means the colour depends on WHERE in its group this object sits,
   -- which is otherwise impossible to reason about from the outside.
@@ -97,7 +101,7 @@ if r then
 elseif from_track[idx] then
   w('MATCHED BY      : nothing on the Items tab --')
   w('                  it takes the colour of the track it sits on,')
-  w('                  because that track\'s rule has "also colour items" on.')
+  w('                  because that track\'s rule has FI (force item colour) on.')
 else
   w('MATCHED BY      : nothing')
 end
@@ -120,8 +124,7 @@ if me.kind == 'item' then
     w('  track colour  : %s', hex(desired[ti]))
     if tr_rule then
       w('  track rule    : "%s"', tr_rule.label ~= '' and tr_rule.label or '(no name)')
-      w('  also colour items: %s', tr_rule.cascade_items and 'YES' or
-        'NO   <-- tick this if you want items to follow this track')
+      w('  force item colour: %s', tr_rule.cascade_items and 'YES' or 'NO')
     else
       w('  track rule    : none matched')
     end
@@ -188,6 +191,7 @@ do
   w('reset when unmatched  : %s', #on > 0 and table.concat(on, ', ') or 'nothing')
 end
 w('folder propagation    : %s', tostring(cfg.options.propagate_folders))
+w('icon propagation      : %s', tostring(cfg.options.propagate_icons))
 w('subfolder splits ramp : %s', tostring(cfg.options.subfolder_splits_range))
 w('')
 

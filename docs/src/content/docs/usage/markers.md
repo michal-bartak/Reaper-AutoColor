@@ -20,7 +20,7 @@ Each row on the **Markers** tab is one rule. A rule says which markers it matche
 | **Colour** | The colour the matching markers get. Click **+** to add a second colour, which spreads a [gradient](/Reaper-AutoColor/usage/colours/#gradients) across the markers. |
 | **Hits** | How many markers this rule colours in the current project. See [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column). |
 
-To add a rule, click **+ marker rule** on the action bar. [Editing rules](/Reaper-AutoColor/usage/#editing-rules) describes how to move, switch off and delete rules.
+To add a rule, click **+ marker rule** on the action bar. [Common controls](/Reaper-AutoColor/usage/#common-controls) describes how to reorder, duplicate and delete rules.
 
 ## Which rule colours a marker
 

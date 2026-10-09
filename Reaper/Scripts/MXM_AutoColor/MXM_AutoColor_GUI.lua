@@ -99,6 +99,9 @@ local function frame()
 
     local okdraw, err = pcall(window.draw, FS)
     if not okdraw then
+      -- Also to the console: an error inside a table or child leaves it open,
+      -- and End() below then raises its own error, which hides this one.
+      reaper.ShowConsoleMsg('AutoColor: drawing error: ' .. tostring(err) .. '\n')
       ImGui.TextColored(ctx, 0xC2413BFF, 'Drawing error: ' .. tostring(err))
     end
 

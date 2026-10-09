@@ -23,10 +23,11 @@ Each row on the **Tracks** tab is one rule. A rule says which tracks it matches 
 | **Aa** | On by default: upper and lower case are ignored, so `vox` matches `Vox` and `VOX`. |
 | **Filter** | An optional condition that does not depend on the name, such as *is a folder track* or *has an instrument*. See [Filters](/Reaper-AutoColor/usage/matching/#filters). |
 | **Colour** | The colour the matching tracks get. Click **+** to add a second colour, which spreads a [gradient](/Reaper-AutoColor/usage/colours/#gradients) across the tracks. |
-| **Items** | Off by default. When on, the items on the matching tracks get the track's colour as well. See [Items in their track's colour](#items-in-their-tracks-colour). |
+| **Children** | Whether the tracks inside a folder track that this rule colours also get its colour. See [Folders](#folders). |
+| **FI** | *Force item colour*. Off by default - items that have default color set, inherit the track colour. When on, the track's colour is written into the items on the matching tracks as their own colour. See [Items in their track's colour](#items-in-their-tracks-colour). |
 | **Hits** | How many tracks this rule colours in the current project. See [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column). |
 
-To add a rule, click **+ track rule** on the action bar. [Editing rules](/Reaper-AutoColor/usage/#editing-rules) describes how to move, switch off and delete rules.
+To add a rule, click **+ track rule** on the action bar. [Common controls](/Reaper-AutoColor/usage/#common-controls) describes how to reorder, duplicate and delete rules.
 
 ## Which rule colours a track
 
@@ -45,14 +46,22 @@ A track that no rule matches keeps the colour it already has, unless it takes th
 
 By default, a track inside a folder that no rule matches gets the colour of its folder track. For example, if a rule colours the folder track `Drums` red, a track `Room` inside that folder is red too, even though no rule matches `Room`.
 
-The setting **Options → Folders** can also give every track inside the folder the folder's colour, or turn this off. [Folders](/Reaper-AutoColor/usage/colours/#folders) explains the three values with diagrams.
+The **Children** setting of the rule that colours the folder track decides this. 
+*  **--** (the default), inherits value of  **Options → Folders → Tracks** global setting
+* **fill** spreads the color of matched track into its children that have no any color set yet
+* **force** gives every track inside the folder the folder's colour, 
+* **off** does nothing to children
+
+[Folders](/Reaper-AutoColor/usage/colours/#folders) explains applying colors and color ranges with details.
 
 ## Items in their track's colour
 
-Items on a track are drawn in the track's colour unless they have a colour of their own. Two settings make sure that the items on a coloured track show the track's colour:
+REAPER draws an item in its track's colour when the item has no colour of its own. This depends on REAPER's item tinting preferences; see [REAPER preferences](/Reaper-AutoColor/configuration/reaper-preferences/). In that case the items on a coloured track show the track's colour without any setting in AutoColor.
 
-- The **Items** switch on a track rule gives every item on the matching tracks the track's colour.
+Two settings change the items' own colour:
+
 - The option [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches), ticked for **Items**, removes the colour from items that no rule colours, so REAPER draws them in their track's colour.
+- The **FI** (force item colour) switch on a track rule writes the track's colour into every item on the matching tracks, as the item's own colour.
 
 The two differ when an item is later moved to another track. [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour) compares them.
 

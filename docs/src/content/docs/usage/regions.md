@@ -5,6 +5,14 @@ description: The Regions tab — colouring regions from their names
 
 The **Regions** tab of the configuration window colours regions according to their names. For example, a rule can colour every region whose name contains `chorus` yellow, so that the song structure is visible at a glance.
 
+<figure class="shot">
+
+![Track rules](../../../assets/usage/rows-regions.png)
+
+<figcaption>Rules on the Regions tab</figcaption>
+</figure>
+
+
 ## Region rules
 
 Each row on the **Regions** tab is one rule. A rule says which regions it matches and what colour they get:
@@ -18,7 +26,7 @@ Each row on the **Regions** tab is one rule. A rule says which regions it matche
 | **Colour** | The colour the matching regions get. Click **+** to add a second colour, which spreads a [gradient](/Reaper-AutoColor/usage/colours/#gradients) across the regions. |
 | **Hits** | How many regions this rule colours in the current project. See [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column). |
 
-To add a rule, click **+ region rule** on the action bar. [Editing rules](/Reaper-AutoColor/usage/#editing-rules) describes how to move, switch off and delete rules.
+To add a rule, click **+ region rule** on the action bar. [Common controls](/Reaper-AutoColor/usage/#common-controls) describes how to reorder, duplicate and delete rules.
 
 ## Which rule colours a region
 

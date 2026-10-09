@@ -22,7 +22,7 @@ Each row on the **Items** tab is one rule. A rule says which items it matches an
 | **Colour** | The colour the matching items get. Click **+** to add a second colour, which spreads a [gradient](/Reaper-AutoColor/usage/colours/#gradients) across the items. |
 | **Hits** | How many items this rule colours in the current project. See [The Hits column](/Reaper-AutoColor/usage/matching/#the-hits-column). |
 
-To add a rule, click **+ item rule** on the action bar. [Editing rules](/Reaper-AutoColor/usage/#editing-rules) describes how to move, switch off and delete rules.
+To add a rule, click **+ item rule** on the action bar. [Common controls](/Reaper-AutoColor/usage/#common-controls) describes how to reorder, duplicate and delete rules.
 
 ## Which rule colours an item
 
@@ -42,29 +42,29 @@ AutoColor can put an item into either state. Three settings decide which:
 | Setting | What it does to the item |
 |---|---|
 | A rule on the **Items** tab | Gives the item the colour of that rule. |
-| The **Items** switch on a rule on the **Tracks** tab | Gives every item on the tracks that the rule colours the track's colour, whatever the items are called. The item then has a colour of its own, so REAPER no longer draws it from the track it sits on. |
+| The **FI** (force item colour) switch on a rule on the **Tracks** tab | Gives every item on the tracks that the rule colours the track's colour, whatever the items are called. The item then has a colour of its own, so REAPER no longer draws it from the track it sits on. |
 | **Options → Scope → Reset to the default colour when no rule matches**, ticked for **Items** | Removes the colour from every item that the first two settings do not colour, so REAPER draws those items in their track's colour again. See [Reset to the default colour when no rule matches](/Reaper-AutoColor/usage/clearing/#reset-to-the-default-colour-when-no-rule-matches). |
 
 For a single item, AutoColor checks these settings in order:
 
 1. If a rule on the **Items** tab matches the item, the item receives that rule's colour.
-1. Otherwise, if the item's track is coloured by a rule with **Items** switched on, the item receives the track's colour.
+1. Otherwise, if the item's track is coloured by a rule with **FI** switched on, the item receives the track's colour.
 1. Otherwise, if the reset is ticked for **Items**, AutoColor removes the item's colour.
 1. Otherwise, AutoColor leaves the item's colour unchanged.
 
 The reset never affects an item that step 1 or step 2 colours.
 
-The **Items** switch also applies to the tracks inside a folder. If a track receives its colour from its folder track, and the folder track's rule has **Items** switched on, the items on that track also receive the colour.
+The **FI** switch also applies to the tracks inside a folder. If a track receives its colour from its folder track, and the folder track's rule has **FI** switched on, the items on that track also receive the colour.
 
-If a track rule with **Items** switched on has two colours, each track's items receive that track's shade of the gradient. All items on one track have the same colour.
+If a track rule with **FI** switched on has two colours, each track's items receive that track's shade of the gradient. All items on one track have the same colour.
 
 :::tip[To make items look like their track, prefer the reset]
-The **Items** switch and the reset both make an item show its track's colour as soon as the rules are applied. They differ when you later move the item to another track:
+The **FI** switch and the reset both make an item show its track's colour as soon as the rules are applied. They differ when you later move the item to another track:
 
 - With the reset, the item has no colour of its own. REAPER draws it in the new track's colour at once.
-- With the **Items** switch, the item keeps the colour that was written to it. The next time the rules are applied, the item receives the new track's colour only if the new track's rule also has **Items** switched on.
+- With the **FI** switch, the item keeps the colour that was written to it. The next time the rules are applied, the item receives the new track's colour only if the new track's rule also has **FI** switched on.
 
-The **Items** switch is useful when items should keep their colour after they move to another track, or when the REAPER theme does not tint items with their track's colour.
+The **FI** switch is useful when items should keep their colour after they move to another track, or when the REAPER theme does not tint items with their track's colour.
 :::
 
 ## Takes

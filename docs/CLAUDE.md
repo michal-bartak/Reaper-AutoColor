@@ -116,7 +116,7 @@ Every topic has one home section that holds all of its details. For example, inv
 - A troubleshooting entry states the symptom, the cause in one or two sentences, and the fix, and links to the home section for the rest.
 - A fact that applies everywhere, such as the minimum REAPER version, is stated only on its home page. Do not repeat it on feature pages, not even as a pointer.
 - Do not add a summary list (for example "Known limitations") that only repeats sections found elsewhere.
-- The tab pages (`usage/tracks.md`, `items.md`, `regions.md`, `markers.md`, `icons.md`) are where a reader starts. Each one covers the rule columns, which rule wins, and when the project changes, a sentence or two per point with a link to the home section. These short repeats are intended. Details go to the home section, not to the tab page. The **In depth** pages (`matching.md`, `colours.md`) hold the full detail.
+- The tab pages (`usage/tracks.md`, `items.md`, `regions.md`, `markers.md`, `icons.md`) are where a reader starts. Each one covers the rule columns, which rule wins, and when the project changes, a sentence or two per point with a link to the home section. These short repeats are intended. Details go to the home section, not to the tab page. The **In depth** pages (`matching.md`, `colours.md`, `applying.md`, `auto-apply.md`, `clearing.md`) hold the full detail.
 
 ## Repository conventions
 

@@ -7,15 +7,11 @@ AutoColor can be installed in two ways. The recommended way is through ReaPack, 
 
 Before installing, check the [requirements](/Reaper-AutoColor/requirements/).
 
-## The REAPER resource folder
+Instalation installs:
+* scripts
+* toolbar icons
 
-REAPER keeps scripts, icons and settings in its *resource folder*. AutoColor installs its scripts there and stores its [config file](/Reaper-AutoColor/configuration/config-file/) there. To open the folder, choose *Options → Show REAPER resource path in explorer/finder* in REAPER's menu. The default locations are:
-
-| OS | Resource folder |
-|----|------|
-| macOS | `~/Library/Application Support/REAPER/` |
-| Windows | `%AppData%\REAPER\` |
-| Linux | `~/.config/REAPER/` |
+After installation, add scripts onto toolbar of choice, assigning provided icons.
 
 ## Installing through ReaPack
 
@@ -30,10 +26,15 @@ In REAPER:
 1. Open *Extensions → ReaPack → Import repositories*, paste the URL above, and confirm.
 1. Open *Extensions → ReaPack → Browse packages*, find **AutoColor**, and install it.
 
-ReaPack installs the scripts into `Scripts/MXM Scripts/MXM_AutoColor/` in the REAPER resource folder. It adds two actions to the Action List, each with its own [toolbar icon](#the-toolbar-icons):
+ReaPack:
+* installs scripts into `<resource folder>/Scripts/MXM Scripts/MXM_AutoColor/`
+* installs [toolbar icon](#the-toolbar-icons) into `<resource folder>/Data/toolbar_icons/`
+* adds two actions to the Action List
 
+Add scripts to toolbar of choice assigning provided icons:
 - <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor-gui.svg" alt="Window toolbar icon"> `MXM_AutoColor_GUI.lua` opens the configuration window.
 - <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> `MXM_AutoColor_AutoToggle.lua` switches [auto-apply](/Reaper-AutoColor/usage/auto-apply/) on and off.
+
 
 :::note
 To find these actions in the Action List, search for `autocolor` or `mxm`. The toolbar icons can be found with the same search terms.
@@ -52,14 +53,15 @@ To find these actions in the Action List, search for `autocolor` or `mxm`. The t
    ```
 
 1. In REAPER, open *Actions → Show action list*, click *New action → Load ReaScript*, and load `MXM_AutoColor_GUI.lua` and `MXM_AutoColor_AutoToggle.lua` from `Scripts/MXM_AutoColor/`.
-1. Optionally, add the two actions to a toolbar, using the [toolbar icons](#the-toolbar-icons) supplied.
+1. Add scripts to toolbar of choice assigning provided icons:
+- <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor-gui.svg" alt="Window toolbar icon"> `MXM_AutoColor_GUI.lua` opens the configuration window.
+- <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> `MXM_AutoColor_AutoToggle.lua` switches [auto-apply](/Reaper-AutoColor/usage/auto-apply/) on and off.
+
 </details>
 
 ## The actions
 
-AutoColor consists of several scripts. Each script becomes a REAPER action once it is loaded into the Action List.
-
-ReaPack registers only the two main actions, marked with an icon in the table below. The other scripts are installed in the same folder. To run one of them from the Action List, a keyboard shortcut or a toolbar, load it with *New action → Load ReaScript*.
+While ReaPack adds only two scrips to Actions list (marked below with an icon) the AutoColor consists of more of them.
 
 | | Script | What it does |
 |---|---|---|
@@ -81,8 +83,6 @@ AutoColor includes a toolbar icon for each of the two main actions.
 |---|---|---|
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor-gui.svg" alt="Window toolbar icon"> | `mxm_toolbar_autocolor_gui` | `MXM_AutoColor_GUI.lua` |
 | <img class="tb-icon" src="/Reaper-AutoColor/toolbar-autocolor.svg" alt="AutoToggle toolbar icon"> | `mxm_toolbar_autocolor` | `MXM_AutoColor_AutoToggle.lua` |
-
-The auto-apply button lights up while auto-apply is on.
 
 The icons are stored in `<resource folder>/Data/toolbar_icons/`, in three sizes for different interface scaling:
 

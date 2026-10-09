@@ -20,6 +20,17 @@ SWS Auto Color matches names by case-insensitive substring only, and does not co
 Do not run SWS Auto Color and AutoColor at the same time; see [Colours keep changing back](/Reaper-AutoColor/troubleshooting/#colours-keep-changing-back).
 :::
 
+## Main features
+
+- **Automatic.** With [auto-apply](/Reaper-AutoColor/usage/auto-apply/) on, new and renamed objects are processed as you work.
+- **Gradients.** Solid color and gradient colouring. See [Gradients](/Reaper-AutoColor/usage/colours/#gradients).
+- **Icons.** Including icons browser. See [Track Icons](/Reaper-AutoColor/usage/icons/)
+- **Three match modes per rule.** `contains`,  `glob` and `regular expression`. See [Match modes](/Reaper-AutoColor/usage/matching/#match-modes)
+- **Additional filters.** for tracks with instruments, midi inputs, chilren, parents etc. See [Filters](/Reaper-AutoColor/usage/matching/#filters).
+
+- **Items coloring.** If inheriting from track color is not enough. See [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour).
+- **Live preview.** Before anything is applied, see list of objects about to be affected
+
 ## Concepts
 
 **Object type.** AutoColor works on four object types: tracks, items, regions and markers. In this documentation, an *object* is any track, item, region or marker. Each object type has its own tab in the configuration window. Track icons have a fifth tab, **Icons**.
@@ -36,14 +47,7 @@ Do not run SWS Auto Color and AutoColor at the same time; see [Colours keep chan
 
 **Rules are shared, colours are saved per project.** There is one set of rules, shared by every project. The colours and icons that the rules set are saved in each project, like any colour set by hand.
 
-## Main features
 
-- **Automatic colouring.** With [auto-apply](/Reaper-AutoColor/usage/auto-apply/) on, new and renamed objects are coloured as you work.
-- **Three match modes per rule.** `contains` finds text anywhere in the name. `glob` compares the entire name against a pattern with wildcards such as `*`. `regex` uses a regular expression.
-- **Filters that do not depend on the name.** A track rule can be limited to folder tracks, tracks inside a folder, tracks with an instrument, tracks with a MIDI input, or tracks with receives. A rule on any tab can be limited to objects that have no name. See [Filters](/Reaper-AutoColor/usage/matching/#filters).
-- **Gradients.** A rule with a second colour gives its matches a range of shades between the two colours. The range can restart in each folder, or after each interruption by an object the rule does not match. See [Gradients](/Reaper-AutoColor/usage/colours/#gradients).
-- **Items in their track's colour.** A track rule can also colour the items on the matching tracks, whatever those items are called. See [Items and their track's colour](/Reaper-AutoColor/usage/items/#items-and-their-tracks-colour).
-- **Live preview.** Before anything is applied, the window lists the objects each rule matches and the colour each object will get, and shows how many objects each rule colours.
 
 ## How a colour is decided
 

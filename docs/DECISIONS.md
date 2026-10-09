@@ -65,12 +65,20 @@ includes `icon`, so config, the GUI tabs and the tallies pick it up; `apply.lua`
 keeps a colour-only kind list, and `plan()` appends the icon ops to the colour
 ops so every caller commits both.
 
-* **Folder propagation is per rule** (`children`: off / fill / force), where
-  colours have one global setting. A folder icon handed to every child says
-  less than a colour ramp does, so the common case is off, with the exception
-  chosen rule by rule. Both go through `apply.propagate(entries, direct,
-  mode_of)`: colours pass the global mode, icons each rule's. With one mode
-  for every rule the walk is exactly the old single-policy one.
+* **Folder propagation is per rule** (`children`: default / off / fill /
+  force). Icons had it first; track colours gained it in config v4, with
+  `default` deferring to an Options value per list (`propagate_folders`,
+  `propagate_icons`). Options keep the common case in one place; the rule
+  carries the exception. Icons default to off -- a folder icon handed to every
+  child says less than a colour ramp does. Both go through
+  `apply.propagate(entries, direct, mode_of)` with `rules.children_mode`
+  resolving `default`. Items, regions and markers have no folder structure,
+  so no Children column.
+* **v4 migration is behaviour-preserving.** Track rules start at `default`.
+  Icon rules at `off` -- v3's only default -- become `default`, which
+  resolves to the same off; `fill` / `force` were chosen and stay. The bump
+  stops an older build saving the file back without the track rules' modes.
+  The Options label "fill gaps" became "fill", matching the rule combo.
 * **A folder whose rule does not propagate passes on what it inherited**, so an
   outer fill still reaches the tracks inside it.
 * **No gradients and no items.** Both are colour concepts.
@@ -85,7 +93,7 @@ ops so every caller commits both.
 
 | | mechanism | after copy/paste to another track |
 |---|---|---|
-| **also colour items** on a track rule | writes the track's colour onto the item | stale unless the destination rule also cascades |
+| **FI** (force item colour) on a track rule | writes the track's colour onto the item | stale unless the destination rule also cascades |
 | **reset unmatched items** | removes the item's colour so REAPER draws it from the track | correct instantly, cannot go stale |
 
 An item with no custom colour is drawn by REAPER in its track's colour, live.
@@ -93,6 +101,10 @@ So the second is usually right, and the first is for when items should
 deliberately differ. `clear_unmatched` is **per kind** for exactly this reason:
 clearing unmatched items is desirable, clearing unmatched *tracks* would strip
 every colour set by hand.
+
+The column was headed **Items**, which read as "tick to colour this track's
+items" -- yet unticked items already show the track's colour. Renamed **FI**,
+*force item colour*, to say what it adds: a colour written into the item.
 
 ## Colours are written to the item, and takes are cleared
 
@@ -373,8 +385,9 @@ order, with the folder as its first step. Nothing downstream changed: `rank`,
 `force` therefore no longer flattens a gradient — it *widens* it, because the
 folder's rule takes every descendant including ones with rules of their own.
 The warning that used to predict the collapse is gone. The "folder-parents-only
-filter" warning survives but is now conditional on `propagate_folders = 'off'`,
-which is the only case left where each parent really is alone in its group.
+filter" warning survives but is now conditional on the rule's effective
+Children being off, which is the only case left where each parent really is
+alone in its group.
 
 `plan()` returns `direct` alongside `winner` for this reason: `winner` is who
 COLOURS an entry, `direct` is what it matched by name, and the preview needs

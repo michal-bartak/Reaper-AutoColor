@@ -50,19 +50,22 @@ M.OBJECT_NOUN = {
   icon   = 'track',
 }
 
--- Whether an icon rule matching a folder hands its icon to the children.
-M.ICON_CHILDREN = { 'off', 'fill', 'force' }
+-- How a track or icon rule that matches a folder treats the tracks inside it.
+-- 'default' follows Options; the rest override it for this rule.
+M.CHILDREN = { 'default', 'off', 'fill', 'force' }
 
-M.ICON_CHILDREN_LABEL = {
-  off   = 'off',
-  fill  = 'fill',
-  force = 'force',
+M.CHILDREN_LABEL = {
+  default = '--',
+  off     = 'off',
+  fill    = 'fill',
+  force   = 'force',
 }
 
-M.ICON_CHILDREN_HELP = {
-  off   = 'The icon goes on the matched track only.',
-  fill  = 'On a folder, children that no icon rule matches take its icon.',
-  force = 'On a folder, every child takes its icon.',
+M.CHILDREN_HELP = {
+  default = 'Follows Options > Folders.',
+  off     = 'Applies to the matched track only.',
+  fill    = 'On a folder, children that no rule matches inherit the folder\'s rule.',
+  force   = 'On a folder, every child inherits the folder\'s rule.',
 }
 
 M.MODES = { 'substring', 'glob', 'regex' }
@@ -107,7 +110,19 @@ local GRADIENT_SET = {}
 for _, g in ipairs(M.GRADIENT_SCOPES) do GRADIENT_SET[g] = true end
 
 local CHILDREN_SET = {}
-for _, c in ipairs(M.ICON_CHILDREN) do CHILDREN_SET[c] = true end
+for _, c in ipairs(M.CHILDREN) do CHILDREN_SET[c] = true end
+
+--- The children mode a rule actually uses: its own, or for 'default' the
+--- Options value for its list. Values are those of propagate_folders, plus the
+--- rule-side 'fill'; apply.propagate reads anything but off/force as fill.
+--- @param kind  the list the rule is in, when `r.kind` may be unset
+function M.children_mode(r, options, kind)
+  local c = r.children
+  if c ~= nil and c ~= 'default' then return c end
+  options = options or {}
+  if (kind or r.kind) == 'icon' then return options.propagate_icons or 'off' end
+  return options.propagate_folders or 'fill_unmatched'
+end
 
 --- Can this kind use this grouping? Folder structure only means something for
 --- tracks; everything else can at least be grouped into runs.
@@ -197,11 +212,16 @@ function M.normalize(r, kind)
   if kind == 'icon' then
     -- '' is a real choice: the rule removes the icon from what it matches.
     if type(r.icon) ~= 'string' then r.icon = '' end
-    if not CHILDREN_SET[r.children] then r.children = 'off' end
+    if not CHILDREN_SET[r.children] then r.children = 'default' end
     r.color, r.color2, r.gradient_scope, r.cascade_items = nil, nil, nil, nil
     return r
   end
-  r.icon, r.children = nil, nil
+  r.icon = nil
+  if kind == 'track' then
+    if not CHILDREN_SET[r.children] then r.children = 'default' end
+  else
+    r.children = nil
+  end
 
   local function clampcolor(c)
     if type(c) ~= 'number' then return nil end
@@ -247,11 +267,14 @@ function M.warnings(r, options, icon_exists)
                 ' -- add a pattern or a filter'
   end
 
+  -- Only for a mode chosen on the rule: under 'default' it would flag every
+  -- "inside a folder" track rule while Options are at their default fill.
+  if r.only == 'children' and (r.children == 'fill' or r.children == 'force') then
+    w[#w + 1] = 'only matches tracks inside a folder, so it reaches a folder ' ..
+                'only when that folder is nested'
+  end
+
   if r.kind == 'icon' then
-    if r.children ~= 'off' and r.only == 'children' then
-      w[#w + 1] = 'only matches tracks inside a folder, so it reaches a folder ' ..
-                  'only when that folder is nested'
-    end
     if r.icon ~= '' and icon_exists and not icon_exists(r.icon) then
       w[#w + 1] = 'icon file not found: ' .. r.icon
     end
@@ -270,7 +293,7 @@ function M.warnings(r, options, icon_exists)
   -- is handed down to them and they join the parent's group, so the ramp has
   -- something to spread over after all.
   if r.color2 and by_folder and r.only == 'folder' and
-     options and options.propagate_folders == 'off' then
+     options and M.children_mode(r, options) == 'off' then
     w[#w + 1] = 'grouped by folder, but this rule only matches folder parents ' ..
                 'and folder colours are off -- each one is alone in its group, ' ..
                 'so every match gets the first colour'
